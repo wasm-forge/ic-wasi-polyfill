@@ -10,5 +10,3 @@ edition = "2021"
 [build]
 target = "wasm32-wasi"
 
-[lib]
-crate-type = ["cdylib"]

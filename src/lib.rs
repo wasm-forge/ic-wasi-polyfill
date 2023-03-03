@@ -3,15 +3,13 @@
 /// The size of the array should match that returned by `args_sizes_get`.
 /// Each argument is expected to be `\0` terminated.
 #[no_mangle]
-#[export_name = "__ic_custom_args_get"]
 pub extern "C" fn __ic_custom_args_get(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
 /// Return command-line argument data sizes.
 #[no_mangle]
-#[export_name = "__ic_custom_args_sizes_get"]
-pub extern "C" fn __ic_custom_args_sizes_get1(_arg0: i32, _arg1: i32) -> i32 {
+pub extern "C" fn __ic_custom_args_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
@@ -384,6 +382,7 @@ pub extern "C" fn __ic_custom_sock_shutdown(_arg0: i32, _arg1: i32) -> i32 {
 
 
 #[no_mangle]
+#[export_name = "add_numbers"]
 pub extern "C" fn add(left: usize, right: usize) -> usize {
     left + right
 }
