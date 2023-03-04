@@ -16,14 +16,13 @@ pub struct Ciovec {
     pub buf_len: Size,
 }
 
-// pub type CiovecArray<'a> = &'a [Ciovec];
-
 #[no_mangle]
 pub unsafe extern "C" fn __ic_custom_fd_write(_fd: i32, iovs: *const Ciovec, len: i32, res: *mut Size) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_write");
 
     let iovs = std::slice::from_raw_parts(iovs, len as usize);
     let mut written = 0;
+    
     for iov in iovs {
         let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
         let str = std::str::from_utf8(buf).unwrap_or("");
