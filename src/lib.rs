@@ -1,4 +1,110 @@
 
+/// Bad file descriptor.
+pub const ERRNO_BADF: i32 =  8;
+/// Invalid argument.
+pub const ERRNO_INVAL: i32 = 28;
+
+
+pub type Size = usize;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct Ciovec {
+    /// The address of the buffer to be written.
+    pub buf: *const u8,
+    /// The length of the buffer to be written.
+    pub buf_len: Size,
+}
+
+// pub type CiovecArray<'a> = &'a [Ciovec];
+
+#[no_mangle]
+pub unsafe extern "C" fn __ic_custom_fd_write(_fd: i32, iovs: *const Ciovec, len: i32, res: *mut Size) -> i32 {
+    ic_cdk::api::print("called __ic_custom_fd_write");
+
+    let iovs = std::slice::from_raw_parts(iovs, len as usize);
+    let mut written = 0;
+    for iov in iovs {
+        let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
+        let str = std::str::from_utf8(buf).unwrap_or("");
+        ic_cdk::api::print(str);
+        written += iov.buf_len;
+    }
+
+    *res = written;
+
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __ic_custom_fd_close(_arg0: i32) -> i32 {
+    ic_cdk::api::print("called __ic_custom_fd_close");
+
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
+    ERRNO_BADF
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8, path_len: Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_prestat_dir_name fd={}", fd));
+    ERRNO_INVAL
+}
+
+#[no_mangle]
+pub extern "C" fn __ic_custom_path_open(
+    _arg0: i32,
+    _arg1: i32,
+    _arg2: i32,
+    _arg3: i32,
+    _arg4: i32,
+    _arg5: i64,
+    _arg6: i64,
+    _arg7: i32,
+    _arg8: i32,
+) -> i32 {
+    ic_cdk::api::print("called __ic_custom_path_open");
+
+    1
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: Size) -> i32 {
+    ic_cdk::api::print("called __ic_custom_random_get");
+
+    let buf = std::slice::from_raw_parts_mut(buf, buf_len);
+    for b in buf {
+        *b = 0;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn __ic_custom_environ_get(_environ: *mut *mut u8, _environ_buf: *mut u8) -> i32 {
+    ic_cdk::api::print("called __ic_custom_environ_get");
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __ic_custom_environ_sizes_get(len1: *mut Size, len2: *mut Size) -> i32 {
+    ic_cdk::api::print("called __ic_custom_environ_sizes_get");
+    *len1 = 0;
+    *len2 = 0;
+    0
+}
+
+#[no_mangle]
+pub  extern "C" fn __ic_custom_proc_exit(_arg0: i32) -> ! {
+    ic_cdk::api::print("called __ic_custom_proc_exit");
+
+    panic!("exit")
+}
+
+
 /// Read command-line argument data.
 /// The size of the array should match that returned by `args_sizes_get`.
 /// Each argument is expected to be `\0` terminated.
@@ -13,19 +119,6 @@ pub extern "C" fn __ic_custom_args_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
-/// Read environment variable data.
-/// The sizes of the buffers should match that returned by `environ_sizes_get`.
-/// Key/value pairs are expected to be joined with `=`s, and terminated with `\0`s.
-#[no_mangle]
-pub extern "C" fn __ic_custom_environ_get(_arg0: i32, _arg1: i32) -> i32 {
-    0
-}
-
-/// Return environment variable data sizes.
-#[no_mangle]
-pub extern "C" fn __ic_custom_environ_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
-    0
-}
 
 /// Return the resolution of a clock.
 /// Implementations are required to provide a non-zero value for supported clocks. For unsupported clocks,
@@ -57,12 +150,6 @@ pub extern "C" fn __ic_custom_fd_allocate(_arg0: i32, _arg1: i64, _arg2: i64) ->
     0
 }
 
-/// Close a file descriptor.
-/// Note: This is similar to `close` in POSIX.
-#[no_mangle]
-pub extern "C" fn __ic_custom_fd_close(_arg0: i32) -> i32 {
-    0
-}
 
 /// Synchronize the data of a file to disk.
 /// Note: This is similar to `fdatasync` in POSIX.
@@ -116,18 +203,6 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(_arg0: i32, _arg1: i64, _arg
 /// Note: This is similar to `preadv` in POSIX.
 #[no_mangle]
 pub extern "C" fn __ic_custom_fd_pread(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
-    0
-}
-
-/// Return a description of the given preopened file descriptor.
-#[no_mangle]
-pub extern "C" fn __ic_custom_fd_prestat_get(_arg0: i32, _arg1: i32) -> i32 {
-    0
-}
-
-/// Return a description of the given preopened file descriptor.
-#[no_mangle]
-pub extern "C" fn __ic_custom_fd_prestat_dir_name(_arg0: i32, _arg1: i32, _arg2: i32) -> i32 {
     0
 }
 
@@ -194,13 +269,6 @@ pub extern "C" fn __ic_custom_fd_tell(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
-/// Write to a file descriptor.
-/// Note: This is similar to `writev` in POSIX.
-#[no_mangle]
-pub extern "C" fn __ic_custom_fd_write(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i32) -> i32 {
-    0
-}
-
 /// Create a directory.
 /// Note: This is similar to `mkdirat` in POSIX.
 #[no_mangle]
@@ -241,28 +309,6 @@ pub extern "C" fn __ic_custom_path_link(
     _arg4: i32,
     _arg5: i32,
     _arg6: i32,
-) -> i32 {
-    0
-}
-
-/// Open a file or directory.
-/// The returned file descriptor is not guaranteed to be the lowest-numbered
-/// file descriptor not currently open; it is randomized to prevent
-/// applications from depending on making assumptions about indexes, since this
-/// is error-prone in multi-threaded contexts. The returned file descriptor is
-/// guaranteed to be less than 2**31.
-/// Note: This is similar to `openat` in POSIX.
-#[no_mangle]
-pub extern "C" fn __ic_custom_path_open(
-    _arg0: i32,
-    _arg1: i32,
-    _arg2: i32,
-    _arg3: i32,
-    _arg4: i32,
-    _arg5: i64,
-    _arg6: i64,
-    _arg7: i32,
-    _arg8: i32,
 ) -> i32 {
     0
 }
@@ -317,13 +363,6 @@ pub extern "C" fn __ic_custom_poll_oneoff(_arg0: i32, _arg1: i32, _arg2: i32, _a
     0
 }
 
-/// Terminate the process normally. An exit code of 0 indicates successful
-/// termination of the program. The meanings of other values is dependent on
-/// the environment.
-#[no_mangle]
-pub extern "C" fn __ic_custom_proc_exit(_arg0: i32) {
-    
-}
 
 /// Send a signal to the process of the calling thread.
 /// Note: This is similar to `raise` in POSIX.
@@ -336,17 +375,6 @@ pub extern "C" fn __ic_custom_proc_raise(_arg0: i32) -> i32 {
 /// Note: This is similar to `sched_yield` in POSIX.
 #[no_mangle]
 pub extern "C" fn __ic_custom_sched_yield() -> i32 {
-    0
-}
-
-/// Write high-quality random data into a buffer.
-/// This function blocks when the implementation is unable to immediately
-/// provide sufficient high-quality random data.
-/// This function may execute slowly, so when large mounts of random data are
-/// required, it's advisable to use this function to seed a pseudo-random
-/// number generator, rather than to provide the random data directly.
-#[no_mangle]
-pub extern "C" fn __ic_custom_random_get(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
@@ -380,21 +408,7 @@ pub extern "C" fn __ic_custom_sock_shutdown(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
-
 #[no_mangle]
-#[export_name = "add_numbers"]
-pub extern "C" fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub extern "C" fn init() {
+    // this is to ensure the module is not thrown away by the linker
 }

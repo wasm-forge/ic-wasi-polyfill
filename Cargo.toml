@@ -6,6 +6,7 @@ edition = "2021"
 
 
 [dependencies]
+ic-cdk = "0.7.3"
 
 [build]
 target = "wasm32-wasi"
