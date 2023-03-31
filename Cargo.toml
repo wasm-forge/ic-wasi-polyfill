@@ -11,3 +11,5 @@ ic-cdk = "0.7.3"
 [build]
 target = "wasm32-wasi"
 
+[lib]
+crate-type = ["staticlib"]
