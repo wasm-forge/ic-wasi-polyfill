@@ -21,11 +21,12 @@ pub struct Ciovec {
 #[no_mangle]
 #[inline(never)]
 pub unsafe extern "C" fn __ic_custom_fd_write(_fd: i32, iovs: *const Ciovec, len: i32, res: *mut Size) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_write...");
+    ic_cdk::api::print(format!("called __ic_custom_fd_write..."));
 
     let iovs = std::slice::from_raw_parts(iovs, len as usize);
+
     let mut written = 0;
-    
+
     for iov in iovs {
         let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
         let str = std::str::from_utf8(buf).unwrap_or("");
@@ -48,14 +49,14 @@ pub unsafe extern "C" fn __ic_custom_fd_close(_arg0: i32) -> i32 {
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, _res: *mut Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
     ERRNO_BADF
 }
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8, path_len: Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, _path: *mut u8, _path_len: Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_dir_name fd={}", fd));
     ERRNO_INVAL
 }
@@ -125,6 +126,8 @@ pub extern "C" fn __ic_custom_args_get(_arg0: i32, _arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_args_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_args_sizes_get"));
+
     0
 }
 
@@ -136,6 +139,7 @@ pub extern "C" fn __ic_custom_args_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_clock_res_get(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
     0
 }
 
@@ -144,6 +148,7 @@ pub extern "C" fn __ic_custom_clock_res_get(_arg0: i32, _arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_clock_time_get(_arg0: i32, _arg1: i64, _arg2: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
     0
 }
 
@@ -152,6 +157,7 @@ pub extern "C" fn __ic_custom_clock_time_get(_arg0: i32, _arg1: i64, _arg2: i32)
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_advise(_arg0: i32, _arg1: i64, _arg2: i64, _arg3: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_advise"));
     0
 }
 
@@ -160,6 +166,7 @@ pub extern "C" fn __ic_custom_fd_advise(_arg0: i32, _arg1: i64, _arg2: i64, _arg
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(_arg0: i32, _arg1: i64, _arg2: i64) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_allocate"));
     0
 }
 
@@ -169,6 +176,7 @@ pub extern "C" fn __ic_custom_fd_allocate(_arg0: i32, _arg1: i64, _arg2: i64) ->
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_datasync(_arg0: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_datasync"));
     0
 }
 
@@ -187,6 +195,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_get(_arg0: i32, _arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_flags(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_fdstat_set_flags"));
     0
 }
 
@@ -195,6 +204,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(_arg0: i32, _arg1: i32) -> i32
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_rights(_arg0: i32, _arg1: i64, _arg2: i64) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_fdstat_set_rights"));
     0
 }
 
@@ -202,6 +212,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(_arg0: i32, _arg1: i64, _arg2
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_get(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_filestat_get"));
     0
 }
 
@@ -209,6 +220,7 @@ pub extern "C" fn __ic_custom_fd_filestat_get(_arg0: i32, _arg1: i32) -> i32 {
 /// Note: This is similar to `ftruncate` in POSIX.
 #[no_mangle]
 pub extern "C" fn __ic_custom_fd_filestat_set_size(_arg0: i32, _arg1: i64) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_filestat_set_size"));
     0
 }
 
@@ -216,6 +228,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(_arg0: i32, _arg1: i64) -> i3
 /// Note: This is similar to `futimens` in POSIX.
 #[no_mangle]
 pub extern "C" fn __ic_custom_fd_filestat_set_times(_arg0: i32, _arg1: i64, _arg2: i64, _arg3: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_filestat_set_times"));
     0
 }
 
@@ -224,6 +237,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(_arg0: i32, _arg1: i64, _arg
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_pread(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_pread"));
     0
 }
 
@@ -232,6 +246,7 @@ pub extern "C" fn __ic_custom_fd_pread(_arg0: i32, _arg1: i32, _arg2: i32, _arg3
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_pwrite(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_pwrite"));
     0
 }
 
@@ -241,6 +256,7 @@ pub extern "C" fn __ic_custom_fd_pwrite(_arg0: i32, _arg1: i32, _arg2: i32, _arg
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_read(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_read"));
     0
 }
 
@@ -256,6 +272,7 @@ pub extern "C" fn __ic_custom_fd_read(_arg0: i32, _arg1: i32, _arg2: i32, _arg3:
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_readdir(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_readdir"));
     0
 }
 
@@ -270,6 +287,7 @@ pub extern "C" fn __ic_custom_fd_readdir(_arg0: i32, _arg1: i32, _arg2: i32, _ar
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_renumber(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_renumber"));
     0
 }
 
@@ -278,6 +296,8 @@ pub extern "C" fn __ic_custom_fd_renumber(_arg0: i32, _arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_seek(_arg0: i32, _arg1: i64, _arg2: i32, _arg3: i32) -> i32 {
+       ic_cdk::api::print(format!("called __ic_custom_fd_seek"));
+
     0
 }
 
@@ -286,6 +306,7 @@ pub extern "C" fn __ic_custom_fd_seek(_arg0: i32, _arg1: i64, _arg2: i32, _arg3:
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(_arg0: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_sync"));
     0
 }
 
@@ -294,6 +315,7 @@ pub extern "C" fn __ic_custom_fd_sync(_arg0: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_tell(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_tell"));
     0
 }
 
@@ -302,6 +324,7 @@ pub extern "C" fn __ic_custom_fd_tell(_arg0: i32, _arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_create_directory(_arg0: i32, _arg1: i32, _arg2: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_path_create_directory"));
     0
 }
 
@@ -310,6 +333,7 @@ pub extern "C" fn __ic_custom_path_create_directory(_arg0: i32, _arg1: i32, _arg
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_filestat_get(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i32, _arg4: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_path_filestat_get"));
     0
 }
 
@@ -326,6 +350,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
     _arg5: i64,
     _arg6: i32,
 ) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_path_filestat_set_times"));
     0
 }
 
@@ -342,6 +367,7 @@ pub extern "C" fn __ic_custom_path_link(
     _arg5: i32,
     _arg6: i32,
 ) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_path_link"));
     0
 }
 
@@ -357,6 +383,7 @@ pub extern "C" fn __ic_custom_path_readlink(
     _arg4: i32,
     _arg5: i32,
 ) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_path_readlink"));
     0
 }
 
@@ -366,6 +393,7 @@ pub extern "C" fn __ic_custom_path_readlink(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_remove_directory(_arg0: i32, _arg1: i32, _arg2: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_path_remove_directory"));
     0
 }
 
@@ -374,7 +402,8 @@ pub extern "C" fn __ic_custom_path_remove_directory(_arg0: i32, _arg1: i32, _arg
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_rename(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i32, _arg4: i32, _arg5: i32) -> i32 {
-        0
+    ic_cdk::api::print(format!("called __ic_custom_path_rename"));
+    0
 }
 
 /// Create a symbolic link.
