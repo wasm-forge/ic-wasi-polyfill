@@ -1,64 +1,109 @@
 use std::cell::RefCell;
 
+use stable_fs::fs::FileSystem;
+use stable_fs::storage::transient::TransientStorage;
+use stable_fs::fs::{Fd, SrcBuf, DstBuf};
 
-/// Bad file descriptor.
-pub const ERRNO_BADF: i32 =  8;
-/// Invalid argument.
-pub const ERRNO_INVAL: i32 = 28;
+use wasi_helpers::into_errno;
+
+mod wasi;
+mod wasi_helpers;
 
 
-pub type Size = usize;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct Ciovec {
-    /// The address of the buffer to be written.
-    pub buf: *const u8,
-    /// The length of the buffer to be written.
-    pub buf_len: Size,
+thread_local! {
+    static FS: RefCell<FileSystem> = RefCell::new(FileSystem::new(Box::new(TransientStorage::new())).unwrap());
 }
+
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_write(_fd: i32, iovs: *const Ciovec, len: i32, res: *mut Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_write(fd: i32, iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_write..."));
 
-    let iovs = std::slice::from_raw_parts(iovs, len as usize);
-
-    let mut written = 0;
-
-    for iov in iovs {
-        let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
-        let str = std::str::from_utf8(buf).unwrap_or("");
-        ic_cdk::api::print(str);
-        written += iov.buf_len;
+    if fd < 3 {
+        wasi_helpers::forward_to_debug(iovs, len, res)
+    } else {
+        FS.with(|fs| {
+        
+            let mut fs = fs.borrow_mut();
+            let src_io_vec = iovs as *const SrcBuf;
+            let src_io_vec = std::slice::from_raw_parts(src_io_vec, len as usize);
+            
+            match fs.write_vec(fd as Fd, src_io_vec) {
+                Ok(r) => {
+                    *res = r as usize;
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    *res = 0;
+                    into_errno(er)
+                }
+            }
+        })
     }
+}
 
-    *res = written;
 
-    0
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_read"));
+
+    FS.with(|fs| {
+        
+        let mut fs = fs.borrow_mut();
+        let dst_io_vec = iovs as *const DstBuf;
+
+        unsafe {
+
+            let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as usize);
+
+            match fs.read_vec(fd as Fd, dst_io_vec) {
+                Ok(r) => {
+                    *res = r as usize;
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    *res = 0;
+                    into_errno(er)
+                }
+            }
+        }
+        
+    })
+
+}
+
+
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_close fd={}", fd));
+    
+    FS.with(|fs| {
+        
+        let res = fs.borrow_mut().close(fd as Fd);
+        
+        match res {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
+
 }
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_close(_arg0: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_close");
-
-    0
-}
-
-#[no_mangle]
-#[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, _res: *mut Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, _res: *mut wasi::Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
-    ERRNO_BADF
+    wasi::ERRNO_BADF.raw() as i32
 }
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, _path: *mut u8, _path_len: Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, _path: *mut u8, _path_len: wasi::Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_dir_name fd={}", fd));
-    ERRNO_INVAL
+    wasi::ERRNO_INVAL.raw() as i32
 }
 
 #[no_mangle]
@@ -81,7 +126,7 @@ pub extern "C" fn __ic_custom_path_open(
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
     ic_cdk::api::print("called __ic_custom_random_get");
 
     let buf = std::slice::from_raw_parts_mut(buf, buf_len);
@@ -100,7 +145,7 @@ pub extern "C" fn __ic_custom_environ_get(_environ: *mut *mut u8, _environ_buf: 
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_environ_sizes_get(len1: *mut Size, len2: *mut Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_environ_sizes_get(len1: *mut wasi::Size, len2: *mut wasi::Size) -> i32 {
     ic_cdk::api::print("called __ic_custom_environ_sizes_get");
     *len1 = 0;
     *len2 = 0;
@@ -250,15 +295,6 @@ pub extern "C" fn __ic_custom_fd_pwrite(_arg0: i32, _arg1: i32, _arg2: i32, _arg
     0
 }
 
-
-/// Read from a file descriptor.
-/// Note: This is similar to `readv` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_read(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_read"));
-    0
-}
 
 /// Read directory entries from a directory.
 /// When successful, the contents of the output buffer consist of a sequence of
@@ -483,6 +519,7 @@ pub extern "C" fn __ic_custom_sock_shutdown(_arg0: i32, _arg1: i32) -> i32 {
 }
 
 thread_local! {
+
     static COUNTER: RefCell<i32> = RefCell::new(0);
 }
 
@@ -490,23 +527,25 @@ thread_local! {
 #[no_mangle]
 pub extern "C" fn init() {
 
+
     COUNTER.with(|var| {
 
         if var.borrow().clone() == -1 {
 
             // dummy calls to trick the linker not to throw away the functions
             unsafe {
-                __ic_custom_fd_write(0, 0 as *const Ciovec, 0, 0 as *mut Size);
+                __ic_custom_fd_write(0, 0 as *const wasi::Ciovec, 0, 0 as *mut wasi::Size);
+                __ic_custom_fd_read(0, 0 as *const wasi::Ciovec, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_close(0);
 
-                __ic_custom_fd_prestat_get(0, 0 as *mut Size);
+                __ic_custom_fd_prestat_get(0, 0 as *mut wasi::Size);
                 __ic_custom_fd_prestat_dir_name(0, 0 as *mut u8, 0);
 
                 __ic_custom_path_open(0,0,0,0,0,0,0,0,0);
                 __ic_custom_random_get(0 as *mut u8, 0);
 
                 __ic_custom_environ_get(0 as *mut *mut u8, 0 as *mut u8);
-                __ic_custom_environ_sizes_get(0 as *mut Size, 0 as *mut Size);
+                __ic_custom_environ_sizes_get(0 as *mut wasi::Size, 0 as *mut wasi::Size);
 
                 __ic_custom_args_get(0, 0);
                 __ic_custom_args_sizes_get(0, 0);
@@ -523,7 +562,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
                 __ic_custom_fd_pread(0, 0, 0, 0, 0);
                 __ic_custom_fd_pwrite(0, 0, 0, 0, 0);
-                __ic_custom_fd_read(0, 0, 0, 0);
+                
                 __ic_custom_fd_readdir(0, 0, 0, 0, 0);
                 __ic_custom_fd_renumber(0, 0);
                 __ic_custom_fd_seek(0, 0, 0, 0);
