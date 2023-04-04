@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use stable_fs::fs::FileSystem;
+use stable_fs::fs::{FileSystem, FdStat, FdFlags, OpenFlags};
 use stable_fs::storage::transient::TransientStorage;
 use stable_fs::fs::{Fd, SrcBuf, DstBuf};
 
@@ -13,7 +13,6 @@ mod wasi_helpers;
 thread_local! {
     static FS: RefCell<FileSystem> = RefCell::new(FileSystem::new(Box::new(TransientStorage::new())).unwrap());
 }
-
 
 #[no_mangle]
 #[inline(never)]
@@ -49,6 +48,11 @@ pub unsafe extern "C" fn __ic_custom_fd_write(fd: i32, iovs: *const wasi::Ciovec
 pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_read"));
 
+    // for now we don't support reading from the standart streams
+    if fd < 3 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
     FS.with(|fs| {
         
         let mut fs = fs.borrow_mut();
@@ -73,6 +77,53 @@ pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i
     })
 
 }
+
+
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn __ic_custom_path_open(
+    parent_fd: i32,
+    dirflags: i32,
+    path: *const u8,
+    path_len: i32,
+
+    oflags: i32,
+    fs_rights_base: i64,
+    fs_rights_inheriting: i64,
+
+    fdflags: i32,
+    res: *mut wasi::Size,
+) -> i32 {
+
+    ic_cdk::api::print("called __ic_custom_path_open");
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow_mut();
+        
+        let path_bytes = std::slice::from_raw_parts(path, path_len as usize);
+        
+        let file_name: String = String::from_utf8_unchecked(path_bytes);
+
+        let fd_stat = FdStat {
+            flags: fdflags as FdFlags,
+            rights_base: fs_rights_base as u64,
+            rights_inheriting: fs_rights_inheriting as u64,
+        };
+
+        let open_flags = OpenFlags {
+            bits: oflags as u16,
+        };
+
+        let res = fs.open_or_create(parent_fd as Fd, file_name.as_str(), fd_stat, open_flags);
+
+        match res {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
+}
+
 
 
 #[no_mangle]
@@ -106,23 +157,6 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, _path: *mut u8
     wasi::ERRNO_INVAL.raw() as i32
 }
 
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_path_open(
-    _arg0: i32,
-    _arg1: i32,
-    _arg2: i32,
-    _arg3: i32,
-    _arg4: i32,
-    _arg5: i64,
-    _arg6: i64,
-    _arg7: i32,
-    _arg8: i32,
-) -> i32 {
-    ic_cdk::api::print("called __ic_custom_path_open");
-
-    1
-}
 
 #[no_mangle]
 #[inline(never)]
