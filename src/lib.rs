@@ -99,23 +99,21 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
     FS.with(|fs| {
         
-        let fs = fs.borrow_mut();
+        let mut fs = fs.borrow_mut();
         
         let path_bytes = std::slice::from_raw_parts(path, path_len as usize);
         
-        let file_name: String = String::from_utf8_unchecked(path_bytes);
+        let file_name = std::str::from_utf8_unchecked(path_bytes);
 
         let fd_stat = FdStat {
-            flags: fdflags as FdFlags,
+            flags: FdFlags::from_bits_truncate(fdflags as u16),
             rights_base: fs_rights_base as u64,
             rights_inheriting: fs_rights_inheriting as u64,
         };
 
-        let open_flags = OpenFlags {
-            bits: oflags as u16,
-        };
+        let open_flags = OpenFlags::from_bits_truncate(oflags as u16);
 
-        let res = fs.open_or_create(parent_fd as Fd, file_name.as_str(), fd_stat, open_flags);
+        let res = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
 
         match res {
             Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
@@ -575,7 +573,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_prestat_get(0, 0 as *mut wasi::Size);
                 __ic_custom_fd_prestat_dir_name(0, 0 as *mut u8, 0);
 
-                __ic_custom_path_open(0,0,0,0,0,0,0,0,0);
+                __ic_custom_path_open(0,0,0 as *const u8,0,0,0,0,0,0 as *mut wasi::Size);
                 __ic_custom_random_get(0 as *mut u8, 0);
 
                 __ic_custom_environ_get(0 as *mut *mut u8, 0 as *mut u8);
