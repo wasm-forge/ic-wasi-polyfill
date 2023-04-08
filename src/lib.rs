@@ -1,10 +1,11 @@
 use std::cell::RefCell;
+use std::mem;
 
 use stable_fs::fs::{FileSystem, FdStat, FdFlags, OpenFlags};
 use stable_fs::storage::transient::TransientStorage;
 use stable_fs::fs::{Fd, SrcBuf, DstBuf};
 
-use wasi_helpers::into_errno;
+use wasi_helpers::*;
 
 mod wasi;
 mod wasi_helpers;
@@ -78,12 +79,44 @@ pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i
 
 }
 
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_fd_seek(fd: i32, delta: i64, whence: i32, res: *mut wasi::Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_seek"));
+    
+    // standart streams not supported
+    if fd < 3 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
+    FS.with(|fs| {
+        
+        let mut fs = fs.borrow_mut();
+
+        unsafe {
+
+            match fs.seek(fd as Fd, delta, wasi_helpers::into_stable_fs_wence(whence as u8)) {
+                Ok(r) => {
+                    *res = r as usize;
+
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    *res = 0;
+                    into_errno(er)
+                }
+            }
+        }
+        
+    })
+
+}
 
 #[no_mangle]
 #[inline(never)]
 pub unsafe extern "C" fn __ic_custom_path_open(
     parent_fd: i32,
-    dirflags: i32,
+    _dirflags: i32,
     path: *const u8,
     path_len: i32,
 
@@ -94,6 +127,8 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fdflags: i32,
     res: *mut wasi::Size,
 ) -> i32 {
+    // _dirflags contains the information on whether to follow the symlinks,
+    // the symlinks are not supported yet by the file system
 
     ic_cdk::api::print("called __ic_custom_path_open");
 
@@ -113,13 +148,20 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let open_flags = OpenFlags::from_bits_truncate(oflags as u16);
 
-        let res = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
+        let r = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
 
-        match res {
-            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
-            Err(er) => into_errno(er),
+        match r {
+            Ok(r) => {
+                *res = r as usize;
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => {
+                *res = 0;
+                into_errno(er)
+            }
         }
     })
+    
 }
 
 
@@ -143,8 +185,52 @@ pub unsafe extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 
 #[no_mangle]
 #[inline(never)]
+pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_filestat_get"));
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+        let res = fs.metadata(fd as u32);
+        
+        match res {
+            Ok(metadata) => {
+
+                let value: wasi::Filestat = wasi::Filestat {
+                    dev: 0,
+                    ino: metadata.node,
+                    filetype: into_wasi_filetype(metadata.file_type),
+                    nlink: metadata.link_count,
+                    size: metadata.size,
+                    atim: metadata.times.accessed,
+                    mtim: metadata.times.modified,
+                    ctim: metadata.times.created,
+                };
+    
+                unsafe {
+                    let ret_val = ret_val as *mut wasi::Filestat; 
+    
+                    *ret_val = mem::transmute(value);
+                }
+    
+                wasi::ERRNO_SUCCESS.raw() as i32
+            },
+            Err(er) => {
+                into_errno(er)
+            }
+        }
+    })
+
+}
+
+
+#[no_mangle]
+#[inline(never)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, _res: *mut wasi::Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
+
+
+
     wasi::ERRNO_BADF.raw() as i32
 }
 
@@ -285,13 +371,6 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(_arg0: i32, _arg1: i64, _arg2
     0
 }
 
-/// Return the attributes of an open file.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_filestat_get(_arg0: i32, _arg1: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_filestat_get"));
-    0
-}
 
 /// Adjust the size of an open file. If this increases the file's size, the extra bytes are filled with zeros.
 /// Note: This is similar to `ftruncate` in POSIX.
@@ -359,15 +438,6 @@ pub extern "C" fn __ic_custom_fd_renumber(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
-/// Move the offset of a file descriptor.
-/// Note: This is similar to `lseek` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_seek(_arg0: i32, _arg1: i64, _arg2: i32, _arg3: i32) -> i32 {
-       ic_cdk::api::print(format!("called __ic_custom_fd_seek"));
-
-    0
-}
 
 /// Synchronize the data and metadata of a file to disk.
 /// Note: This is similar to `fsync` in POSIX.
@@ -589,7 +659,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_fdstat_get(0, 0);
                 __ic_custom_fd_fdstat_set_flags(0, 0);
                 __ic_custom_fd_fdstat_set_rights(0, 0, 0);
-                __ic_custom_fd_filestat_get(0, 0);
+                __ic_custom_fd_filestat_get(0, 0 as *mut u8);
                 __ic_custom_fd_filestat_set_size(0, 0);
                 __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
                 __ic_custom_fd_pread(0, 0, 0, 0, 0);

@@ -20,6 +20,30 @@ pub fn into_errno(error: stable_fs::error::Error) -> i32 {
     errno.raw() as i32
 }
 
+pub fn into_wasi_filetype(file_type: stable_fs::storage::types::FileType) -> wasi::Filetype {
+
+   match file_type {
+        stable_fs::storage::types::FileType::Directory => wasi::FILETYPE_DIRECTORY,
+        stable_fs::storage::types::FileType::RegularFile => wasi::FILETYPE_REGULAR_FILE,
+        stable_fs::storage::types::FileType::SymbolicLink => wasi::FILETYPE_SYMBOLIC_LINK,
+    }
+}
+
+pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
+
+    if whence == wasi::WHENCE_SET.raw() {
+        return stable_fs::fs::Whence::SET;
+    }
+    if whence == wasi::WHENCE_CUR.raw() {
+        return stable_fs::fs::Whence::CUR;
+    }
+    if whence == wasi::WHENCE_END.raw() {
+        return stable_fs::fs::Whence::END;
+    }
+
+    panic!();
+
+}
 
 pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
 
