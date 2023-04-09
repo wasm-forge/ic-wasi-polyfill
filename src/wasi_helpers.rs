@@ -41,7 +41,7 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
         return stable_fs::fs::Whence::END;
     }
 
-    panic!();
+    panic!("Unsupported whence type!");
 
 }
 

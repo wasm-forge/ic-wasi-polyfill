@@ -27,11 +27,11 @@ pub unsafe extern "C" fn __ic_custom_fd_write(fd: i32, iovs: *const wasi::Ciovec
         
             let mut fs = fs.borrow_mut();
             let src_io_vec = iovs as *const SrcBuf;
-            let src_io_vec = std::slice::from_raw_parts(src_io_vec, len as usize);
+            let src_io_vec = std::slice::from_raw_parts(src_io_vec, len as wasi::Size);
             
             match fs.write_vec(fd as Fd, src_io_vec) {
                 Ok(r) => {
-                    *res = r as usize;
+                    *res = r as wasi::Size;
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
                 Err(er) => {
@@ -61,11 +61,11 @@ pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i
 
         unsafe {
 
-            let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as usize);
+            let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
 
             match fs.read_vec(fd as Fd, dst_io_vec) {
                 Ok(r) => {
-                    *res = r as usize;
+                    *res = r as wasi::Size;
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
                 Err(er) => {
@@ -97,7 +97,7 @@ pub extern "C" fn __ic_custom_fd_seek(fd: i32, delta: i64, whence: i32, res: *mu
 
             match fs.seek(fd as Fd, delta, wasi_helpers::into_stable_fs_wence(whence as u8)) {
                 Ok(r) => {
-                    *res = r as usize;
+                    *res = r as wasi::Size;
 
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
@@ -136,7 +136,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
         
         let mut fs = fs.borrow_mut();
         
-        let path_bytes = std::slice::from_raw_parts(path, path_len as usize);
+        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
         
         let file_name = std::str::from_utf8_unchecked(path_bytes);
 
@@ -152,7 +152,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         match r {
             Ok(r) => {
-                *res = r as usize;
+                *res = r as wasi::Size;
                 wasi::ERRNO_SUCCESS.raw() as i32
             }
             Err(er) => {
@@ -224,21 +224,104 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
 }
 
 
+/// Synchronize the data and metadata of a file to disk.
+/// Note: This is similar to `fsync` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, _res: *mut wasi::Size) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
+pub extern "C" fn __ic_custom_fd_sync(_fd: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_sync"));
 
+    wasi::ERRNO_SUCCESS.raw() as i32
+}
 
+/// Return the current offset of a file descriptor.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_tell"));
 
-    wasi::ERRNO_BADF.raw() as i32
+    // standart streams not supported
+    if fd < 3 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
+    FS.with(|fs| {
+        
+        let mut fs = fs.borrow_mut();
+
+        unsafe {
+
+            match fs.tell(fd as Fd) {
+                Ok(pos) => {
+                    *res = pos as wasi::Size;
+
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    *res = 0;
+                    into_errno(er)
+                }
+            }
+        }
+        
+    })
 }
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, _path: *mut u8, _path_len: wasi::Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Prestat) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+
+        if fd as Fd == fs.root_fd() {
+            let root_len = fs.root_path().len();
+
+            let prestat = wasi::Prestat {
+                tag: 0,
+                u: wasi::PrestatU {
+                    dir: wasi::PrestatDir {
+                        pr_name_len: root_len
+                    }
+                }
+            };
+            
+            *res = prestat;
+
+            return wasi::ERRNO_SUCCESS.raw() as i32;
+        } else {
+            return wasi::ERRNO_BADF.raw() as i32;
+        }
+    })
+
+
+}
+
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8, max_len: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_dir_name fd={}", fd));
-    wasi::ERRNO_INVAL.raw() as i32
+    let max_len = max_len as wasi::Size;
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+
+        if fd as Fd == fs.root_fd() {
+
+            let max_len = std::cmp::max(max_len as i32, fs.root_path().len() as i32) as usize;
+
+            for i in 0..max_len {
+                path.add(i).write(fs.root_path().as_bytes()[i]);
+            }
+            
+            return wasi::ERRNO_SUCCESS.raw() as i32;
+        } else {
+            return wasi::ERRNO_BADF.raw() as i32;
+        }
+    })
 }
 
 
@@ -258,6 +341,8 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
 #[inline(never)]
 pub extern "C" fn __ic_custom_environ_get(_environ: *mut *mut u8, _environ_buf: *mut u8) -> i32 {
     ic_cdk::api::print("called __ic_custom_environ_get");
+
+
     0
 }
 
@@ -438,24 +523,6 @@ pub extern "C" fn __ic_custom_fd_renumber(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
-
-/// Synchronize the data and metadata of a file to disk.
-/// Note: This is similar to `fsync` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_sync(_arg0: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_sync"));
-    0
-}
-
-/// Return the current offset of a file descriptor.
-/// Note: This is similar to `lseek(fd, 0, SEEK_CUR)` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_tell(_arg0: i32, _arg1: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_tell"));
-    0
-}
 
 /// Create a directory.
 /// Note: This is similar to `mkdirat` in POSIX.
@@ -667,7 +734,7 @@ pub extern "C" fn init() {
                 
                 __ic_custom_fd_readdir(0, 0, 0, 0, 0);
                 __ic_custom_fd_renumber(0, 0);
-                __ic_custom_fd_seek(0, 0, 0, 0);
+                __ic_custom_fd_seek(0, 0, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_sync(0);
                 __ic_custom_fd_tell(0, 0);
                 __ic_custom_path_create_directory(0, 0, 0);
