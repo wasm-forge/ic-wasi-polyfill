@@ -707,7 +707,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_read(0, 0 as *const wasi::Ciovec, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_close(0);
 
-                __ic_custom_fd_prestat_get(0, 0 as *mut wasi::Size);
+                __ic_custom_fd_prestat_get(0, 0 as *mut wasi::Prestat);
                 __ic_custom_fd_prestat_dir_name(0, 0 as *mut u8, 0);
 
                 __ic_custom_path_open(0,0,0 as *const u8,0,0,0,0,0,0 as *mut wasi::Size);
@@ -736,7 +736,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_renumber(0, 0);
                 __ic_custom_fd_seek(0, 0, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_sync(0);
-                __ic_custom_fd_tell(0, 0);
+                __ic_custom_fd_tell(0, 0 as *mut wasi::Size);
                 __ic_custom_path_create_directory(0, 0, 0);
                 __ic_custom_path_filestat_get(0, 0, 0, 0, 0);
                 __ic_custom_path_filestat_set_times(0, 0, 0, 0, 0, 0, 0);
