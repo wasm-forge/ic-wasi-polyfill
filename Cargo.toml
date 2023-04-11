@@ -13,4 +13,4 @@ stable-fs = {path = "../stable-fs"}
 target = "wasm32-wasi"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","lib"]
