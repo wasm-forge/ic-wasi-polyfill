@@ -9,7 +9,7 @@ pub fn into_errno(error: stable_fs::error::Error) -> i32 {
         stable_fs::error::Error::NotFound => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidOffset =>  wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidFileType =>  wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFileDescriptor =>  wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidFileDescriptor =>  wasi::ERRNO_BADF,
         stable_fs::error::Error::InvalidBufferLength => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidOpenFlags =>  wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidFdFlags =>  wasi::ERRNO_INVAL,

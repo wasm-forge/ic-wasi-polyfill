@@ -324,118 +324,112 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8,
     })
 }
 
-
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
-    ic_cdk::api::print("called __ic_custom_random_get");
-
-    let buf = std::slice::from_raw_parts_mut(buf, buf_len);
-    for b in buf {
-        *b = 0;
-    }
-    0
-}
-
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_environ_get(_environ: *mut *mut u8, _environ_buf: *mut u8) -> i32 {
-    ic_cdk::api::print("called __ic_custom_environ_get");
-
-
-    0
-}
-
-#[no_mangle]
-#[inline(never)]
-pub unsafe extern "C" fn __ic_custom_environ_sizes_get(len1: *mut wasi::Size, len2: *mut wasi::Size) -> i32 {
-    ic_cdk::api::print("called __ic_custom_environ_sizes_get");
-    *len1 = 0;
-    *len2 = 0;
-    0
-}
-
-#[no_mangle]
-pub  extern "C" fn __ic_custom_proc_exit(_arg0: i32) -> ! {
-    ic_cdk::api::print("called __ic_custom_proc_exit");
-
-    panic!("exit")
-}
-
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_args_get(_arg0: i32, _arg1: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_args_get");
-
-    0
-}
-
-/// Return command-line argument data sizes.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_args_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_args_sizes_get"));
-
-    0
-}
-
-
-/// Return the resolution of a clock.
-/// Implementations are required to provide a non-zero value for supported clocks. For unsupported clocks,
-/// return `errno::inval`.
-/// Note: This is similar to `clock_getres` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_clock_res_get(_arg0: i32, _arg1: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
-    0
-}
-
-/// Return the time value of a clock.
-/// Note: This is similar to `clock_gettime` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_clock_time_get(_arg0: i32, _arg1: i64, _arg2: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
-    0
-}
-
-/// Provide file advisory information on a file descriptor.
-/// Note: This is similar to `posix_fadvise` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_advise(_arg0: i32, _arg1: i64, _arg2: i64, _arg3: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_advise(fd: i32, _offset: i64, _len: i64, advice: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_advise"));
-    0
+
+    if advice as u32 > 5 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
+    let mut is_badf = false;
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+
+        // check fd is real
+        if fs.metadata(fd as Fd).is_err() {
+            is_badf = true;
+        }
+        
+    });
+
+    if is_badf {
+        return wasi::ERRNO_BADF.raw() as i32;
+    }
+
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
-/// Force the allocation of space in a file.
-/// Note: This is similar to `posix_fallocate` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_allocate(_arg0: i32, _arg1: i64, _arg2: i64) -> i32 {
+pub extern "C" fn __ic_custom_fd_allocate(fd: i32, _offset: i64, _len: i64) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_allocate"));
-    0
+
+    let mut result = wasi::ERRNO_SUCCESS.raw() as i32;
+
+    
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+
+        // check fd is real, for now don't do any allocation
+        if fs.metadata(fd as Fd).is_err() {
+            result = wasi::ERRNO_BADF.raw() as i32;
+        };
+        
+    });
+
+    result
 }
 
 
-/// Synchronize the data of a file to disk.
-/// Note: This is similar to `fdatasync` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_datasync(_arg0: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_datasync"));
-    0
+
+    let mut result = wasi::ERRNO_SUCCESS.raw() as i32;
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+
+        // check if the file descriptor is correct
+        if fs.metadata(fd as Fd).is_err() {
+            result = wasi::ERRNO_BADF.raw() as i32;
+        };
+        
+    });
+
+    result
 }
 
 /// Get the attributes of a file descriptor.
 /// Note: This returns similar flags to `fsync(fd, F_GETFL)` in POSIX, as well as additional fields.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_fdstat_get(_arg0: i32, _arg1: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, fdstat: *mut wasi::Fdstat) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_fdstat_get");
 
-    0
+    FS.with(|fs| {
+        
+        let fs = fs.borrow();
+
+        let stat = fs.get_stat(fd as Fd);
+
+        match stat {
+            Ok((ftype, fdstat)) => {
+
+
+
+                let ret_fd_stat = wasi::Fdstat {
+                    fs_filetype: into_wasi_filetype(ftype),
+                    fs_flags: fdstat.flags,
+                    fs_rights_base: fdstat.rights_base,
+                    fs_rights_inheriting: fdstat.rights_inheriting
+                };
+
+                wasi::ERRNO_SUCCESS.raw() as i32
+            },
+            Err(err) => {
+                wasi_helpers::into_errno(err)
+            }
+        }
+    })
+
 }
 
 /// Adjust the flags associated with a file descriptor.
@@ -523,6 +517,82 @@ pub extern "C" fn __ic_custom_fd_renumber(_arg0: i32, _arg1: i32) -> i32 {
     0
 }
 
+
+
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
+    ic_cdk::api::print("called __ic_custom_random_get");
+
+    let buf = std::slice::from_raw_parts_mut(buf, buf_len);
+    for b in buf {
+        *b = 0;
+    }
+    0
+}
+
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_environ_get(_environ: *mut *mut u8, _environ_buf: *mut u8) -> i32 {
+    ic_cdk::api::print("called __ic_custom_environ_get");
+
+
+    0
+}
+
+#[no_mangle]
+#[inline(never)]
+pub unsafe extern "C" fn __ic_custom_environ_sizes_get(len1: *mut wasi::Size, len2: *mut wasi::Size) -> i32 {
+    ic_cdk::api::print("called __ic_custom_environ_sizes_get");
+    *len1 = 0;
+    *len2 = 0;
+    0
+}
+
+#[no_mangle]
+pub  extern "C" fn __ic_custom_proc_exit(_arg0: i32) -> ! {
+    ic_cdk::api::print("called __ic_custom_proc_exit");
+
+    panic!("exit")
+}
+
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_args_get(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print("called __ic_custom_args_get");
+
+    0
+}
+
+/// Return command-line argument data sizes.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_args_sizes_get(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_args_sizes_get"));
+
+    0
+}
+
+
+/// Return the resolution of a clock.
+/// Implementations are required to provide a non-zero value for supported clocks. For unsupported clocks,
+/// return `errno::inval`.
+/// Note: This is similar to `clock_getres` in POSIX.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_clock_res_get(_arg0: i32, _arg1: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
+    0
+}
+
+/// Return the time value of a clock.
+/// Note: This is similar to `clock_gettime` in POSIX.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_clock_time_get(_arg0: i32, _arg1: i64, _arg2: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
+    0
+}
 
 /// Create a directory.
 /// Note: This is similar to `mkdirat` in POSIX.
@@ -723,7 +793,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_advise(0, 0, 0, 0);
                 __ic_custom_fd_allocate(0, 0, 0);
                 __ic_custom_fd_datasync(0);
-                __ic_custom_fd_fdstat_get(0, 0);
+                __ic_custom_fd_fdstat_get(0, 0 as *mut wasi::Fdstat);
                 __ic_custom_fd_fdstat_set_flags(0, 0);
                 __ic_custom_fd_fdstat_set_rights(0, 0, 0);
                 __ic_custom_fd_filestat_get(0, 0 as *mut u8);
