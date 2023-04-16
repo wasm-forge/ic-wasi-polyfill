@@ -168,7 +168,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_close fd={}", fd));
     
     FS.with(|fs| {
@@ -269,7 +269,7 @@ pub extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Size) -> i32 {
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Prestat) -> i32 {
+pub extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Prestat) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={}", fd));
 
     FS.with(|fs| {
@@ -288,7 +288,9 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
                 }
             };
             
-            *res = prestat;
+            unsafe {
+                *res = prestat;
+            }
 
             return wasi::ERRNO_SUCCESS.raw() as i32;
         } else {
@@ -301,7 +303,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8, max_len: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8, max_len: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_prestat_dir_name fd={}", fd));
     let max_len = max_len as wasi::Size;
 
@@ -314,7 +316,9 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(fd: i32, path: *mut u8,
             let max_len = std::cmp::max(max_len as i32, fs.root_path().len() as i32) as usize;
 
             for i in 0..max_len {
-                path.add(i).write(fs.root_path().as_bytes()[i]);
+                unsafe {
+                    path.add(i).write(fs.root_path().as_bytes()[i]);
+                }
             }
             
             return wasi::ERRNO_SUCCESS.raw() as i32;
@@ -391,6 +395,8 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
         if fs.metadata(fd as Fd).is_err() {
             result = wasi::ERRNO_BADF.raw() as i32;
         };
+
+        // we don't do the synchronization for now
         
     });
 
@@ -401,7 +407,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
 /// Note: This returns similar flags to `fsync(fd, F_GETFL)` in POSIX, as well as additional fields.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, fdstat: *mut wasi::Fdstat) -> i32 {
+pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdstat) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_fdstat_get");
 
     FS.with(|fs| {
@@ -413,14 +419,16 @@ pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, fdstat: *mut wasi::Fdstat) 
         match stat {
             Ok((ftype, fdstat)) => {
 
-
-
-                let ret_fd_stat = wasi::Fdstat {
+                let tmp_fd_stat = wasi::Fdstat {
                     fs_filetype: into_wasi_filetype(ftype),
-                    fs_flags: fdstat.flags,
+                    fs_flags: fdstat.flags.bits() as u16,
                     fs_rights_base: fdstat.rights_base,
                     fs_rights_inheriting: fdstat.rights_inheriting
                 };
+
+                unsafe {
+                    *ret_fdstat = tmp_fd_stat;
+                }
 
                 wasi::ERRNO_SUCCESS.raw() as i32
             },
