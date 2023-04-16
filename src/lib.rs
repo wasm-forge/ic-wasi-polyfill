@@ -79,6 +79,24 @@ pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i
 
 }
 
+/// Read from a file descriptor, without using and updating the file descriptor's offset.
+/// Note: This is similar to `preadv` in POSIX.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_fd_pread(fd: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_pread"));
+    0
+}
+
+/// Write to a file descriptor, without using and updating the file descriptor's offset.
+/// Note: This is similar to `pwritev` in POSIX.
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn __ic_custom_fd_pwrite(fd: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_pwrite"));
+    0
+}
+
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_seek(fd: i32, delta: i64, whence: i32, res: *mut wasi::Size) -> i32 {
@@ -403,8 +421,6 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
     result
 }
 
-/// Get the attributes of a file descriptor.
-/// Note: This returns similar flags to `fsync(fd, F_GETFL)` in POSIX, as well as additional fields.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdstat) -> i32 {
@@ -417,6 +433,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdst
         let stat = fs.get_stat(fd as Fd);
 
         match stat {
+
             Ok((ftype, fdstat)) => {
 
                 let tmp_fd_stat = wasi::Fdstat {
@@ -440,59 +457,137 @@ pub extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdst
 
 }
 
-/// Adjust the flags associated with a file descriptor.
-/// Note: This is similar to `fcntl(fd, F_SETFL, flags)` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_fdstat_set_flags(_arg0: i32, _arg1: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_fdstat_set_flags"));
-    0
+
+    FS.with(|fs| {
+        
+        let new_flags = new_flags as wasi::Fdflags;
+
+        let mut fs = fs.borrow_mut();
+
+        let stat = fs.get_stat(fd as Fd);
+
+        match stat {
+            Ok((_ftype, mut fdstat)) => {
+
+                let new_flags = FdFlags::from_bits(new_flags);
+                
+                if new_flags.is_none() {
+                    return wasi::ERRNO_INVAL.raw() as i32;
+                }
+
+                fdstat.flags = new_flags.unwrap();
+
+                match fs.set_stat(fd as Fd, fdstat) {
+                    Ok(_) => {
+                        wasi::ERRNO_SUCCESS.raw() as i32
+                    },
+                    Err(err) => {
+                        wasi_helpers::into_errno(err)
+                    }
+                }
+            },
+            Err(err) => {
+                wasi_helpers::into_errno(err)
+            }
+        }
+    })
 }
 
-/// Adjust the rights associated with a file descriptor.
-/// This can only be used to remove rights, and returns `errno::notcapable` if called in a way that would attempt to add rights
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_fdstat_set_rights(_arg0: i32, _arg1: i64, _arg2: i64) -> i32 {
+pub extern "C" fn __ic_custom_fd_fdstat_set_rights(fd: i32, rights_base: i64, rights_inheriting: i64) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_fdstat_set_rights"));
-    0
+
+    FS.with(|fs| {
+        
+
+        let mut fs = fs.borrow_mut();
+
+        let stat = fs.get_stat(fd as Fd);
+
+        match stat {
+            Ok((_ftype, mut fdstat)) => {
+
+                fdstat.rights_base = rights_base as u64;
+                fdstat.rights_inheriting = rights_inheriting as u64;
+
+                match fs.set_stat(fd as Fd, fdstat) {
+                    Ok(_) => {
+                        wasi::ERRNO_SUCCESS.raw() as i32
+                    },
+                    Err(err) => {
+                        wasi_helpers::into_errno(err)
+                    }
+                }
+            },
+            Err(err) => {
+                wasi_helpers::into_errno(err)
+            }
+        }
+    })
 }
 
-
-/// Adjust the size of an open file. If this increases the file's size, the extra bytes are filled with zeros.
-/// Note: This is similar to `ftruncate` in POSIX.
 #[no_mangle]
-pub extern "C" fn __ic_custom_fd_filestat_set_size(_arg0: i32, _arg1: i64) -> i32 {
+pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, _size: i64) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_filestat_set_size"));
-    0
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow_mut();
+
+        let stat = fs.get_stat(fd as Fd);
+
+        match stat {
+            Ok((_ftype, _fdstat)) => {
+
+                // set_size is not supported yet
+
+                wasi::ERRNO_SUCCESS.raw() as i32
+            },
+            Err(err) => {
+                wasi_helpers::into_errno(err)
+            }
+        }
+    })
 }
 
-/// Adjust the timestamps of an open file or directory.
-/// Note: This is similar to `futimens` in POSIX.
 #[no_mangle]
-pub extern "C" fn __ic_custom_fd_filestat_set_times(_arg0: i32, _arg1: i64, _arg2: i64, _arg3: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_filestat_set_times(fd: i32, atim: i64, mtim: i64, fst_flags: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_filestat_set_times"));
-    0
-}
 
-/// Read from a file descriptor, without using and updating the file descriptor's offset.
-/// Note: This is similar to `preadv` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_pread(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_pread"));
-    0
-}
+    let fst_flags = fst_flags as wasi::Fstflags;
 
-/// Write to a file descriptor, without using and updating the file descriptor's offset.
-/// Note: This is similar to `pwritev` in POSIX.
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn __ic_custom_fd_pwrite(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_pwrite"));
-    0
-}
+    FS.with(|fs| {
+        
+        let mut fs = fs.borrow_mut();
 
+        let meta = fs.metadata(fd as u32);
+
+        match meta {
+            Ok(_) => {
+
+                // for now don't 
+                if fst_flags & wasi::FSTFLAGS_ATIM > 0 {
+                    fs.set_accessed_time(fd as Fd, atim as u64);
+                }
+
+                if fst_flags & wasi::FSTFLAGS_MTIM > 0 {
+                    fs.set_accessed_time(fd as Fd, mtim as u64);
+                }
+
+                wasi::ERRNO_SUCCESS.raw() as i32
+
+            },
+            Err(err) => {
+                wasi_helpers::into_errno(err)
+            }
+        }
+    })
+}
 
 /// Read directory entries from a directory.
 /// When successful, the contents of the output buffer consist of a sequence of
@@ -505,8 +600,9 @@ pub extern "C" fn __ic_custom_fd_pwrite(_arg0: i32, _arg1: i32, _arg2: i32, _arg
 /// entry, or skip the oversized directory entry.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_readdir(_arg0: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_readdir(fd: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_readdir"));
+    
     0
 }
 
@@ -520,11 +616,10 @@ pub extern "C" fn __ic_custom_fd_readdir(_arg0: i32, _arg1: i32, _arg2: i32, _ar
 /// would disappear if `dup2()` were to be removed entirely.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_renumber(_arg0: i32, _arg1: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_renumber(fd: i32, _arg1: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_renumber"));
     0
 }
-
 
 
 #[no_mangle]
@@ -597,8 +692,10 @@ pub extern "C" fn __ic_custom_clock_res_get(_arg0: i32, _arg1: i32) -> i32 {
 /// Note: This is similar to `clock_gettime` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_clock_time_get(_arg0: i32, _arg1: i64, _arg2: i32) -> i32 {
+pub extern "C" fn __ic_custom_clock_time_get(id: i32, precission: i64, result: *mut u64) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
+
+
     0
 }
 
@@ -797,7 +894,7 @@ pub extern "C" fn init() {
                 __ic_custom_args_get(0, 0);
                 __ic_custom_args_sizes_get(0, 0);
                 __ic_custom_clock_res_get(0, 0);
-                __ic_custom_clock_time_get(0, 0, 0);
+                __ic_custom_clock_time_get(0, 0, 0 as *mut u64);
                 __ic_custom_fd_advise(0, 0, 0, 0);
                 __ic_custom_fd_allocate(0, 0, 0);
                 __ic_custom_fd_datasync(0);

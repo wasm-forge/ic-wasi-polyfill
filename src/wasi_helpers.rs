@@ -4,7 +4,6 @@ use crate::wasi;
 
 pub fn into_errno(error: stable_fs::error::Error) -> i32 {
 
-
     let errno = match error {
         stable_fs::error::Error::NotFound => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidOffset =>  wasi::ERRNO_INVAL,
@@ -28,6 +27,16 @@ pub fn into_wasi_filetype(file_type: stable_fs::storage::types::FileType) -> was
         stable_fs::storage::types::FileType::SymbolicLink => wasi::FILETYPE_SYMBOLIC_LINK,
     }
 }
+
+pub fn _into_stable_fs_filetype(file_type: wasi::Filetype) -> Result<stable_fs::storage::types::FileType, stable_fs::error::Error > {
+
+    match file_type {
+        wasi::FILETYPE_DIRECTORY => Ok(stable_fs::storage::types::FileType::Directory),
+        wasi::FILETYPE_REGULAR_FILE => Ok(stable_fs::storage::types::FileType::RegularFile),
+        wasi::FILETYPE_SYMBOLIC_LINK => Ok(stable_fs::storage::types::FileType::SymbolicLink),
+        _ => Err(stable_fs::error::Error::InvalidFileType),
+     }
+ }
 
 pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
 
