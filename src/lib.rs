@@ -5,6 +5,7 @@ use stable_fs::fs::{FileSystem, FdStat, FdFlags, OpenFlags};
 use stable_fs::storage::transient::TransientStorage;
 use stable_fs::fs::{Fd, SrcBuf, DstBuf};
 
+use stable_fs::storage::types::DirEntryIndex;
 use wasi_helpers::*;
 
 mod wasi;
@@ -569,14 +570,15 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(fd: i32, atim: i64, mtim: i6
 
         match meta {
             Ok(_) => {
+                // TODO: add option to get the current time based on the flags
+                // for now only assign the clock specified in atim and mtim
 
-                // for now don't 
                 if fst_flags & wasi::FSTFLAGS_ATIM > 0 {
-                    fs.set_accessed_time(fd as Fd, atim as u64);
+                    let _ = fs.set_accessed_time(fd as Fd, atim as u64);
                 }
 
                 if fst_flags & wasi::FSTFLAGS_MTIM > 0 {
-                    fs.set_accessed_time(fd as Fd, mtim as u64);
+                    let _ = fs.set_modified_time(fd as Fd, mtim as u64);
                 }
 
                 wasi::ERRNO_SUCCESS.raw() as i32
@@ -589,6 +591,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(fd: i32, atim: i64, mtim: i6
     })
 }
 
+
 /// Read directory entries from a directory.
 /// When successful, the contents of the output buffer consist of a sequence of
 /// directory entries. Each directory entry consists of a `dirent` object,
@@ -600,11 +603,20 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(fd: i32, atim: i64, mtim: i6
 /// entry, or skip the oversized directory entry.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_readdir(fd: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_readdir(fd: i32, bytes: *mut u8, bytes_len: i32, cookie: i64, res: *mut wasi::Size) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_readdir"));
     
-    0
+    FS.with(|fs| {
+        
+        let mut fs = fs.borrow();
+
+        let result = wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len);
+
+        result
+    })
+
 }
+
 
 /// Atomically replace a file descriptor by renumbering another file descriptor.
 /// Due to the strong focus on thread safety, this environment does not provide
@@ -907,7 +919,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_pread(0, 0, 0, 0, 0);
                 __ic_custom_fd_pwrite(0, 0, 0, 0, 0);
                 
-                __ic_custom_fd_readdir(0, 0, 0, 0, 0);
+                __ic_custom_fd_readdir(0, 0 as *mut u8, 0, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_renumber(0, 0);
                 __ic_custom_fd_seek(0, 0, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_sync(0);

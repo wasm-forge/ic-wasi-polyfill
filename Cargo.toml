@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 ic-cdk = "0.7.3"
 stable-fs = {path = "../stable-fs"}
+wiggle = "7.0.0"
 
 [build]
 target = "wasm32-wasi"
