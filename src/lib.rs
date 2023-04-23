@@ -5,7 +5,6 @@ use stable_fs::fs::{FileSystem, FdStat, FdFlags, OpenFlags};
 use stable_fs::storage::transient::TransientStorage;
 use stable_fs::fs::{Fd, SrcBuf, DstBuf};
 
-use stable_fs::storage::types::DirEntryIndex;
 use wasi_helpers::*;
 
 mod wasi;
@@ -80,23 +79,71 @@ pub extern "C" fn __ic_custom_fd_read(fd: i32, iovs: *const wasi::Ciovec, len: i
 
 }
 
-/// Read from a file descriptor, without using and updating the file descriptor's offset.
-/// Note: This is similar to `preadv` in POSIX.
+
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_pread(fd: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_pread"));
-    0
+pub unsafe extern "C" fn __ic_custom_fd_pwrite(fd: i32, iovs: *const wasi::Ciovec, len: i32, offset: i64, res: *mut wasi::Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_pwrite"));
+
+    if fd < 3 {
+        wasi_helpers::forward_to_debug(iovs, len, res)
+    } else {
+        FS.with(|fs| {
+        
+            let mut fs = fs.borrow_mut();
+            let src_io_vec = iovs as *const SrcBuf;
+            let src_io_vec = std::slice::from_raw_parts(src_io_vec, len as wasi::Size);
+            
+            match fs.write_vec_with_offset(fd as Fd, src_io_vec, offset) {
+                Ok(r) => {
+                    *res = r as wasi::Size;
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    *res = 0;
+                    into_errno(er)
+                }
+            }
+        })
+    }
+
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
-/// Write to a file descriptor, without using and updating the file descriptor's offset.
-/// Note: This is similar to `pwritev` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_pwrite(fd: i32, _arg1: i32, _arg2: i32, _arg3: i64, _arg4: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_pwrite"));
-    0
+pub extern "C" fn __ic_custom_fd_pread(fd: i32, iovs: *const wasi::Ciovec, len: i32, offset: i64, res: *mut wasi::Size) -> i32 {
+    ic_cdk::api::print(format!("called __ic_custom_fd_pread"));
+    
+    // for now we don't support reading from the standart streams
+    if fd < 3 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
+    FS.with(|fs| {
+        
+        let mut fs = fs.borrow_mut();
+        let dst_io_vec = iovs as *const DstBuf;
+
+        unsafe {
+
+            let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
+
+            match fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset) {
+                Ok(r) => {
+                    *res = r as wasi::Size;
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    *res = 0;
+                    into_errno(er)
+                }
+            }
+        }
+        
+    })
 }
+
 
 #[no_mangle]
 #[inline(never)]
@@ -608,9 +655,9 @@ pub extern "C" fn __ic_custom_fd_readdir(fd: i32, bytes: *mut u8, bytes_len: i32
     
     FS.with(|fs| {
         
-        let mut fs = fs.borrow();
+        let fs = fs.borrow();
 
-        let result = wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len);
+        let result = wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res);
 
         result
     })
@@ -618,19 +665,21 @@ pub extern "C" fn __ic_custom_fd_readdir(fd: i32, bytes: *mut u8, bytes_len: i32
 }
 
 
-/// Atomically replace a file descriptor by renumbering another file descriptor.
-/// Due to the strong focus on thread safety, this environment does not provide
-/// a mechanism to duplicate or renumber a file descriptor to an arbitrary
-/// number, like `dup2()`. This would be prone to race conditions, as an actual
-/// file descriptor with the same number could be allocated by a different
-/// thread at the same time.
-/// This function provides a way to atomically renumber file descriptors, which
-/// would disappear if `dup2()` were to be removed entirely.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_renumber(fd: i32, _arg1: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_renumber(fd: i32, to_fd: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_renumber"));
-    0
+
+    FS.with(|fs| {
+        
+        let fs = fs.borrow_mut();
+
+        fs.metadata(fd);
+
+        let result = wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res);
+
+        result
+    })
 }
 
 
@@ -704,7 +753,7 @@ pub extern "C" fn __ic_custom_clock_res_get(_arg0: i32, _arg1: i32) -> i32 {
 /// Note: This is similar to `clock_gettime` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_clock_time_get(id: i32, precission: i64, result: *mut u64) -> i32 {
+pub extern "C" fn __ic_custom_clock_time_get(_id: i32, _precission: i64, _result: *mut u64) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_clock_res_get"));
 
 

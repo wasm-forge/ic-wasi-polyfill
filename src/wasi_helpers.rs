@@ -39,40 +39,8 @@ pub fn _into_stable_fs_filetype(file_type: wasi::Filetype) -> Result<stable_fs::
      }
  }
 
-/* 
-fn direntry_bytes(dirent: wasi::Dirent) -> Vec<u8> {
-    use wiggle::GuestType;
 
-    assert_eq!(
-        wasi::Dirent::guest_size(),
-        std::mem::size_of::<wasi::Dirent>() as _,
-        "Dirent guest repr and host repr should match"
-    );
-    assert_eq!(
-        1,
-        std::mem::size_of_val(&dirent.d_type),
-        "Dirent member d_type should be endian-invariant"
-    );
-    
-    let size = wasi::Dirent::guest_size()
-        .try_into()
-        .expect("Dirent is smaller than 2^32");
-
-    let mut bytes = Vec::with_capacity(size);
-    bytes.resize(size, 0);
-    let guest_dirent = types::Dirent {
-        d_ino: dirent.d_ino.to_le(),
-        d_namlen: dirent.d_namlen.to_le(),
-        d_type: dirent.d_type, // endian-invariant
-        d_next: dirent.d_next.to_le(),
-    };
-    unsafe { ptr.write_unaligned(guest_dirent) };
-    bytes
-}
-*/
-
-pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_len: i32) -> i32 {
-    let is_first = cookie == 0;
+pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_len: i32, res: *mut wasi::Size) -> i32 {
     let fd = fd as Fd;
     let bytes_len = bytes_len as usize;
     let mut result = 0usize;
@@ -84,21 +52,18 @@ pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_l
     match meta {
         Ok(meta) => {
 
-            let mut next = if is_first {
+            let mut entry_index = if cookie == 0 {
                 meta.first_dir_entry
             } else {
                 Some(cookie as DirEntryIndex)
             };
 
-            let mut entry_index = meta.first_dir_entry;
-
-
             while let Some(index) = entry_index {
 
                 let entry = fs.get_direntry(fd, index);
                 if let Err(err) = entry {
-                    return wasi::ERRNO_BADF.raw() as i32;
-                }                 
+                    return into_errno(err);
+                }
                 let entry = entry.unwrap();
 
                 let put_result = put_single_entry(&fs, fd, index, &mut buf[result..]);
@@ -114,10 +79,12 @@ pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_l
                 if result == bytes_len {
                     break;
                 }
+                
             }
 
-            wasi::ERRNO_SUCCESS.raw() as i32
+            unsafe {*res = result;}
 
+            wasi::ERRNO_SUCCESS.raw() as i32
         },
         Err(err) => {
             into_errno(err)
@@ -127,9 +94,7 @@ pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_l
 
 pub fn put_single_entry(fs: &FileSystem, fd: Fd, index: DirEntryIndex, buf: & mut [u8]) -> Result<usize, Error> {
     let direntry = fs.get_direntry(fd, index)?;
-  
     let file_type = fs.metadata_from_node(direntry.node)?.file_type;
-
     let wasi_dirent = wasi::Dirent {
         d_next: direntry.next_entry.map(|x| x as u64).unwrap_or(u64::MAX).to_le(),
         d_ino: direntry.node.to_le(),
@@ -138,7 +103,6 @@ pub fn put_single_entry(fs: &FileSystem, fd: Fd, index: DirEntryIndex, buf: & mu
     };
 
     let result = fill_buffer(wasi_dirent, buf, &direntry.name);
-
     Ok(result)
 }
 
@@ -157,14 +121,12 @@ fn fill_buffer(wasi_dirent: wasi::Dirent, buf: &mut [u8], filename: &stable_fs::
     buf[0..result].copy_from_slice(&s[0..result]);
 
     let buf_len = buf.len();
-
     let buf = &mut buf[result..buf_len];
 
     let filename = &filename.bytes[0..filename.length as usize];
 
     let result2 = usize::min(filename.len(), buf.len());
     buf[0..result2].copy_from_slice(&filename[0..result2]);
-
     result + result2
 }
 
@@ -262,11 +224,7 @@ mod tests {
         
         let meta = fs.metadata(dir_fd);
 
-        println!("meta: {:?}", meta);
-
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
-
-        println!("first entry: {:?}", first_entry);
 
         let expected = [2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116, 46, 116, 120, 116];
 
@@ -296,8 +254,10 @@ mod tests {
 
         let p = &mut buf as *mut u8;
 
-        let result = fd_readdir(&fs, fs.root_fd() as i32, 2, p, buf.len() as i32);
+        let mut bytes_used: wasi::Size = 0usize;
 
-        println!("{:?}", buf)
+        let result = fd_readdir(&fs, fs.root_fd() as i32, 2, p, buf.len() as i32, &mut bytes_used as *mut wasi::Size);
+
+        println!("{:?} result = {} bytes_used = {}", buf, result, bytes_used)
     }
 }
