@@ -1,15 +1,17 @@
 [package]
 name = "ic_polyfill"
-version = "0.2.0"
+version = "0.2.2"
 authors = ["Stanislav Golubtsov <sgaflv@gmail.com>"]
 edition = "2021"
 
 
 [dependencies]
 ic-cdk = "0.7.3"
+stable-fs = { git = "https://github.com/wasm-forge/stable-fs", version = "0.1.0" }
+wiggle = "7.0.0"
 
 [build]
 target = "wasm32-wasi"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib","lib"]
