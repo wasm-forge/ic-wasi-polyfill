@@ -1631,6 +1631,7 @@ pub unsafe fn fd_readdir(
 /// * `to` - The file descriptor to overwrite.
 pub unsafe fn fd_renumber(fd: Fd, to: Fd) -> Result<(), Errno> {
     let ret = wasi_snapshot_preview1::fd_renumber(fd as i32, to as i32);
+    
     match ret {
         0 => Ok(()),
         _ => Err(Errno(ret as u16)),

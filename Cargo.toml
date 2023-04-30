@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 ic-cdk = "0.7.3"
-stable-fs = {path = "../stable-fs"}
+stable-fs = { git = "https://github.com/wasm-forge/stable-fs", version = "0.1.0" }
 wiggle = "7.0.0"
 
 [build]
