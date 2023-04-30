@@ -5,6 +5,7 @@ use stable_fs::fs::{FileSystem, FdStat, FdFlags, OpenFlags};
 use stable_fs::storage::transient::TransientStorage;
 use stable_fs::fs::{Fd, SrcBuf, DstBuf};
 
+use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
 
 mod wasi;
@@ -94,7 +95,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(fd: i32, iovs: *const wasi::Ciove
             let src_io_vec = iovs as *const SrcBuf;
             let src_io_vec = std::slice::from_raw_parts(src_io_vec, len as wasi::Size);
             
-            match fs.write_vec_with_offset(fd as Fd, src_io_vec, offset) {
+            match fs.write_vec_with_offset(fd as Fd, src_io_vec, offset as FileSize) {
                 Ok(r) => {
                     *res = r as wasi::Size;
                     wasi::ERRNO_SUCCESS.raw() as i32
@@ -106,8 +107,6 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(fd: i32, iovs: *const wasi::Ciove
             }
         })
     }
-
-    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 #[no_mangle]
@@ -129,7 +128,7 @@ pub extern "C" fn __ic_custom_fd_pread(fd: i32, iovs: *const wasi::Ciovec, len: 
 
             let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
 
-            match fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset) {
+            match fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize) {
                 Ok(r) => {
                     *res = r as wasi::Size;
                     wasi::ERRNO_SUCCESS.raw() as i32
@@ -667,18 +666,23 @@ pub extern "C" fn __ic_custom_fd_readdir(fd: i32, bytes: *mut u8, bytes_len: i32
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_renumber(fd: i32, to_fd: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_renumber"));
 
     FS.with(|fs| {
         
-        let fs = fs.borrow_mut();
+        let mut fs = fs.borrow_mut();
 
-        fs.metadata(fd);
+        let result = fs.renumber(fd_from as Fd, fd_to as Fd);
 
-        let result = wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res);
-
-        result
+        match result {
+            Ok(()) => {
+                wasi::ERRNO_SUCCESS.raw() as i32
+            },
+            Err(err) => {
+                into_errno(err)
+            }
+        }
     })
 }
 
@@ -965,8 +969,8 @@ pub extern "C" fn init() {
                 __ic_custom_fd_filestat_get(0, 0 as *mut u8);
                 __ic_custom_fd_filestat_set_size(0, 0);
                 __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
-                __ic_custom_fd_pread(0, 0, 0, 0, 0);
-                __ic_custom_fd_pwrite(0, 0, 0, 0, 0);
+                __ic_custom_fd_pread(0, 0 as *const wasi::Ciovec, 0, 0, 0 as *mut wasi::Size);
+                __ic_custom_fd_pwrite(0, 0 as *const wasi::Ciovec, 0, 0, 0 as *mut wasi::Size);
                 
                 __ic_custom_fd_readdir(0, 0 as *mut u8, 0, 0, 0 as *mut wasi::Size);
                 __ic_custom_fd_renumber(0, 0);
