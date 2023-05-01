@@ -1,46 +1,54 @@
-use stable_fs::{fs::{FileSystem, Fd}, storage::types::DirEntryIndex, error::Error};
+use stable_fs::{
+    error::Error,
+    fs::{Fd, FileSystem},
+    storage::types::DirEntryIndex,
+};
 
 use crate::wasi;
 
-
 pub fn into_errno(error: Error) -> i32 {
-
     let errno = match error {
         stable_fs::error::Error::NotFound => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidOffset =>  wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFileType =>  wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFileDescriptor =>  wasi::ERRNO_BADF,
+        stable_fs::error::Error::InvalidOffset => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidFileType => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidFileDescriptor => wasi::ERRNO_BADF,
         stable_fs::error::Error::InvalidBufferLength => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidOpenFlags =>  wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFdFlags =>  wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidOpenFlags => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidFdFlags => wasi::ERRNO_INVAL,
         stable_fs::error::Error::FileAlreadyExists => wasi::ERRNO_EXIST,
-        stable_fs::error::Error::NameTooLong =>  wasi::ERRNO_NAMETOOLONG,
+        stable_fs::error::Error::NameTooLong => wasi::ERRNO_NAMETOOLONG,
     };
 
     errno.raw() as i32
 }
 
 pub fn into_wasi_filetype(file_type: stable_fs::storage::types::FileType) -> wasi::Filetype {
-
-   match file_type {
+    match file_type {
         stable_fs::storage::types::FileType::Directory => wasi::FILETYPE_DIRECTORY,
         stable_fs::storage::types::FileType::RegularFile => wasi::FILETYPE_REGULAR_FILE,
         stable_fs::storage::types::FileType::SymbolicLink => wasi::FILETYPE_SYMBOLIC_LINK,
-   }
+    }
 }
 
-pub fn _into_stable_fs_filetype(file_type: wasi::Filetype) -> Result<stable_fs::storage::types::FileType, stable_fs::error::Error > {
-
+pub fn _into_stable_fs_filetype(
+    file_type: wasi::Filetype,
+) -> Result<stable_fs::storage::types::FileType, stable_fs::error::Error> {
     match file_type {
         wasi::FILETYPE_DIRECTORY => Ok(stable_fs::storage::types::FileType::Directory),
         wasi::FILETYPE_REGULAR_FILE => Ok(stable_fs::storage::types::FileType::RegularFile),
         wasi::FILETYPE_SYMBOLIC_LINK => Ok(stable_fs::storage::types::FileType::SymbolicLink),
         _ => Err(stable_fs::error::Error::InvalidFileType),
-     }
- }
+    }
+}
 
-
-pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_len: i32, res: *mut wasi::Size) -> i32 {
+pub fn fd_readdir(
+    fs: &FileSystem,
+    fd: i32,
+    cookie: i64,
+    bytes: *mut u8,
+    bytes_len: i32,
+    res: *mut wasi::Size,
+) -> i32 {
     let fd = fd as Fd;
     let bytes_len = bytes_len as usize;
     let mut result = 0usize;
@@ -51,7 +59,6 @@ pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_l
 
     match meta {
         Ok(meta) => {
-
             let mut entry_index = if cookie == 0 {
                 meta.first_dir_entry
             } else {
@@ -59,14 +66,13 @@ pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_l
             };
 
             while let Some(index) = entry_index {
-
                 let entry = fs.get_direntry(fd, index);
                 if let Err(err) = entry {
                     return into_errno(err);
                 }
                 let entry = entry.unwrap();
 
-                let put_result = put_single_entry(&fs, fd, index, &mut buf[result..]);
+                let put_result = put_single_entry(fs, fd, index, &mut buf[result..]);
                 if let Err(err) = put_result {
                     return into_errno(err);
                 }
@@ -79,24 +85,32 @@ pub fn fd_readdir(fs: &FileSystem, fd: i32, cookie: i64, bytes: *mut u8, bytes_l
                 if result == bytes_len {
                     break;
                 }
-                
             }
 
-            unsafe {*res = result;}
+            unsafe {
+                *res = result;
+            }
 
             wasi::ERRNO_SUCCESS.raw() as i32
-        },
-        Err(err) => {
-            into_errno(err)
         }
+        Err(err) => into_errno(err),
     }
 }
 
-pub fn put_single_entry(fs: &FileSystem, fd: Fd, index: DirEntryIndex, buf: & mut [u8]) -> Result<usize, Error> {
+pub fn put_single_entry(
+    fs: &FileSystem,
+    fd: Fd,
+    index: DirEntryIndex,
+    buf: &mut [u8],
+) -> Result<usize, Error> {
     let direntry = fs.get_direntry(fd, index)?;
     let file_type = fs.metadata_from_node(direntry.node)?.file_type;
     let wasi_dirent = wasi::Dirent {
-        d_next: direntry.next_entry.map(|x| x as u64).unwrap_or(u64::MAX).to_le(),
+        d_next: direntry
+            .next_entry
+            .map(|x| x as u64)
+            .unwrap_or(u64::MAX)
+            .to_le(),
         d_ino: direntry.node.to_le(),
         d_namlen: (direntry.name.length as wasi::Dirnamlen).to_le(),
         d_type: into_wasi_filetype(file_type),
@@ -106,22 +120,26 @@ pub fn put_single_entry(fs: &FileSystem, fd: Fd, index: DirEntryIndex, buf: & mu
     Ok(result)
 }
 
-fn fill_buffer(wasi_dirent: wasi::Dirent, buf: &mut [u8], filename: &stable_fs::storage::types::FileName) -> usize {
-    use std::slice;
+fn fill_buffer(
+    wasi_dirent: wasi::Dirent,
+    buf: &mut [u8],
+    filename: &stable_fs::storage::types::FileName,
+) -> usize {
     use std::mem;
+    use std::slice;
 
     let p: *const wasi::Dirent = &wasi_dirent;
     let p: *const u8 = p as *const u8;
-    
-    let s: &[u8] = unsafe { 
-        slice::from_raw_parts(p, mem::size_of::<wasi::Dirent>() - 3)
-    };
+
+    let s: &[u8] = unsafe { slice::from_raw_parts(p, mem::size_of::<wasi::Dirent>() - 3) };
 
     let result = usize::min(s.len(), buf.len());
     buf[0..result].copy_from_slice(&s[0..result]);
 
     let buf_len = buf.len();
     let buf = &mut buf[result..buf_len];
+
+    eprintln!("filename: {}", filename.length);
 
     let filename = &filename.bytes[0..filename.length as usize];
 
@@ -131,7 +149,6 @@ fn fill_buffer(wasi_dirent: wasi::Dirent, buf: &mut [u8], filename: &stable_fs::
 }
 
 pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
-
     if whence == wasi::WHENCE_SET.raw() {
         return stable_fs::fs::Whence::SET;
     }
@@ -143,11 +160,9 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
     }
 
     panic!("Unsupported whence type!");
-
 }
 
 pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
-
     let iovs = std::slice::from_raw_parts(iovs, len as usize);
 
     let mut written = 0;
@@ -166,14 +181,24 @@ pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wa
 
 #[cfg(test)]
 mod tests {
-    use stable_fs::{storage::{types::{DirEntry, FileName, Node, DirEntryIndex}, transient::TransientStorage}, fs::{FileSystem, FdStat, OpenFlags}};
     use crate::{wasi, wasi_helpers::put_single_entry};
+    use ic_stable_structures::DefaultMemoryImpl;
+    use stable_fs::{
+        fs::{FdStat, FileSystem},
+        storage::{
+            stable::StableStorage,
+            types::{DirEntry, DirEntryIndex, FileName, Node},
+        },
+    };
 
-    use super::{fill_buffer, fd_readdir};
+    use super::{fd_readdir, fill_buffer};
+
+    fn test_fs() -> FileSystem {
+        FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
+    }
 
     #[test]
     fn test_fill_buffer_normal_and_trimmed() {
-
         let direntry = DirEntry {
             name: FileName::new("test.txt").unwrap(),
             node: 45 as Node,
@@ -188,7 +213,10 @@ mod tests {
             d_type: wasi::FILETYPE_REGULAR_FILE,
         };
 
-        let expected = [123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116, 46, 116, 120, 116];
+        let expected = [
+            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116,
+            46, 116, 120, 116,
+        ];
 
         let mut buf = [0u8; 100];
         let len = fill_buffer(wasi_dirent, &mut buf, &direntry.name);
@@ -207,26 +235,35 @@ mod tests {
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, buf.len());
-
     }
 
     #[test]
     fn test_put_single_entry() {
-
-        let mut fs = FileSystem::new(Box::new(TransientStorage::new())).unwrap();
+        let mut fs = test_fs();
 
         let dir_fd = fs.root_fd();
 
-        let fd1 = fs.create_file(dir_fd, "test.txt", FdStat::default()).unwrap();
-        let fd2 = fs.create_file(dir_fd, "test2.txt", FdStat::default()).unwrap();
-        let fd3 = fs.create_file(dir_fd, "test3.txt", FdStat::default()).unwrap();
-        let fd4 = fs.create_file(dir_fd, "test4.txt", FdStat::default()).unwrap();
-        
+        let _fd1 = fs
+            .create_file(dir_fd, "test.txt", FdStat::default())
+            .unwrap();
+        let _fd2 = fs
+            .create_file(dir_fd, "test2.txt", FdStat::default())
+            .unwrap();
+        let _fd3 = fs
+            .create_file(dir_fd, "test3.txt", FdStat::default())
+            .unwrap();
+        let _fd4 = fs
+            .create_file(dir_fd, "test4.txt", FdStat::default())
+            .unwrap();
+
         let meta = fs.metadata(dir_fd);
 
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
 
-        let expected = [2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116, 46, 116, 120, 116];
+        let expected = [
+            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116, 46,
+            116, 120, 116,
+        ];
 
         let mut buf = [0u8; 100];
 
@@ -234,21 +271,26 @@ mod tests {
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());
-
     }
-
 
     #[test]
     fn test_fd_readdir() {
-
-        let mut fs = FileSystem::new(Box::new(TransientStorage::new())).unwrap();
+        let mut fs = test_fs();
 
         let dir_fd = fs.root_fd();
 
-        let fd1 = fs.create_file(dir_fd, "test.txt", FdStat::default()).unwrap();
-        let fd2 = fs.create_file(dir_fd, "test2.txt", FdStat::default()).unwrap();
-        let fd3 = fs.create_file(dir_fd, "test3.txt", FdStat::default()).unwrap();
-        let fd4 = fs.create_file(dir_fd, "test4.txt", FdStat::default()).unwrap();
+        let _fd1 = fs
+            .create_file(dir_fd, "test.txt", FdStat::default())
+            .unwrap();
+        let _fd2 = fs
+            .create_file(dir_fd, "test2.txt", FdStat::default())
+            .unwrap();
+        let _fd3 = fs
+            .create_file(dir_fd, "test3.txt", FdStat::default())
+            .unwrap();
+        let _fd4 = fs
+            .create_file(dir_fd, "test4.txt", FdStat::default())
+            .unwrap();
 
         let mut buf = [0u8; 200];
 
@@ -256,8 +298,16 @@ mod tests {
 
         let mut bytes_used: wasi::Size = 0usize;
 
-        let result = fd_readdir(&fs, fs.root_fd() as i32, 2, p, buf.len() as i32, &mut bytes_used as *mut wasi::Size);
-
-        println!("{:?} result = {} bytes_used = {}", buf, result, bytes_used)
+        let result = fd_readdir(
+            &fs,
+            fs.root_fd() as i32,
+            2,
+            p,
+            buf.len() as i32,
+            &mut bytes_used as *mut wasi::Size,
+        );
+        println!("{buf:?} result = {result} bytes_used = {bytes_used}");
+        assert_eq!(result, 0);
+        assert_eq!(bytes_used, 90);
     }
 }
