@@ -132,7 +132,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 ) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_pread");
 
-    // for now we don't support reading from the standart streams
+    // for now we don't support reading from the standard streams
     if fd < 3 {
         return wasi::ERRNO_INVAL.raw() as i32;
     }
@@ -316,7 +316,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_tell");
 
-    // standart streams not supported
+    // standard streams not supported
     if fd < 3 {
         return wasi::ERRNO_INVAL.raw() as i32;
     }
