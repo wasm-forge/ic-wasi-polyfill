@@ -59,7 +59,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_read");
+    ic_cdk::api::print(format!("called __ic_custom_fd_read {fd:?}"));
 
     // for now we don't support reading from the standart streams
     if fd < 3 {
@@ -165,7 +165,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     fd: i32,
     delta: i64,
     whence: i32,
-    res: *mut wasi::Size,
+    res: *mut wasi::Filesize,
 ) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_seek");
 
@@ -184,8 +184,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
                 wasi_helpers::into_stable_fs_wence(whence as u8),
             ) {
                 Ok(r) => {
-                    *res = r as wasi::Size;
-
+                    *res = r as wasi::Filesize;
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
                 Err(er) => {
@@ -211,7 +210,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fs_rights_inheriting: i64,
 
     fdflags: i32,
-    res: *mut wasi::Size,
+    res: *mut u32,
 ) -> i32 {
     // _dirflags contains the information on whether to follow the symlinks,
     // the symlinks are not supported yet by the file system
@@ -238,7 +237,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         match r {
             Ok(r) => {
-                *res = r as wasi::Size;
+                *res = r;
                 wasi::ERRNO_SUCCESS.raw() as i32
             }
             Err(er) => {
@@ -314,7 +313,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) -> i32 {
     ic_cdk::api::print("called __ic_custom_fd_tell");
 
     // standart streams not supported
@@ -328,7 +327,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Size) -> i
         unsafe {
             match fs.tell(fd as Fd) {
                 Ok(pos) => {
-                    *res = pos as wasi::Size;
+                    *res = pos as wasi::Filesize;
 
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
@@ -763,15 +762,60 @@ pub extern "C" fn __ic_custom_path_create_directory(arg0: i32, arg1: i32, arg2: 
 /// Note: This is similar to `stat` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_filestat_get(
-    arg0: i32,
-    arg1: i32,
-    arg2: i32,
-    arg3: i32,
-    arg4: i32,
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_filestat_get(
+    parent_fd: i32,
+    flags: i32,
+    path: *const u8,
+    path_len: i32,
+    result: *mut wasi::Filestat,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4]);
-    unimplemented!("WASI path_filestat_get is not implemented");
+    prevent_elimination(&[flags]);
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
+
+        let file_name = std::str::from_utf8_unchecked(path_bytes);
+
+        let fd_stat = FdStat {
+            flags: FdFlags::from_bits_truncate(0),
+            rights_base: 0,
+            rights_inheriting: 0,
+        };
+
+        let open_flags = OpenFlags::empty();
+
+        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
+
+        match fd {
+            Ok(fd) => {
+                let res = fs.metadata(fd);
+
+                match res {
+                    Ok(metadata) => {
+                        *result = wasi::Filestat {
+                            dev: 0,
+                            ino: metadata.node,
+                            filetype: into_wasi_filetype(metadata.file_type),
+                            nlink: metadata.link_count,
+                            size: metadata.size,
+                            atim: metadata.times.accessed,
+                            mtim: metadata.times.modified,
+                            ctim: metadata.times.created,
+                        };
+                        let _ = fs.close(fd);
+                        wasi::ERRNO_SUCCESS.raw() as i32
+                    }
+                    Err(er) => {
+                        let _ = fs.close(fd);
+                        into_errno(er)
+                    }
+                }
+            }
+            Err(er) => into_errno(er),
+        }
+    })
 }
 
 /// Adjust the timestamps of a file or directory.
@@ -872,7 +916,10 @@ pub extern "C" fn __ic_custom_path_symlink(
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_unlink_file(arg0: i32, arg1: i32, arg2: i32) -> i32 {
     prevent_elimination(&[arg0, arg1, arg2]);
-    unimplemented!("WASI unlink_file is not implemented");
+    ic_cdk::api::print("called __ic_custom_path_unlink_file");
+    // TODO: implement.
+    // No-op for now.
+    0
 }
 
 /// Concurrently poll for the occurrence of a set of events.
@@ -981,7 +1028,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_prestat_get(0, null_mut::<wasi::Prestat>());
                 __ic_custom_fd_prestat_dir_name(0, null_mut::<u8>(), 0);
 
-                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<wasi::Size>());
+                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<u32>());
                 __ic_custom_random_get(null_mut::<u8>(), 0);
 
                 __ic_custom_environ_get(0, 0);
@@ -1004,11 +1051,11 @@ pub extern "C" fn init() {
                 __ic_custom_fd_pwrite(0, null::<wasi::Ciovec>(), 0, 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_readdir(0, null_mut::<u8>(), 0, 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_renumber(0, 0);
-                __ic_custom_fd_seek(0, 0, 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_seek(0, 0, 0, null_mut::<wasi::Filesize>());
                 __ic_custom_fd_sync(0);
-                __ic_custom_fd_tell(0, null_mut::<wasi::Size>());
+                __ic_custom_fd_tell(0, null_mut::<wasi::Filesize>());
                 __ic_custom_path_create_directory(0, 0, 0);
-                __ic_custom_path_filestat_get(0, 0, 0, 0, 0);
+                __ic_custom_path_filestat_get(0, 0, null::<u8>(), 0, null_mut::<wasi::Filestat>());
                 __ic_custom_path_filestat_set_times(0, 0, 0, 0, 0, 0, 0);
                 __ic_custom_path_link(0, 0, 0, 0, 0, 0, 0);
                 __ic_custom_path_readlink(0, 0, 0, 0, 0, 0);
