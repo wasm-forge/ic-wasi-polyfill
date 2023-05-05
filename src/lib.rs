@@ -26,7 +26,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_write...");
+    ic_cdk::println!("called __ic_custom_fd_write {fd:?} {len:?}");
 
     if fd < 3 {
         wasi_helpers::forward_to_debug(iovs, len, res)
@@ -59,7 +59,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_read {fd:?}"));
+    ic_cdk::api::print(format!("called __ic_custom_fd_read {fd:?} {len:?}"));
 
     // for now we don't support reading from the standart streams
     if fd < 3 {
@@ -167,7 +167,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     whence: i32,
     res: *mut wasi::Filesize,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_seek");
+    ic_cdk::println!("called __ic_custom_fd_seek {fd:?} {delta:?} {whence:?}");
 
     // standart streams not supported
     if fd < 3 {
@@ -216,14 +216,13 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     // the symlinks are not supported yet by the file system
     prevent_elimination(&[dirflags]);
 
-    ic_cdk::api::print("called __ic_custom_path_open");
-
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
         let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
 
         let file_name = std::str::from_utf8_unchecked(path_bytes);
+        ic_cdk::println!("called __ic_custom_path_open {parent_fd:?} {file_name:?}");
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(fdflags as u16),
@@ -266,7 +265,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_filestat_get");
+    ic_cdk::println!("called __ic_custom_fd_filestat_get {fd:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow();
@@ -472,7 +471,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdstat) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_fdstat_get");
+    ic_cdk::println!("called __ic_custom_fd_fdstat_get {fd:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow();
@@ -777,6 +776,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
 
         let file_name = std::str::from_utf8_unchecked(path_bytes);
+        ic_cdk::println!("called __ic_custom_path_filestat_get {parent_fd:?} {file_name:?}");
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
@@ -873,9 +873,29 @@ pub extern "C" fn __ic_custom_path_readlink(
 /// Note: This is similar to `unlinkat(fd, path, AT_REMOVEDIR)` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_remove_directory(arg0: i32, arg1: i32, arg2: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2]);
-    unimplemented!("WASI path_remove_directory is not implemented");
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_remove_directory(
+    parent_fd: i32,
+    path: *const u8,
+    path_len: i32,
+) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
+
+        let file_name = std::str::from_utf8_unchecked(path_bytes);
+
+        ic_cdk::println!(
+            "called __ic_custom_path_remove_directory file {parent_fd:?} {file_name:?}"
+        );
+
+        let res = fs.remove_dir(parent_fd as Fd, file_name);
+        match res {
+            Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
 }
 
 /// Rename a file or directory.
@@ -914,12 +934,27 @@ pub extern "C" fn __ic_custom_path_symlink(
 /// Note: This is similar to `unlinkat(fd, path, 0)` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_unlink_file(arg0: i32, arg1: i32, arg2: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2]);
-    ic_cdk::api::print("called __ic_custom_path_unlink_file");
-    // TODO: implement.
-    // No-op for now.
-    0
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_unlink_file(
+    parent_fd: i32,
+    path: *const u8,
+    path_len: i32,
+) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
+
+        let file_name = std::str::from_utf8_unchecked(path_bytes);
+
+        ic_cdk::println!("called __ic_custom_path_unlink file {parent_fd:?} {file_name:?}");
+
+        let res = fs.remove_file(parent_fd as Fd, file_name);
+        match res {
+            Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
 }
 
 /// Concurrently poll for the occurrence of a set of events.
@@ -1059,10 +1094,10 @@ pub extern "C" fn init() {
                 __ic_custom_path_filestat_set_times(0, 0, 0, 0, 0, 0, 0);
                 __ic_custom_path_link(0, 0, 0, 0, 0, 0, 0);
                 __ic_custom_path_readlink(0, 0, 0, 0, 0, 0);
-                __ic_custom_path_remove_directory(0, 0, 0);
+                __ic_custom_path_remove_directory(0, null::<u8>(), 0);
                 __ic_custom_path_rename(0, 0, 0, 0, 0, 0);
                 __ic_custom_path_symlink(0, 0, 0, 0, 0);
-                __ic_custom_path_unlink_file(0, 0, 0);
+                __ic_custom_path_unlink_file(0, null::<u8>(), 0);
                 __ic_custom_poll_oneoff(0, 0, 0, 0);
                 __ic_custom_proc_raise(0);
                 __ic_custom_sched_yield();
