@@ -1,6 +1,6 @@
 [package]
 name = "ic-wasi-polyfill"
-version = "0.3.2"
+version = "0.3.4"
 authors = ["Stanislav Golubtsov <sgaflv@gmail.com>"]
 edition = "2021"
 
@@ -9,6 +9,7 @@ edition = "2021"
 ic-cdk = "0.7.3"
 ic-stable-structures = "0.5.3"
 stable-fs = { git = "https://github.com/wasm-forge/stable-fs", version = "0.1.5" }
+rand = "0.8.5"
 
 [build]
 target = "wasm32-wasi"

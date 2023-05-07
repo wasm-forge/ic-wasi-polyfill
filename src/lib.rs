@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 
 use ic_stable_structures::DefaultMemoryImpl;
+use rand::{RngCore, SeedableRng};
 use stable_fs::fs::{DstBuf, Fd, SrcBuf};
 use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
 use stable_fs::storage::stable::StableStorage;
@@ -12,6 +13,7 @@ mod wasi;
 mod wasi_helpers;
 
 thread_local! {
+    static RNG : RefCell<Option<rand::rngs::StdRng>> = RefCell::new(None);
     static FS: RefCell<FileSystem> = RefCell::new(
         FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
     );
@@ -666,10 +668,13 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
     ic_cdk::api::print("called __ic_custom_random_get");
 
     let buf = std::slice::from_raw_parts_mut(buf, buf_len);
-    for b in buf {
-        *b = 0;
-    }
-    0
+    RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        let rng = rng.as_mut().unwrap();
+        rng.fill_bytes(buf);
+    });
+
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 #[no_mangle]
@@ -728,9 +733,11 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
 /// Note: This is similar to `clock_getres` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_clock_res_get(arg0: i32, arg1: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1]);
-    unimplemented!("WASI custom_clock_res_get is not implemented");
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) -> i32 {
+    prevent_elimination(&[id]);
+    *result = 1_000_000_000; // 1 second.
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 /// Return the time value of a clock.
@@ -744,17 +751,44 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     result: *mut u64,
 ) -> i32 {
     prevent_elimination(&[id, precision as i32]);
-    *result = 0;
-    unimplemented!("WASI clock_time_get is not implemented");
+    *result = ic_cdk::api::time();
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 /// Create a directory.
 /// Note: This is similar to `mkdirat` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_create_directory(arg0: i32, arg1: i32, arg2: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2]);
-    unimplemented!("WASI path_create_directory is not implemented");
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_create_directory(
+    parent_fd: i32,
+    path: *const u8,
+    path_len: i32,
+) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
+
+        let dir_name = std::str::from_utf8_unchecked(path_bytes);
+        ic_cdk::println!("called __ic_custom_path_create_directory {parent_fd:?} {dir_name:?}");
+
+        let fd_stat = FdStat {
+            flags: FdFlags::from_bits_truncate(0),
+            rights_base: 0,
+            rights_inheriting: 0,
+        };
+
+        let fd = fs.create_dir(parent_fd as Fd, dir_name, fd_stat);
+
+        match fd {
+            Ok(fd) => {
+                let _ = fs.close(fd);
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => into_errno(er),
+        }
+    })
 }
 
 /// Return the attributes of a file or directory.
@@ -1050,7 +1084,12 @@ fn prevent_elimination(args: &[i32]) {
 
 // the init function ensures the module is not thrown away by the linker
 #[no_mangle]
-pub extern "C" fn init() {
+pub extern "C" fn init(random_seed: u64) {
+    RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        *rng = Some(rand::rngs::StdRng::seed_from_u64(random_seed));
+    });
+
     COUNTER.with(|var| {
         if *var.borrow() == -1 {
             // dummy calls to trick the linker not to throw away the functions
@@ -1071,7 +1110,7 @@ pub extern "C" fn init() {
 
                 __ic_custom_args_get(0, 0);
                 __ic_custom_args_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
-                __ic_custom_clock_res_get(0, 0);
+                __ic_custom_clock_res_get(0, null_mut::<u64>());
                 __ic_custom_clock_time_get(0, 0, null_mut::<u64>());
                 __ic_custom_fd_advise(0, 0, 0, 0);
                 __ic_custom_fd_allocate(0, 0, 0);
@@ -1089,7 +1128,7 @@ pub extern "C" fn init() {
                 __ic_custom_fd_seek(0, 0, 0, null_mut::<wasi::Filesize>());
                 __ic_custom_fd_sync(0);
                 __ic_custom_fd_tell(0, null_mut::<wasi::Filesize>());
-                __ic_custom_path_create_directory(0, 0, 0);
+                __ic_custom_path_create_directory(0, null::<u8>(), 0);
                 __ic_custom_path_filestat_get(0, 0, null::<u8>(), 0, null_mut::<wasi::Filestat>());
                 __ic_custom_path_filestat_set_times(0, 0, 0, 0, 0, 0, 0);
                 __ic_custom_path_link(0, 0, 0, 0, 0, 0, 0);
