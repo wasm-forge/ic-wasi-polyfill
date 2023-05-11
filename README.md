@@ -6,6 +6,4 @@ The project provides polyfill implementation of WASI functions using IC System A
 
 ## Usage
 
-It uses a file system provided by stable-fs. The intended use is you add this library as a dependency to your project.
-
-And then run `wasi2ic` on the produced Wasm binary.
+The intended use is to add this library as a dependency to your rust project. And then run `wasi2ic` on the produced Wasm binary.
