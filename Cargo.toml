@@ -1,7 +1,7 @@
 [package]
 name = "ic-wasi-polyfill"
-version = "0.3.4"
-authors = ["Stanislav Golubtsov <sgaflv@gmail.com>"]
+version = "0.3.5"
+authors = ["Stanislav Golubtsov"]
 edition = "2021"
 
 

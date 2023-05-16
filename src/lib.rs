@@ -1082,13 +1082,37 @@ fn prevent_elimination(args: &[i32]) {
     });
 }
 
-// the init function ensures the module is not thrown away by the linker
+
 #[no_mangle]
-pub extern "C" fn init(random_seed: u64) {
+pub fn init_seed(seed: &[u8]) {
+    raw_init_seed(seed.as_ptr(), seed.len());
+}
+
+#[no_mangle]
+pub extern "C" fn raw_init_seed(seed: *const u8,  len: usize) {
+
+    let len = if len >= 32 { 32 } else { len };
+
+    let seed_buf: [u8; 32] = if seed.is_null() {
+        [0u8; 32]
+    } else {
+        let mut buf = [0u8; 32];
+        unsafe { std::ptr::copy_nonoverlapping(seed, buf.as_mut_ptr(), len) }
+        buf
+    };
+
     RNG.with(|rng| {
+
         let mut rng = rng.borrow_mut();
-        *rng = Some(rand::rngs::StdRng::seed_from_u64(random_seed));
+        *rng = Some(rand::rngs::StdRng::from_seed(seed_buf));
+        
     });
+}
+
+
+#[no_mangle]
+pub extern "C" fn raw_init(seed: *const u8,  len: usize) {
+    raw_init_seed(seed, len);
 
     COUNTER.with(|var| {
         if *var.borrow() == -1 {
@@ -1148,4 +1172,12 @@ pub extern "C" fn init(random_seed: u64) {
             }
         }
     })
+
+}
+
+
+// the init function ensures the module is not thrown away by the linker
+#[no_mangle]
+pub fn init(seed: &[u8]) {
+    raw_init(seed.as_ptr(), seed.len());
 }
