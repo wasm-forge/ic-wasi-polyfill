@@ -1091,15 +1091,14 @@ pub fn init_seed(seed: &[u8]) {
 #[no_mangle]
 pub extern "C" fn raw_init_seed(seed: *const u8,  len: usize) {
 
-    let len = if len >= 32 { 32 } else { len };
+    if seed.is_null() || len == 0 {
+        return;
+    }
 
-    let seed_buf: [u8; 32] = if seed.is_null() {
-        [0u8; 32]
-    } else {
-        let mut buf = [0u8; 32];
-        unsafe { std::ptr::copy_nonoverlapping(seed, buf.as_mut_ptr(), len) }
-        buf
-    };
+    let len = usize::min(len, 32);
+
+    let mut seed_buf: [u8; 32] = [0u8; 32];
+    unsafe { std::ptr::copy_nonoverlapping(seed, seed_buf.as_mut_ptr(), len) }
 
     RNG.with(|rng| {
 
