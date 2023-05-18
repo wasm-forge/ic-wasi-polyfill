@@ -63,7 +63,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
 ) -> i32 {
     ic_cdk::api::print(format!("called __ic_custom_fd_read {fd:?} {len:?}"));
 
-    // for now we don't support reading from the standart streams
+    // for now we don't support reading from the standard streams
     if fd < 3 {
         return wasi::ERRNO_INVAL.raw() as i32;
     }
@@ -365,6 +365,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
             unsafe {
                 *res = prestat;
             }
+            
             wasi::ERRNO_SUCCESS.raw() as i32
         } else {
             wasi::ERRNO_BADF.raw() as i32
@@ -393,6 +394,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
                     path.add(i).write(fs.root_path().as_bytes()[i]);
                 }
             }
+
             wasi::ERRNO_SUCCESS.raw() as i32
         } else {
             wasi::ERRNO_BADF.raw() as i32
