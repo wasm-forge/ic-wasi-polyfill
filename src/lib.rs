@@ -19,6 +19,12 @@ thread_local! {
     );
 }
 
+
+macro_rules! debug_println {
+    ($fmt:expr) => (ic_cdk::api::print(format!($fmt)));
+    ($fmt:expr, $($arg:tt)*) => (ic_cdk::api::print(format!($fmt, $($arg)*)));
+}
+
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
@@ -28,7 +34,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::println!("called __ic_custom_fd_write {fd:?} {len:?}");
+    debug_println!("called __ic_custom_fd_write fd={fd:?} len={len:?}");
 
     if fd < 3 {
         wasi_helpers::forward_to_debug(iovs, len, res)
@@ -61,7 +67,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_read {fd:?} {len:?}"));
+    debug_println!("called __ic_custom_fd_read fd={fd:?} len={len:?}");
 
     // for now we don't support reading from the standard streams
     if fd < 3 {
@@ -99,7 +105,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_pwrite");
+    debug_println!("called __ic_custom_fd_pwrite {fd:?} {len:?}");
 
     if fd < 3 {
         wasi_helpers::forward_to_debug(iovs, len, res)
@@ -132,7 +138,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_pread");
+    debug_println!("called __ic_custom_fd_pread {fd:?} {len:?}");
 
     // for now we don't support reading from the standard streams
     if fd < 3 {
@@ -169,7 +175,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     whence: i32,
     res: *mut wasi::Filesize,
 ) -> i32 {
-    ic_cdk::println!("called __ic_custom_fd_seek {fd:?} {delta:?} {whence:?}");
+    debug_println!("called __ic_custom_fd_seek fd={fd:?} delta={delta:?} whence={whence:?}");
 
     // standart streams not supported
     if fd < 3 {
@@ -223,8 +229,8 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
 
-        let file_name = std::str::from_utf8_unchecked(path_bytes);
-        ic_cdk::println!("called __ic_custom_path_open {parent_fd:?} {file_name:?}");
+        let file_name = std::str::from_utf8_unchecked(path_bytes);  
+        debug_println!("called __ic_custom_path_open parent_fd={parent_fd:?} file_name={file_name:?}");
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(fdflags as u16),
@@ -252,7 +258,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_close fd={fd}"));
+    debug_println!("called __ic_custom_fd_close fd={fd:?}");
 
     FS.with(|fs| {
         let res = fs.borrow_mut().close(fd as Fd);
@@ -267,7 +273,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 {
-    ic_cdk::println!("called __ic_custom_fd_filestat_get {fd:?}");
+    debug_println!("called __ic_custom_fd_filestat_get fd={fd:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow();
@@ -305,7 +311,7 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
 pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
     prevent_elimination(&[fd]);
 
-    ic_cdk::api::print("called __ic_custom_fd_sync");
+    debug_println!("called __ic_custom_fd_sync fd={fd:?}");
 
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -315,7 +321,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_tell");
+    debug_println!("called __ic_custom_fd_tell {fd:?}");
 
     // standard streams not supported
     if fd < 3 {
@@ -345,7 +351,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Prestat) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_prestat_get fd={fd}"));
+    debug_println!("called __ic_custom_fd_prestat_get fd={fd:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow();
@@ -365,7 +371,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
             unsafe {
                 *res = prestat;
             }
-            
+
             wasi::ERRNO_SUCCESS.raw() as i32
         } else {
             wasi::ERRNO_BADF.raw() as i32
@@ -381,7 +387,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     path: *mut u8,
     max_len: i32,
 ) -> i32 {
-    ic_cdk::api::print(format!("called __ic_custom_fd_prestat_dir_name fd={fd}"));
+    debug_println!("called __ic_custom_fd_prestat_dir_name fd={fd:?}");
     let max_len = max_len as wasi::Size;
 
     FS.with(|fs| {
@@ -406,7 +412,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: i32) -> i32 {
     prevent_elimination(&[offset as i32, len as i32]);
-    ic_cdk::api::print("called __ic_custom_fd_advise");
+    debug_println!("called __ic_custom_fd_advise fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}");
 
     if advice as u32 > 5 {
         return wasi::ERRNO_INVAL.raw() as i32;
@@ -434,7 +440,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32 {
     prevent_elimination(&[offset as i32, len as i32]);
-    ic_cdk::api::print("called __ic_custom_fd_allocate");
+    debug_println!("called __ic_custom_fd_allocate");
 
     let mut result = wasi::ERRNO_SUCCESS.raw() as i32;
 
@@ -453,7 +459,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_datasync");
+    debug_println!("called __ic_custom_fd_datasync fd={fd:?}");
 
     let mut result = wasi::ERRNO_SUCCESS.raw() as i32;
 
@@ -475,7 +481,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdstat) -> i32 {
-    ic_cdk::println!("called __ic_custom_fd_fdstat_get {fd:?}");
+    debug_println!("called __ic_custom_fd_fdstat_get fd={fd:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow();
@@ -505,7 +511,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut was
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_fdstat_set_flags");
+    debug_println!("called __ic_custom_fd_fdstat_set_flags fd={fd:?} new_flags={new_flags:?}");
 
     FS.with(|fs| {
         let new_flags = new_flags as wasi::Fdflags;
@@ -541,7 +547,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     rights_base: i64,
     rights_inheriting: i64,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_fdstat_set_rights");
+    debug_println!("called __ic_custom_fd_fdstat_set_rights fd={fd:?} rights_base={rights_base:?} rights_inheriting={rights_inheriting:?}");
 
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -566,7 +572,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 #[no_mangle]
 pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
     prevent_elimination(&[size as i32]);
-    ic_cdk::api::print("called __ic_custom_fd_filestat_set_size");
+    debug_println!("called __ic_custom_fd_filestat_set_size fd={fd:?} size={size:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow_mut();
@@ -591,7 +597,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
     mtim: i64,
     fst_flags: i32,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_filestat_set_times");
+    debug_println!("called __ic_custom_fd_filestat_set_times fd={fd:?} atim={atim:?} mtim={mtim:?} fst_flags={fst_flags:?}");
 
     let fst_flags = fst_flags as wasi::Fstflags;
 
@@ -638,7 +644,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
     cookie: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_readdir");
+    debug_println!("called __ic_custom_fd_readdir fd={fd:?}");
 
     FS.with(|fs| {
         let fs = fs.borrow();
@@ -649,7 +655,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_fd_renumber");
+    debug_println!("called __ic_custom_fd_renumber fd_from={fd_from:?} fd_to={fd_to:?}");
 
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -667,7 +673,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
-    ic_cdk::api::print("called __ic_custom_random_get");
+    debug_println!("called __ic_custom_random_get");
 
     let buf = std::slice::from_raw_parts_mut(buf, buf_len);
     RNG.with(|rng| {
@@ -682,7 +688,7 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_environ_get(arg0: i32, arg1: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_environ_get");
+    debug_println!("called __ic_custom_environ_get");
     prevent_elimination(&[arg0, arg1]);
     // No-op.
     0
@@ -695,7 +701,7 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_environ_sizes_get");
+    debug_println!("called __ic_custom_environ_sizes_get");
     *len1 = 0;
     *len2 = 0;
     0
@@ -709,7 +715,7 @@ pub extern "C" fn __ic_custom_proc_exit(code: i32) -> ! {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_args_get(arg0: i32, arg1: i32) -> i32 {
-    ic_cdk::api::print("called __ic_custom_args_get");
+    debug_println!("called __ic_custom_args_get");
     prevent_elimination(&[arg0, arg1]);
     // No-op.
     0
@@ -723,7 +729,7 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
 ) -> i32 {
-    ic_cdk::api::print("called __ic_custom_arg_sizes_get");
+    debug_println!("called __ic_custom_arg_sizes_get");
     *len1 = 0;
     *len2 = 0;
     0
@@ -738,6 +744,8 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) -> i32 {
     prevent_elimination(&[id]);
+    debug_println!("called __ic_custom_clock_res_get");
+
     *result = 1_000_000_000; // 1 second.
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -753,6 +761,7 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     result: *mut u64,
 ) -> i32 {
     prevent_elimination(&[id, precision as i32]);
+    debug_println!("called __ic_custom_clock_time_get");
     *result = ic_cdk::api::time();
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -773,7 +782,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
         let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
 
         let dir_name = std::str::from_utf8_unchecked(path_bytes);
-        ic_cdk::println!("called __ic_custom_path_create_directory {parent_fd:?} {dir_name:?}");
+        debug_println!("called __ic_custom_path_create_directory parent_fd={parent_fd:?} dir_name={dir_name:?}");
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
@@ -812,7 +821,8 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
 
         let file_name = std::str::from_utf8_unchecked(path_bytes);
-        ic_cdk::println!("called __ic_custom_path_filestat_get {parent_fd:?} {file_name:?}");
+
+        debug_println!("called __ic_custom_path_filestat_get parent_fd={parent_fd:?} file_name={file_name:?}");
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
@@ -922,8 +932,8 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
 
         let file_name = std::str::from_utf8_unchecked(path_bytes);
 
-        ic_cdk::println!(
-            "called __ic_custom_path_remove_directory file {parent_fd:?} {file_name:?}"
+        debug_println!(
+            "called __ic_custom_path_remove_directory file parent_fd={parent_fd:?} file_name={file_name:?}"
         );
 
         let res = fs.remove_dir(parent_fd as Fd, file_name);
@@ -983,7 +993,7 @@ pub unsafe extern "C" fn __ic_custom_path_unlink_file(
 
         let file_name = std::str::from_utf8_unchecked(path_bytes);
 
-        ic_cdk::println!("called __ic_custom_path_unlink file {parent_fd:?} {file_name:?}");
+        debug_println!("called __ic_custom_path_unlink file parent_fd={parent_fd:?} file_name={file_name:?}");
 
         let res = fs.remove_file(parent_fd as Fd, file_name);
         match res {
@@ -1079,7 +1089,7 @@ thread_local! {
 fn prevent_elimination(args: &[i32]) {
     COUNTER.with(|var| {
         if *var.borrow() == -1 {
-            ic_cdk::api::print(format!("args: {args:?}"));
+            debug_println!("args: {args:?}");
         }
     });
 }
