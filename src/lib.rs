@@ -227,9 +227,8 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
+        let file_name = get_file_name(path, path_len as wasi::Size);
 
-        let file_name = std::str::from_utf8_unchecked(path_bytes);  
         debug_println!("called __ic_custom_path_open parent_fd={parent_fd:?} file_name={file_name:?}");
 
         let fd_stat = FdStat {
@@ -304,8 +303,6 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
     })
 }
 
-/// Synchronize the data and metadata of a file to disk.
-/// Note: This is similar to `fsync` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
@@ -316,7 +313,6 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
     wasi::ERRNO_SUCCESS.raw() as i32
 }
 
-/// Return the current offset of a file descriptor.
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
@@ -626,15 +622,6 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
     })
 }
 
-/// Read directory entries from a directory.
-/// When successful, the contents of the output buffer consist of a sequence of
-/// directory entries. Each directory entry consists of a `dirent` object,
-/// followed by `dirent::d_namlen` bytes holding the name of the directory
-/// entry.
-/// This function fills the output buffer as much as possible, potentially
-/// truncating the last directory entry. This allows the caller to grow its
-/// read buffer size in case it's too small to fit a single large directory
-/// entry, or skip the oversized directory entry.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_readdir(
@@ -724,7 +711,6 @@ pub extern "C" fn __ic_custom_args_get(arg0: i32, arg1: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-/// Return command-line argument data sizes.
 pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
@@ -735,10 +721,6 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     0
 }
 
-/// Return the resolution of a clock.
-/// Implementations are required to provide a non-zero value for supported clocks. For unsupported clocks,
-/// return `errno::inval`.
-/// Note: This is similar to `clock_getres` in POSIX.
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
@@ -750,8 +732,6 @@ pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) ->
     wasi::ERRNO_SUCCESS.raw() as i32
 }
 
-/// Return the time value of a clock.
-/// Note: This is similar to `clock_gettime` in POSIX.
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
@@ -766,8 +746,6 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     wasi::ERRNO_SUCCESS.raw() as i32
 }
 
-/// Create a directory.
-/// Note: This is similar to `mkdirat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
@@ -779,9 +757,9 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
+        let dir_name = get_file_name(path, path_len as wasi::Size);
 
-        let dir_name = std::str::from_utf8_unchecked(path_bytes);
+
         debug_println!("called __ic_custom_path_create_directory parent_fd={parent_fd:?} dir_name={dir_name:?}");
 
         let fd_stat = FdStat {
@@ -802,8 +780,6 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     })
 }
 
-/// Return the attributes of a file or directory.
-/// Note: This is similar to `stat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
@@ -818,9 +794,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
-
-        let file_name = std::str::from_utf8_unchecked(path_bytes);
+        let file_name = get_file_name(path, path_len);
 
         debug_println!("called __ic_custom_path_filestat_get parent_fd={parent_fd:?} file_name={file_name:?}");
 
@@ -864,63 +838,126 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     })
 }
 
-/// Adjust the timestamps of a file or directory.
-/// Note: This is similar to `utimensat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_filestat_set_times(
-    arg0: i32,
-    arg1: i32,
-    arg2: i32,
-    arg3: i32,
-    arg4: i64,
-    arg5: i64,
-    arg6: i32,
+    parent_fd: i32,
+    flags: i32,
+    path: *const u8,
+    path_len: i32,
+    atim: i64,
+    mtim: i64,
+    fst_flags: i32,
+
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4 as i32, arg5 as i32, arg6]);
-    unimplemented!("WASI path_filestat_set_times is not implemented");
+    prevent_elimination(&[flags]);
+
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let file_name = get_file_name(path, path_len);
+
+        debug_println!("called __ic_custom_path_filestat_set_times parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}");
+
+        let fd_stat = FdStat {
+            flags: FdFlags::from_bits_truncate(0),
+            rights_base: 0,
+            rights_inheriting: 0,
+        };
+
+        let fst_flags = fst_flags as wasi::Fstflags;
+        let mut atim = atim as u64;
+        let mut mtim = mtim as u64;
+
+        let open_flags = OpenFlags::empty();
+
+        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
+
+        match fd {
+            Ok(fd) => {
+
+                let res = fs.metadata(fd);
+
+                match res {
+                    Ok(mut metadata) => {
+
+                        let now = ic_cdk::api::time();
+                        
+                        if fst_flags & wasi::FSTFLAGS_ATIM_NOW > 0 {
+                            atim = now;
+                        }
+
+                        if fst_flags & wasi::FSTFLAGS_MTIM_NOW > 0 {
+                            mtim = now;
+                        }
+
+                        if fst_flags & wasi::FSTFLAGS_ATIM > 0 {
+                            metadata.times.accessed = atim;
+                        }
+
+                        if fst_flags & wasi::FSTFLAGS_MTIM > 0 {
+                            metadata.times.modified = mtim;
+                        }
+
+                        let res = fs.set_metadata(fd, metadata);
+
+                        let _ = fs.close(fd);
+
+                        match res {
+                            Ok(_) => {
+                                wasi::ERRNO_SUCCESS.raw() as i32
+                            }
+                            Err(er) => {
+                                into_errno(er)
+                            }
+                        }
+                    }
+                    Err(er) => {
+                        let _ = fs.close(fd);
+                        into_errno(er)
+                    }
+                }
+
+            }
+            Err(er) => into_errno(er),
+        }
+    })   
 }
 
-/// Create a hard link.
-/// Note: This is similar to `linkat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_link(
-    arg0: i32,
-    arg1: i32,
-    arg2: i32,
-    arg3: i32,
-    arg4: i32,
-    arg5: i32,
-    arg6: i32,
+    old_fd: i32,
+    old_flags: i32,
+    old_path: *const u8,
+    old_path_len: i32,
+    new_fd: i32,
+    new_path: *const u8,
+    new_path_len: i32,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4, arg5, arg6]);
+
+    prevent_elimination(&[old_fd, old_flags, old_path, old_path_len, new_fd, new_path, new_path_len]);
     unimplemented!("WASI path_link is not implemented");
 }
 
-/// Read the contents of a symbolic link.
-/// Note: This is similar to `readlinkat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_readlink(
-    arg0: i32,
-    arg1: i32,
-    arg2: i32,
-    arg3: i32,
-    arg4: i32,
-    arg5: i32,
+    fd: i32,
+    path: *const u8,
+    path_len: i32,
+    buf: i32,
+    buf_len: i32,
+    rp0: i32,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4, arg5]);
+
+    prevent_elimination(&[fd, path, path_len, buf, buf_len, rp0]);
     unimplemented!("WASI path_readlink is not implemented");
 }
 
-/// Remove a directory.
-/// Return `errno::notempty` if the directory is not empty.
-/// Note: This is similar to `unlinkat(fd, path, AT_REMOVEDIR)` in POSIX.
 #[no_mangle]
 #[inline(never)]
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_path_remove_directory(
+pub extern "C" fn __ic_custom_path_remove_directory(
     parent_fd: i32,
     path: *const u8,
     path_len: i32,
@@ -928,9 +965,7 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
-
-        let file_name = std::str::from_utf8_unchecked(path_bytes);
+        let file_name = get_file_name(path, path_len);
 
         debug_println!(
             "called __ic_custom_path_remove_directory file parent_fd={parent_fd:?} file_name={file_name:?}"
@@ -944,44 +979,38 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
     })
 }
 
-/// Rename a file or directory.
-/// Note: This is similar to `renameat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_rename(
-    arg0: i32,
-    arg1: i32,
-    arg2: i32,
-    arg3: i32,
-    arg4: i32,
-    arg5: i32,
+    old_fd: i32,
+    old_path: *const u8,
+    old_path_len: i32,
+    new_fd: i32,
+    new_path: *const u8,
+    new_path_len: i32,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4, arg5]);
+
+    prevent_elimination(&[old_fd, old_path, old_path_len, new_fd, new_path, new_path_len]);
     unimplemented!("WASI path_rename is not implemented");
 }
 
-/// Create a symbolic link.
-/// Note: This is similar to `symlinkat` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_symlink(
-    arg0: i32,
-    arg1: i32,
-    arg2: i32,
-    arg3: i32,
-    arg4: i32,
+    old_path: i32,
+    old_path_len: i32,
+    fd: i32,
+    new_path: i32,
+    new_path_len: i32,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4]);
+
+    prevent_elimination(&[old_path, old_path_len, fd, new_path, new_path_len]);
     unimplemented!("WASI path_symlink is not implemented");
 }
 
-/// Unlink a file.
-/// Return `errno::isdir` if the path refers to a directory.
-/// Note: This is similar to `unlinkat(fd, path, 0)` in POSIX.
 #[no_mangle]
 #[inline(never)]
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_path_unlink_file(
+pub extern "C" fn __ic_custom_path_unlink_file(
     parent_fd: i32,
     path: *const u8,
     path_len: i32,
@@ -989,9 +1018,7 @@ pub unsafe extern "C" fn __ic_custom_path_unlink_file(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let path_bytes = std::slice::from_raw_parts(path, path_len as wasi::Size);
-
-        let file_name = std::str::from_utf8_unchecked(path_bytes);
+        let file_name = get_file_name(path, path_len);
 
         debug_println!("called __ic_custom_path_unlink file parent_fd={parent_fd:?} file_name={file_name:?}");
 
@@ -1003,25 +1030,27 @@ pub unsafe extern "C" fn __ic_custom_path_unlink_file(
     })
 }
 
-/// Concurrently poll for the occurrence of a set of events.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_poll_oneoff(arg0: i32, arg1: i32, arg2: i32, arg3: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3]);
+pub extern "C" fn __ic_custom_poll_oneoff(
+    in_: *const wasi::Subscription, 
+    out: *mut wasi::Event, 
+    nsubscriptions: i32, 
+    rp0: i32
+) -> i32 {
+
+
+    prevent_elimination(&[in_, out, nsubscriptions, rp0]);
     unimplemented!("WASI poll_oneoff is not implemented");
 }
 
-/// Send a signal to the process of the calling thread.
-/// Note: This is similar to `raise` in POSIX.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_proc_raise(arg0: i32) -> i32 {
-    prevent_elimination(&[arg0]);
+pub extern "C" fn __ic_custom_proc_raise(sig: i32) -> i32 {
+    prevent_elimination(&[sig]);
     unimplemented!("WASI proc_raise is not implemented");
 }
 
-/// Temporarily yield execution of the calling thread.
-/// Note: This is similar to `sched_yield` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_sched_yield() -> i32 {
@@ -1029,8 +1058,6 @@ pub extern "C" fn __ic_custom_sched_yield() -> i32 {
     0
 }
 
-/// Accept a new incoming connection.
-/// Note: This is similar to `accept` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: i32) -> i32 {
@@ -1038,9 +1065,6 @@ pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: i32) -> i3
     unimplemented!("WASI sock_accept is not supported");
 }
 
-/// Receive a message from a socket.
-/// Note: This is similar to `recv` in POSIX, though it also supports reading
-/// the data into multiple buffers in the manner of `readv`.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_sock_recv(
@@ -1055,9 +1079,6 @@ pub extern "C" fn __ic_custom_sock_recv(
     unimplemented!("WASI sock_recv is not supported");
 }
 
-/// Send a message on a socket.
-/// Note: This is similar to `send` in POSIX, though it also supports writing
-/// the data from multiple buffers in the manner of `writev`.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_sock_send(
@@ -1071,8 +1092,6 @@ pub extern "C" fn __ic_custom_sock_send(
     unimplemented!("WASI sock_send is not supported");
 }
 
-/// Shut down socket send and receive channels.
-/// Note: This is similar to `shutdown` in POSIX.
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_sock_shutdown(arg0: i32, arg1: i32) -> i32 {
@@ -1084,16 +1103,13 @@ thread_local! {
     static COUNTER: RefCell<i32> = RefCell::new(0);
 }
 
-/// A helper to introduce an artificial usage of arguments such that an
-/// optimizing compiler doesn't remove the argument.
 fn prevent_elimination(args: &[i32]) {
     COUNTER.with(|var| {
         if *var.borrow() == -1 {
-            debug_println!("args: {args:?}");
+            ic_cdk::api::print(format!("args: {args:?}"));
         }
     });
 }
-
 
 #[no_mangle]
 pub fn init_seed(seed: &[u8]) {

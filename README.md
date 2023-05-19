@@ -17,70 +17,76 @@ Example:
 ```
 
 
-
 ## Supported WASI functions (wasi_unstable, wasi_snapshot_preview1)
 
-The "Noop" functions do not have any effect on the execution. Calling the "Not supported" functions cause the application to panic.
+
+| Status           | Description                                                  |
+| ---------------- | ------------------------------------------------------------ |
+| Supported        | Function is fully supported.                                 |
+| No-op            | Empty implementation that does nothing but can be called without issues. |
+| Not implemented  | Function is not yet implemented - calling it causes the application to panic. |
+| Not supported    | Function is not planned to be implemented - calling it causes the application to panic. |
 
 
-| WASI function               | Status        | 
-| -------------               | -------       |
-| `args_get`                  | Noop          |
-| `args_sizes_get`            | Noop          |
-| `clock_res_get`             | Supported     |
-| `clock_time_get`            | Supported     |
-| `environ_get`               | Noop          |
-| `environ_sizes_get`         | Noop          |
-| `fd_advise`                 | Supported     |
-| `fd_allocate`               | Noop          |
-| `fd_close`                  | Supported     |
-| `fd_datasync`               | Noop          |
-| `fd_fdstat_get`             | Supported     |
-| `fd_fdstat_set_flags`       | Supported     |
-| `fd_fdstat_set_rights`      | Supported     |
-| `fd_filestat_get`           | Supported     |
-| `fd_filestat_set_size`      | Noop          |
-| `fd_filestat_set_times`     | Supported     |
-| `fd_pread`                  | Supported     |
-| `fd_prestat_dir_name`       | Supported     |
-| `fd_prestat_get`            | Supported     |
-| `fd_pwrite`                 | Supported     |
-| `fd_read`                   | Supported     |
-| `fd_readdir`                | Supported     |
-| `fd_renumber`               | Supported     |
-| `fd_seek`                   | Supported     |
-| `fd_sync`                   | Supported     |
-| `fd_tell`                   | Supported     |
-| `fd_write`                  | Supported     |
-| `path_create_directory`     | Supported     |
-| `path_filestat_get`         | Supported     |
-| `path_filestat_set_times`   | Not supported |
-| `path_link`                 | Not supported |
-| `path_open`                 | Supported     |
-| `path_readlink`             | Not supported |
-| `path_remove_directory`     | Supported |
-| `path_rename`               | Not supported |
-| `path_symlink`              | Not supported |
-| `path_unlink_file`          | Supported     |
-| `poll_oneoff`               | Not supported |
-| `proc_exit`                 | Supported     |
-| `proc_raise`                | Not supported |
-| `random_get`                | Supported<sup>1</sup>   |
-| `sched_yield`               | Noop          |
-| `sock_accept`               | Not supported |
-| `sock_recv`                 | Not supported |
-| `sock_send`                 | Not supported |
-| `sock_shutdown`             | Not supported |
+| WASI function               | Status          | 
+| --------------------------- | --------------- |
+| `args_get`                  | No-op           |
+| `args_sizes_get`            | No-op           |
+| `clock_res_get`             | Supported       |
+| `clock_time_get`            | Supported       |
+| `environ_get`               | No-op           |
+| `environ_sizes_get`         | No-op           |
+| `fd_advise`                 | No-op           |
+| `fd_allocate`               | No-op           |
+| `fd_close`                  | Supported       |
+| `fd_datasync`               | No-op           |
+| `fd_fdstat_get`             | Supported       |
+| `fd_fdstat_set_flags`       | Supported       |
+| `fd_fdstat_set_rights`      | Supported       |
+| `fd_filestat_get`           | Supported       |
+| `fd_filestat_set_size`      | No-op           |
+| `fd_filestat_set_times`     | Supported       |
+| `fd_pread`                  | Supported       |
+| `fd_prestat_dir_name`       | Supported       |
+| `fd_prestat_get`            | Supported       |
+| `fd_pwrite`                 | Supported       |
+| `fd_read`                   | Supported       |
+| `fd_readdir`                | Supported       |
+| `fd_renumber`               | Supported       |
+| `fd_seek`                   | Supported       |
+| `fd_sync`                   | Supported       |
+| `fd_tell`                   | Supported       |
+| `fd_write`                  | Supported       |
+| `path_create_directory`     | Supported       |
+| `path_filestat_get`         | Supported<sup>1</sup>       |
+| `path_filestat_set_times`   | Supported<sup>1</sup>       |
+| `path_link`                 | Not implemented<sup>1</sup> |
+| `path_open`                 | Supported<sup>1</sup>       |
+| `path_readlink`             | Not implemented |
+| `path_remove_directory`     | Supported       |
+| `path_rename`               | Not implemented |
+| `path_symlink`              | Not implemented |
+| `path_unlink_file`          | Supported       |
+| `poll_oneoff`               | Not implemented |
+| `proc_exit`                 | Supported       |
+| `proc_raise`                | Not implemented |
+| `random_get`                | Supported<sup>2</sup>       |
+| `sched_yield`               | No-op           |
+| `sock_accept`               | Not supported   |
+| `sock_recv`                 | Not supported   |
+| `sock_send`                 | Not supported   |
+| `sock_shutdown`             | Not supported   |
 
-*<sup>1</sup>* - The `random_get` function utilizes a synchronous pseudorandom number generator.
+*<sup>1</sup>* - Currently symlinks are not supported by the file system, this affects a few `path_` functions, the `flags` ("follow symlink") parameter is currently ignored.
+*<sup>2</sup>* - The `random_get` function utilizes a synchronous pseudorandom number generator.
 
 
 ## Additional library functions
 
 
 | Function                                      |  Description                  | 
-| -------------                                 | -------                       |
-| `init(seed: &[u8])`                           | Initialization call.           |
+| --------------------------------------------- | ----------------------------- |
+| `init(seed: &[u8])`                           | Initialization call.          |
 | `raw_init(seed: *const u8, len: usize)`       | Similar to `init`, but has simpler parameters for calling from C or C++. |
 | `init_seed(seed: &[u8])`                      | Convenience method to explicitly re-initialize the random seed. |
 | `raw_init_seed(seed: *const u8, len: usize)`  | Similar to `init_seed`, but has simpler parameters for calling from C or C++. |
