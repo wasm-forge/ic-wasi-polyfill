@@ -105,7 +105,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    debug_println!("called __ic_custom_fd_pwrite {fd:?} {len:?}");
+    debug_println!("called __ic_custom_fd_pwrite fd={fd:?} len={len:?}");
 
     if fd < 3 {
         wasi_helpers::forward_to_debug(iovs, len, res)
@@ -138,7 +138,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    debug_println!("called __ic_custom_fd_pread {fd:?} {len:?}");
+    debug_println!("called __ic_custom_fd_pread fd={fd:?} len={len:?}");
 
     // for now we don't support reading from the standard streams
     if fd < 3 {

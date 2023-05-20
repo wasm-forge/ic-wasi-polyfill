@@ -78,6 +78,7 @@ Example:
 | `sock_shutdown`             | Not supported   |
 
 *<sup>1</sup>* - Currently symlinks are not supported by the file system, this affects a few `path_` functions, the `flags` ("follow symlink") parameter is currently ignored.
+
 *<sup>2</sup>* - The `random_get` function utilizes a synchronous pseudorandom number generator.
 
 
