@@ -7,13 +7,12 @@ use stable_fs::{
 use crate::wasi;
 
 
-pub fn get_file_name(path: *const u8, path_len: wasi::Size) -> &str {
+pub fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     let path_bytes = unsafe{std::slice::from_raw_parts(path, path_len as wasi::Size)};
     let file_name = unsafe {std::str::from_utf8_unchecked(path_bytes)};
 
     return file_name;
 }
-
 
 pub fn into_errno(error: Error) -> i32 {
     let errno = match error {

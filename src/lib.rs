@@ -794,7 +794,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len);
+        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!("called __ic_custom_path_filestat_get parent_fd={parent_fd:?} file_name={file_name:?}");
 
@@ -855,7 +855,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len);
+        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!("called __ic_custom_path_filestat_set_times parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}");
 
@@ -936,7 +936,7 @@ pub extern "C" fn __ic_custom_path_link(
     new_path_len: i32,
 ) -> i32 {
 
-    prevent_elimination(&[old_fd, old_flags, old_path, old_path_len, new_fd, new_path, new_path_len]);
+    prevent_elimination(&[old_fd, old_flags, old_path as i32, old_path_len, new_fd, new_path as i32, new_path_len]);
     unimplemented!("WASI path_link is not implemented");
 }
 
@@ -951,7 +951,7 @@ pub extern "C" fn __ic_custom_path_readlink(
     rp0: i32,
 ) -> i32 {
 
-    prevent_elimination(&[fd, path, path_len, buf, buf_len, rp0]);
+    prevent_elimination(&[fd, path as i32, path_len, buf, buf_len, rp0]);
     unimplemented!("WASI path_readlink is not implemented");
 }
 
@@ -965,7 +965,7 @@ pub extern "C" fn __ic_custom_path_remove_directory(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len);
+        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!(
             "called __ic_custom_path_remove_directory file parent_fd={parent_fd:?} file_name={file_name:?}"
@@ -990,7 +990,7 @@ pub extern "C" fn __ic_custom_path_rename(
     new_path_len: i32,
 ) -> i32 {
 
-    prevent_elimination(&[old_fd, old_path, old_path_len, new_fd, new_path, new_path_len]);
+    prevent_elimination(&[old_fd, old_path as i32, old_path_len, new_fd, new_path as i32, new_path_len]);
     unimplemented!("WASI path_rename is not implemented");
 }
 
@@ -1018,7 +1018,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len);
+        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!("called __ic_custom_path_unlink file parent_fd={parent_fd:?} file_name={file_name:?}");
 
@@ -1040,7 +1040,7 @@ pub extern "C" fn __ic_custom_poll_oneoff(
 ) -> i32 {
 
 
-    prevent_elimination(&[in_, out, nsubscriptions, rp0]);
+    prevent_elimination(&[in_ as i32, out as i32, nsubscriptions, rp0]);
     unimplemented!("WASI poll_oneoff is not implemented");
 }
 
@@ -1181,16 +1181,19 @@ pub extern "C" fn raw_init(seed: *const u8,  len: usize) {
                 __ic_custom_fd_tell(0, null_mut::<wasi::Filesize>());
                 __ic_custom_path_create_directory(0, null::<u8>(), 0);
                 __ic_custom_path_filestat_get(0, 0, null::<u8>(), 0, null_mut::<wasi::Filestat>());
-                __ic_custom_path_filestat_set_times(0, 0, 0, 0, 0, 0, 0);
-                __ic_custom_path_link(0, 0, 0, 0, 0, 0, 0);
-                __ic_custom_path_readlink(0, 0, 0, 0, 0, 0);
+                __ic_custom_path_filestat_set_times(0, 0, null::<u8>(), 0, 0, 0, 0);
+                __ic_custom_path_link(0, 0, null::<u8>(), 0, 0, null::<u8>(), 0);
+                __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
                 __ic_custom_path_remove_directory(0, null::<u8>(), 0);
-                __ic_custom_path_rename(0, 0, 0, 0, 0, 0);
+                __ic_custom_path_rename(0, null::<u8>(), 0, 0, null::<u8>(), 0);
                 __ic_custom_path_symlink(0, 0, 0, 0, 0);
                 __ic_custom_path_unlink_file(0, null::<u8>(), 0);
-                __ic_custom_poll_oneoff(0, 0, 0, 0);
+                
+                __ic_custom_poll_oneoff(null::<wasi::Subscription>(), null_mut::<wasi::Event>(), 0, 0);
                 __ic_custom_proc_raise(0);
                 __ic_custom_sched_yield();
+
+
                 __ic_custom_sock_accept(0, 0, 0);
                 __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
                 __ic_custom_sock_send(0, 0, 0, 0, 0);
