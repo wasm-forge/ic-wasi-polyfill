@@ -220,7 +220,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fdflags: i32,
     res: *mut u32,
 ) -> i32 {
-    // _dirflags contains the information on whether to follow the symlinks,
+    // dirflags contains the information on whether to follow the symlinks,
     // the symlinks are not supported yet by the file system
     prevent_elimination(&[dirflags]);
 
@@ -239,7 +239,9 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let open_flags = OpenFlags::from_bits_truncate(oflags as u16);
 
-        let r = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
+        let now = ic_cdk::api::time();
+
+        let r = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags, now);
 
         match r {
             Ok(r) => {
@@ -768,7 +770,9 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
             rights_inheriting: 0,
         };
 
-        let fd = fs.create_dir(parent_fd as Fd, dir_name, fd_stat);
+        let now = ic_cdk::api::time();
+
+        let fd = fs.create_dir(parent_fd as Fd, dir_name, fd_stat, now);
 
         match fd {
             Ok(fd) => {
@@ -806,7 +810,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
         let open_flags = OpenFlags::empty();
 
-        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
+        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
 
         match fd {
             Ok(fd) => {
@@ -871,7 +875,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 
         let open_flags = OpenFlags::empty();
 
-        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags);
+        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
 
         match fd {
             Ok(fd) => {

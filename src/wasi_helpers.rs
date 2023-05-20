@@ -256,16 +256,16 @@ mod tests {
         let dir_fd = fs.root_fd();
 
         let _fd1 = fs
-            .create_file(dir_fd, "test.txt", FdStat::default())
+            .create_file(dir_fd, "test.txt", FdStat::default(), 0)
             .unwrap();
         let _fd2 = fs
-            .create_file(dir_fd, "test2.txt", FdStat::default())
+            .create_file(dir_fd, "test2.txt", FdStat::default(), 0)
             .unwrap();
         let _fd3 = fs
-            .create_file(dir_fd, "test3.txt", FdStat::default())
+            .create_file(dir_fd, "test3.txt", FdStat::default(), 0)
             .unwrap();
         let _fd4 = fs
-            .create_file(dir_fd, "test4.txt", FdStat::default())
+            .create_file(dir_fd, "test4.txt", FdStat::default(), 0)
             .unwrap();
 
         let meta = fs.metadata(dir_fd);
@@ -292,16 +292,16 @@ mod tests {
         let dir_fd = fs.root_fd();
 
         let _fd1 = fs
-            .create_file(dir_fd, "test.txt", FdStat::default())
+            .create_file(dir_fd, "test.txt", FdStat::default(), 0)
             .unwrap();
         let _fd2 = fs
-            .create_file(dir_fd, "test2.txt", FdStat::default())
+            .create_file(dir_fd, "test2.txt", FdStat::default(), 0)
             .unwrap();
         let _fd3 = fs
-            .create_file(dir_fd, "test3.txt", FdStat::default())
+            .create_file(dir_fd, "test3.txt", FdStat::default(), 0)
             .unwrap();
         let _fd4 = fs
-            .create_file(dir_fd, "test4.txt", FdStat::default())
+            .create_file(dir_fd, "test4.txt", FdStat::default(), 0)
             .unwrap();
 
         let mut buf = [0u8; 200];
