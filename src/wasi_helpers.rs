@@ -28,7 +28,7 @@ pub fn into_errno(error: Error) -> i32 {
         stable_fs::error::Error::DirectoryNotEmpty => wasi::ERRNO_NOTEMPTY,
         stable_fs::error::Error::ExpectedToRemoveFile => wasi::ERRNO_ISDIR,
         stable_fs::error::Error::ExpectedToRemoveDirectory => wasi::ERRNO_NOTDIR,
-        stable_fs::error::Error::CannotRemovedOpenedNode => wasi::ERRNO_BUSY,
+        stable_fs::error::Error::CannotRemoveOpenedNode => wasi::ERRNO_BUSY,
     };
 
     errno.raw() as i32

@@ -946,11 +946,11 @@ pub extern "C" fn __ic_custom_path_link(
         let mut fs = fs.borrow_mut();
 
         let old_path = get_file_name(old_path, old_path_len as wasi::Size);
-        let new_path = get_file_name(old_path, old_path_len as wasi::Size);
+        let new_path = get_file_name(new_path, new_path_len as wasi::Size);
 
-        debug_println!("called __ic_custom_path_link old_parent_fd={old_fd:?} old_path={old_entry_name:?} <- new_parent_fd={new_fd:?} new_path={new_entry_name:?}");
+        debug_println!("called __ic_custom_path_link old_parent_fd={old_fd:?} old_path={old_path:?} <- new_parent_fd={new_fd:?} new_path={new_path:?}");
 
-        let fd = fs.create_hard_link(old_fd, old_path, new_fd, new_path);
+        let fd = fs.create_hard_link(old_fd as Fd, old_path, new_fd as Fd, new_path);
 
         match fd {
             Ok(fd) => {
