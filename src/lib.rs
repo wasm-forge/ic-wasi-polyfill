@@ -940,8 +940,26 @@ pub extern "C" fn __ic_custom_path_link(
     new_path_len: i32,
 ) -> i32 {
 
-    prevent_elimination(&[old_fd, old_flags, old_path as i32, old_path_len, new_fd, new_path as i32, new_path_len]);
-    unimplemented!("WASI path_link is not implemented");
+    prevent_elimination(&[old_flags]);
+
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let old_path = get_file_name(old_path, old_path_len as wasi::Size);
+        let new_path = get_file_name(old_path, old_path_len as wasi::Size);
+
+        debug_println!("called __ic_custom_path_link old_parent_fd={old_fd:?} old_path={old_entry_name:?} <- new_parent_fd={new_fd:?} new_path={new_entry_name:?}");
+
+        let fd = fs.create_hard_link(old_fd, old_path, new_fd, new_path);
+
+        match fd {
+            Ok(fd) => {
+                let _ = fs.close(fd);
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => into_errno(er),
+        }
+    })    
 }
 
 #[no_mangle]

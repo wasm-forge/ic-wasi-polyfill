@@ -60,7 +60,7 @@ Example:
 | `path_create_directory`     | Supported       |
 | `path_filestat_get`         | Supported<sup>1</sup>       |
 | `path_filestat_set_times`   | Supported<sup>1</sup>       |
-| `path_link`                 | Not implemented<sup>1</sup> |
+| `path_link`                 | Supported<sup>1</sup> |
 | `path_open`                 | Supported<sup>1</sup>       |
 | `path_readlink`             | Not implemented |
 | `path_remove_directory`     | Supported       |
