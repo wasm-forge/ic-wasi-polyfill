@@ -19,7 +19,6 @@ thread_local! {
     );
 }
 
-
 macro_rules! debug_println {
     ($fmt:expr) => (ic_cdk::api::print(format!($fmt)));
     ($fmt:expr, $($arg:tt)*) => (ic_cdk::api::print(format!($fmt, $($arg)*)));
@@ -229,7 +228,9 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let file_name = get_file_name(path, path_len as wasi::Size);
 
-        debug_println!("called __ic_custom_path_open parent_fd={parent_fd:?} file_name={file_name:?}");
+        debug_println!(
+            "called __ic_custom_path_open parent_fd={parent_fd:?} file_name={file_name:?}"
+        );
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(fdflags as u16),
@@ -410,7 +411,9 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: i32) -> i32 {
     prevent_elimination(&[offset as i32, len as i32]);
-    debug_println!("called __ic_custom_fd_advise fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}");
+    debug_println!(
+        "called __ic_custom_fd_advise fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}"
+    );
 
     if advice as u32 > 5 {
         return wasi::ERRNO_INVAL.raw() as i32;
@@ -800,7 +803,9 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
         let file_name = get_file_name(path, path_len as wasi::Size);
 
-        debug_println!("called __ic_custom_path_filestat_get parent_fd={parent_fd:?} file_name={file_name:?}");
+        debug_println!(
+            "called __ic_custom_path_filestat_get parent_fd={parent_fd:?} file_name={file_name:?}"
+        );
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
@@ -852,7 +857,6 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
     atim: i64,
     mtim: i64,
     fst_flags: i32,
-
 ) -> i32 {
     prevent_elimination(&[flags]);
 
@@ -886,7 +890,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
                     Ok(mut metadata) => {
 
                         let now = ic_cdk::api::time();
-                        
+
                         if fst_flags & wasi::FSTFLAGS_ATIM_NOW > 0 {
                             atim = now;
                         }
@@ -925,7 +929,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
             }
             Err(er) => into_errno(er),
         }
-    })   
+    })
 }
 
 #[no_mangle]
@@ -939,7 +943,6 @@ pub extern "C" fn __ic_custom_path_link(
     new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
-
     prevent_elimination(&[old_flags]);
 
     FS.with(|fs| {
@@ -972,7 +975,6 @@ pub extern "C" fn __ic_custom_path_readlink(
     buf_len: i32,
     rp0: i32,
 ) -> i32 {
-
     prevent_elimination(&[fd, path as i32, path_len, buf, buf_len, rp0]);
     unimplemented!("WASI path_readlink is not implemented");
 }
@@ -1011,7 +1013,6 @@ pub extern "C" fn __ic_custom_path_rename(
     new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
-
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
@@ -1041,7 +1042,6 @@ pub extern "C" fn __ic_custom_path_symlink(
     new_path: i32,
     new_path_len: i32,
 ) -> i32 {
-
     prevent_elimination(&[old_path, old_path_len, fd, new_path, new_path_len]);
     unimplemented!("WASI path_symlink is not implemented");
 }
@@ -1058,7 +1058,9 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 
         let file_name = get_file_name(path, path_len as wasi::Size);
 
-        debug_println!("called __ic_custom_path_unlink file parent_fd={parent_fd:?} file_name={file_name:?}");
+        debug_println!(
+            "called __ic_custom_path_unlink file parent_fd={parent_fd:?} file_name={file_name:?}"
+        );
 
         let res = fs.remove_file(parent_fd as Fd, file_name);
         match res {
@@ -1071,13 +1073,11 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_poll_oneoff(
-    in_: *const wasi::Subscription, 
-    out: *mut wasi::Event, 
-    nsubscriptions: i32, 
-    rp0: i32
+    in_: *const wasi::Subscription,
+    out: *mut wasi::Event,
+    nsubscriptions: i32,
+    rp0: i32,
 ) -> i32 {
-
-
     prevent_elimination(&[in_ as i32, out as i32, nsubscriptions, rp0]);
     unimplemented!("WASI poll_oneoff is not implemented");
 }
@@ -1150,13 +1150,14 @@ fn prevent_elimination(args: &[i32]) {
 }
 
 #[no_mangle]
-pub fn init_seed(seed: &[u8]) {
+#[allow(clippy::missing_safety_doc)]
+pub unsafe fn init_seed(seed: &[u8]) {
     raw_init_seed(seed.as_ptr(), seed.len());
 }
 
 #[no_mangle]
-pub extern "C" fn raw_init_seed(seed: *const u8,  len: usize) {
-
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
     if seed.is_null() || len == 0 {
         return;
     }
@@ -1167,16 +1168,14 @@ pub extern "C" fn raw_init_seed(seed: *const u8,  len: usize) {
     unsafe { std::ptr::copy_nonoverlapping(seed, seed_buf.as_mut_ptr(), len) }
 
     RNG.with(|rng| {
-
         let mut rng = rng.borrow_mut();
         *rng = Some(rand::rngs::StdRng::from_seed(seed_buf));
-        
     });
 }
 
-
 #[no_mangle]
-pub extern "C" fn raw_init(seed: *const u8,  len: usize) {
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
     raw_init_seed(seed, len);
 
     COUNTER.with(|var| {
@@ -1226,26 +1225,30 @@ pub extern "C" fn raw_init(seed: *const u8,  len: usize) {
                 __ic_custom_path_rename(0, null::<u8>(), 0, 0, null::<u8>(), 0);
                 __ic_custom_path_symlink(0, 0, 0, 0, 0);
                 __ic_custom_path_unlink_file(0, null::<u8>(), 0);
-                
-                __ic_custom_poll_oneoff(null::<wasi::Subscription>(), null_mut::<wasi::Event>(), 0, 0);
+
+                __ic_custom_poll_oneoff(
+                    null::<wasi::Subscription>(),
+                    null_mut::<wasi::Event>(),
+                    0,
+                    0,
+                );
                 __ic_custom_proc_raise(0);
                 __ic_custom_sched_yield();
-
 
                 __ic_custom_sock_accept(0, 0, 0);
                 __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
                 __ic_custom_sock_send(0, 0, 0, 0, 0);
                 __ic_custom_sock_shutdown(0, 0);
+
                 __ic_custom_proc_exit(0);
             }
         }
     })
-
 }
-
 
 // the init function ensures the module is not thrown away by the linker
 #[no_mangle]
-pub fn init(seed: &[u8]) {
+#[allow(clippy::missing_safety_doc)]
+pub unsafe fn init(seed: &[u8]) {
     raw_init(seed.as_ptr(), seed.len());
 }
