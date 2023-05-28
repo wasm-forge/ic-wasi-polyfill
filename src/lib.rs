@@ -604,13 +604,22 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
 
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
+        let mut atim = atim as u64;
+        let mut mtim = mtim as u64;
 
         let meta = fs.metadata(fd as u32);
 
         match meta {
             Ok(_) => {
-                // TODO: add option to get the current time based on the flags
-                // for now only assign the clock specified in atim and mtim
+                let now = ic_cdk::api::time();
+
+                if fst_flags & wasi::FSTFLAGS_ATIM_NOW > 0 {
+                    atim = now;
+                }
+
+                if fst_flags & wasi::FSTFLAGS_MTIM_NOW > 0 {
+                    mtim = now;
+                }
 
                 if fst_flags & wasi::FSTFLAGS_ATIM > 0 {
                     let _ = fs.set_accessed_time(fd as Fd, atim as u64);
