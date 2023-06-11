@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 ic-cdk = "0.8.1"
 ic-stable-structures = "0.5.4"
-stable-fs = { git = "https://github.com/wasm-forge/stable-fs", version = "0.1.8" }
+stable-fs = { git = "https://github.com/wasm-forge/stable-fs", rev = "f44d2630a7083f5f67b7503026e8732d11ea7c34" }
 rand = "0.8.5"
 
 [build]
