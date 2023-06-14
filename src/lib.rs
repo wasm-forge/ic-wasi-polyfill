@@ -20,12 +20,14 @@ thread_local! {
 }
 
 macro_rules! debug_println {
-    ($fmt:expr) => (ic_cdk::api::print(format!($fmt)));
-    ($fmt:expr, $($arg:tt)*) => (ic_cdk::api::print(format!($fmt, $($arg)*)));
+//    ($fmt:expr) => (ic_cdk::api::print(format!($fmt)));
+//    ($fmt:expr, $($arg:tt)*) => (ic_cdk::api::print(format!($fmt, $($arg)*)));
+    ($fmt:expr) => {};
+    ($fmt:expr, $($arg:tt)*) => {};
 }
 
 macro_rules! debug_instructions {
-    ($stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("instructions: {}", etime-($stime))));
+    ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions: \t{}", $fn_name, etime-($stime))));
 }
 
 #[no_mangle]
@@ -61,7 +63,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
         })
     };
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_write", start);
 
     result
 }
@@ -104,7 +106,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     });
 
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_read", start);
 
     result
 }
@@ -143,7 +145,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
         })
     };
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_pwrite", start);
     result
 }
 
@@ -185,7 +187,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_pread", start);
 
     result
 }
@@ -230,7 +232,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     });
 
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_seek", start);
 
     result
 }
@@ -290,7 +292,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_open", start);
 
     result
 }
@@ -310,7 +312,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_close", start);
 
     result
 }
@@ -349,7 +351,7 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_filestat_get", start);
 
     result
 }
@@ -357,10 +359,12 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
+    let start = ic_cdk::api::instruction_counter();
     prevent_elimination(&[fd]);
 
     debug_println!("called __ic_custom_fd_sync fd={fd:?}");
 
+    debug_instructions!("__ic_custom_fd_sync", start);
     wasi::ERRNO_SUCCESS.raw() as i32
 }
 
@@ -394,7 +398,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_tell", start);
 
     result
 }
@@ -431,7 +435,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_prestat_get", start);
 
     result
 }
@@ -465,7 +469,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_prestat_dir_name", start);
 
     result
 }
@@ -495,7 +499,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_advise", start);
 
     if is_badf {
         return wasi::ERRNO_BADF.raw() as i32;
@@ -522,7 +526,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
         };
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_allocate", start);
 
     result
 }
@@ -546,7 +550,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
         // we don't do the synchronization for now
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_datasync", start);
 
     result
 }
@@ -582,7 +586,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut was
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_fdstat_get", start);
 
     result
 }
@@ -619,7 +623,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i3
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_fdstat_set_flags", start);
 
     result
 }
@@ -653,7 +657,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_fdstat_set_rights", start);
 
     result
 }
@@ -680,7 +684,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_filestat_set_size", start);
 
     result
 }
@@ -730,7 +734,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_filestat_set_times", start);
 
     result
 }
@@ -752,7 +756,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
         wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res)
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_readdir", start);
 
     result
 }
@@ -774,7 +778,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_fd_renumber", start);
 
     result
 }
@@ -793,7 +797,7 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
         rng.fill_bytes(buf);
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_random_get", start);
 
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -801,8 +805,11 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_environ_get(arg0: i32, arg1: i32) -> i32 {
+    let start = ic_cdk::api::instruction_counter();
     debug_println!("called __ic_custom_environ_get");
     prevent_elimination(&[arg0, arg1]);
+
+    debug_instructions!("__ic_custom_environ_get", start);
     // No-op.
     0
 }
@@ -814,9 +821,11 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
 ) -> i32 {
+    let start = ic_cdk::api::instruction_counter();
     debug_println!("called __ic_custom_environ_sizes_get");
     *len1 = 0;
     *len2 = 0;
+    debug_instructions!("__ic_custom_environ_sizes_get", start);
     0
 }
 
@@ -909,7 +918,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_create_directory", start);
 
     result
 }
@@ -975,7 +984,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_filestat_get", start);
 
     result
 }
@@ -1065,7 +1074,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_filestat_set_times", start);
 
     result
 }
@@ -1103,7 +1112,7 @@ pub extern "C" fn __ic_custom_path_link(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_link", start);
 
     result
 }
@@ -1147,7 +1156,7 @@ pub extern "C" fn __ic_custom_path_remove_directory(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_remove_directory", start);
 
     result
 }
@@ -1184,7 +1193,7 @@ pub extern "C" fn __ic_custom_path_rename(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_rename", start);
 
     result
 }
@@ -1227,7 +1236,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
         }
     });
 
-    debug_instructions!(start);
+    debug_instructions!("__ic_custom_path_unlink", start);
 
     result
 }
