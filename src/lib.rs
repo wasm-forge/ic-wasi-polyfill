@@ -28,7 +28,7 @@ macro_rules! debug_println {
 
 macro_rules! debug_instructions {
     ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions: \t{}\t", $fn_name, etime-($stime))));
-    ($fn_name:literal, $stime:expr, $params:literal) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions:\t{}\tparameters:\t{}", $fn_name, etime-($stime), $params)));
+    ($fn_name:literal, $stime:expr, $params:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions:\t{}\tparameters:\t{}", $fn_name, etime-($stime), format!($params))));
 }
 
 #[no_mangle]
