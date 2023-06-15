@@ -27,8 +27,8 @@ macro_rules! debug_println {
 }
 
 macro_rules! debug_instructions {
-    ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions: \t{}\t", $fn_name, etime-($stime))));
-    ($fn_name:literal, $stime:expr, $params:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions:\t{}\tparameters:\t{}", $fn_name, etime-($stime), format!($params))));
+    ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("\t{}\tinstructions:\t{}\t", $fn_name, etime-($stime))));
+    ($fn_name:literal, $stime:expr, $params:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("\t{}\tinstructions:\t{}\tparameters:\t{}", $fn_name, etime-($stime), format!($params))));
 }
 
 #[no_mangle]
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
         })
     };
 
-    debug_instructions!("__ic_custom_fd_pwrite", start);
+    debug_instructions!("__ic_custom_fd_pwrite", start, "fd={fd:?} len={len:?}");
     result
 }
 
@@ -187,7 +187,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
         }
     });
 
-    debug_instructions!("__ic_custom_fd_pread", start);
+    debug_instructions!("__ic_custom_fd_pread", start, "fd={fd:?} len={len:?} offset={offset:?}");
 
     result
 }
@@ -232,7 +232,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     });
 
 
-    debug_instructions!("__ic_custom_fd_seek", start);
+    debug_instructions!("__ic_custom_fd_seek", start, "fd={fd:?} delta={delta:?} whence={whence:?}");
 
     result
 }
@@ -257,12 +257,11 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     // dirflags contains the information on whether to follow the symlinks,
     // the symlinks are not supported yet by the file system
     prevent_elimination(&[dirflags]);
-
+    let file_name = get_file_name(path, path_len as wasi::Size);
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!(
             "called __ic_custom_path_open parent_fd={parent_fd:?} file_name={file_name:?}"
@@ -292,7 +291,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
         }
     });
 
-    debug_instructions!("__ic_custom_path_open", start);
+    debug_instructions!("__ic_custom_path_open", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
 
     result
 }
@@ -312,7 +311,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
         }
     });
 
-    debug_instructions!("__ic_custom_fd_close", start);
+    debug_instructions!("__ic_custom_fd_close", start, "fd={fd:?}");
 
     result
 }
@@ -351,7 +350,7 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
         }
     });
 
-    debug_instructions!("__ic_custom_fd_filestat_get", start);
+    debug_instructions!("__ic_custom_fd_filestat_get", start, "fd={fd:?}");
 
     result
 }
@@ -364,7 +363,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 
     debug_println!("called __ic_custom_fd_sync fd={fd:?}");
 
-    debug_instructions!("__ic_custom_fd_sync", start);
+    debug_instructions!("__ic_custom_fd_sync", start, "fd={fd:?}");
     wasi::ERRNO_SUCCESS.raw() as i32
 }
 
@@ -398,7 +397,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
         }
     });
 
-    debug_instructions!("__ic_custom_fd_tell", start);
+    debug_instructions!("__ic_custom_fd_tell", start, "{fd:?} -> {res:?}");
 
     result
 }
@@ -469,7 +468,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
         }
     });
 
-    debug_instructions!("__ic_custom_fd_prestat_dir_name", start);
+    debug_instructions!("__ic_custom_fd_prestat_dir_name", start, "fd={fd:?}");
 
     result
 }
@@ -499,7 +498,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
         }
     });
 
-    debug_instructions!("__ic_custom_fd_advise", start);
+    debug_instructions!("__ic_custom_fd_advise", start, "fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}");
 
     if is_badf {
         return wasi::ERRNO_BADF.raw() as i32;
@@ -526,7 +525,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
         };
     });
 
-    debug_instructions!("__ic_custom_fd_allocate", start);
+    debug_instructions!("__ic_custom_fd_allocate", start, "fd={fd:?} offset={offset:?} len={len:?}");
 
     result
 }
@@ -550,7 +549,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
         // we don't do the synchronization for now
     });
 
-    debug_instructions!("__ic_custom_fd_datasync", start);
+    debug_instructions!("__ic_custom_fd_datasync", start, "fd={fd:?}");
 
     result
 }
@@ -586,7 +585,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut was
         }
     });
 
-    debug_instructions!("__ic_custom_fd_fdstat_get", start);
+    debug_instructions!("__ic_custom_fd_fdstat_get", start, "fd={fd:?}");
 
     result
 }
@@ -623,7 +622,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i3
         }
     });
 
-    debug_instructions!("__ic_custom_fd_fdstat_set_flags", start);
+    debug_instructions!("__ic_custom_fd_fdstat_set_flags", start, "fd={fd:?} new_flags={new_flags:?}");
 
     result
 }
@@ -657,7 +656,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
         }
     });
 
-    debug_instructions!("__ic_custom_fd_fdstat_set_rights", start);
+    debug_instructions!("__ic_custom_fd_fdstat_set_rights", start, "fd={fd:?} rights_base={rights_base:?} rights_inheriting={rights_inheriting:?}");
 
     result
 }
@@ -684,7 +683,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
         }
     });
 
-    debug_instructions!("__ic_custom_fd_filestat_set_size", start);
+    debug_instructions!("__ic_custom_fd_filestat_set_size", start, "fd={fd:?} size={size:?}");
 
     result
 }
@@ -734,7 +733,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
         }
     });
 
-    debug_instructions!("__ic_custom_fd_filestat_set_times", start);
+    debug_instructions!("__ic_custom_fd_filestat_set_times", start, "fd={fd:?} atim={atim:?} mtim={mtim:?} fst_flags={fst_flags:?}");
 
     result
 }
@@ -756,7 +755,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
         wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res)
     });
 
-    debug_instructions!("__ic_custom_fd_readdir", start);
+    debug_instructions!("__ic_custom_fd_readdir", start, "fd={fd:?}");
 
     result
 }
@@ -778,7 +777,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
         }
     });
 
-    debug_instructions!("__ic_custom_fd_renumber", start);
+    debug_instructions!("__ic_custom_fd_renumber", start, "fd_from={fd_from:?} fd_to={fd_to:?}");
 
     result
 }
@@ -890,12 +889,10 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     path_len: i32,
 ) -> i32 {
     let start = ic_cdk::api::instruction_counter();
+    let dir_name = get_file_name(path, path_len as wasi::Size);
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-
-        let dir_name = get_file_name(path, path_len as wasi::Size);
-
 
         debug_println!("called __ic_custom_path_create_directory parent_fd={parent_fd:?} dir_name={dir_name:?}");
 
@@ -918,7 +915,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
         }
     });
 
-    debug_instructions!("__ic_custom_path_create_directory", start);
+    debug_instructions!("__ic_custom_path_create_directory", start, "parent_fd={parent_fd:?} dir_name={dir_name:?}");
 
     result
 }
@@ -934,12 +931,11 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     result: *mut wasi::Filestat,
 ) -> i32 {
     let start = ic_cdk::api::instruction_counter();
+    let file_name = get_file_name(path, path_len as wasi::Size);
 
     prevent_elimination(&[flags]);
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-
-        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!(
             "called __ic_custom_path_filestat_get parent_fd={parent_fd:?} file_name={file_name:?}"
@@ -984,7 +980,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         }
     });
 
-    debug_instructions!("__ic_custom_path_filestat_get", start);
+    debug_instructions!("__ic_custom_path_filestat_get", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
 
     result
 }
@@ -1002,11 +998,10 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 ) -> i32 {
     let start = ic_cdk::api::instruction_counter();
     prevent_elimination(&[flags]);
+    let file_name = get_file_name(path, path_len as wasi::Size);
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-
-        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!("called __ic_custom_path_filestat_set_times parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}");
 
@@ -1074,7 +1069,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
         }
     });
 
-    debug_instructions!("__ic_custom_path_filestat_set_times", start);
+    debug_instructions!("__ic_custom_path_filestat_set_times", start, "parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}");
 
     result
 }
@@ -1092,12 +1087,11 @@ pub extern "C" fn __ic_custom_path_link(
 ) -> i32 {
     let start = ic_cdk::api::instruction_counter();
     prevent_elimination(&[old_flags]);
+    let old_path = get_file_name(old_path, old_path_len as wasi::Size);
+    let new_path = get_file_name(new_path, new_path_len as wasi::Size);
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-
-        let old_path = get_file_name(old_path, old_path_len as wasi::Size);
-        let new_path = get_file_name(new_path, new_path_len as wasi::Size);
 
         debug_println!("called __ic_custom_path_link old_parent_fd={old_fd:?} old_path={old_path:?} <- new_parent_fd={new_fd:?} new_path={new_path:?}");
 
@@ -1112,7 +1106,7 @@ pub extern "C" fn __ic_custom_path_link(
         }
     });
 
-    debug_instructions!("__ic_custom_path_link", start);
+    debug_instructions!("__ic_custom_path_link", start, "old_parent_fd={old_fd:?} old_path={old_path:?} <- new_parent_fd={new_fd:?} new_path={new_path:?}");
 
     result
 }
@@ -1139,11 +1133,11 @@ pub extern "C" fn __ic_custom_path_remove_directory(
     path_len: i32,
 ) -> i32 {
     let start = ic_cdk::api::instruction_counter();
+    let file_name = get_file_name(path, path_len as wasi::Size);
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!(
             "called __ic_custom_path_remove_directory file parent_fd={parent_fd:?} file_name={file_name:?}"
@@ -1156,7 +1150,7 @@ pub extern "C" fn __ic_custom_path_remove_directory(
         }
     });
 
-    debug_instructions!("__ic_custom_path_remove_directory", start);
+    debug_instructions!("__ic_custom_path_remove_directory", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
 
     result
 }
@@ -1193,7 +1187,7 @@ pub extern "C" fn __ic_custom_path_rename(
         }
     });
 
-    debug_instructions!("__ic_custom_path_rename", start);
+    debug_instructions!("__ic_custom_path_rename", start, "old_parent_fd={old_fd:?} old_path={old_path:?} -> new_parent_fd={new_fd:?} new_path={new_path:?}");
 
     result
 }
