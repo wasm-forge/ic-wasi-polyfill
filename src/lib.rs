@@ -27,7 +27,8 @@ macro_rules! debug_println {
 }
 
 macro_rules! debug_instructions {
-    ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions: \t{}", $fn_name, etime-($stime))));
+    ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions: \t{}\t", $fn_name, etime-($stime))));
+    ($fn_name:literal, $stime:expr, $params:literal) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("{} instructions:\t{}\tparameters:\t{}", $fn_name, etime-($stime), $params)));
 }
 
 #[no_mangle]
@@ -63,7 +64,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
         })
     };
 
-    debug_instructions!("__ic_custom_fd_write", start);
+    debug_instructions!("__ic_custom_fd_write", start, "fd={fd:?} len={len:?}");
 
     result
 }
@@ -105,8 +106,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
         }
     });
 
-
-    debug_instructions!("__ic_custom_fd_read", start);
+    debug_instructions!("__ic_custom_fd_read", start, "fd={fd:?} len={len:?}");
 
     result
 }
@@ -1219,11 +1219,11 @@ pub extern "C" fn __ic_custom_path_unlink_file(
     path_len: i32,
 ) -> i32 {
     let start = ic_cdk::api::instruction_counter();
+    let file_name = get_file_name(path, path_len as wasi::Size);
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let file_name = get_file_name(path, path_len as wasi::Size);
 
         debug_println!(
             "called __ic_custom_path_unlink file parent_fd={parent_fd:?} file_name={file_name:?}"
@@ -1236,7 +1236,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
         }
     });
 
-    debug_instructions!("__ic_custom_path_unlink", start);
+    debug_instructions!("__ic_custom_path_unlink", start, " parent_fd={parent_fd:?} file_name={file_name:?}");
 
     result
 }
