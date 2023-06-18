@@ -4,7 +4,9 @@ use ic_stable_structures::DefaultMemoryImpl;
 use rand::{RngCore, SeedableRng};
 use stable_fs::fs::{DstBuf, Fd, SrcBuf};
 use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
+
 use stable_fs::storage::stable::StableStorage;
+use stable_fs::storage::transient::TransientStorage;
 
 use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
@@ -14,9 +16,14 @@ mod wasi_helpers;
 
 thread_local! {
     static RNG : RefCell<Option<rand::rngs::StdRng>> = RefCell::new(None);
+    
     static FS: RefCell<FileSystem> = RefCell::new(
-        FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
-    );
+        if cfg!(feature = "transient") {
+            FileSystem::new(Box::new(TransientStorage::default())).unwrap()
+        } else {
+            FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
+        }
+    )
 }
 
 macro_rules! debug_println {
@@ -1230,7 +1237,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
         }
     });
 
-    debug_instructions!("__ic_custom_path_unlink", start, " parent_fd={parent_fd:?} file_name={file_name:?}");
+    debug_instructions!("__ic_custom_path_unlink", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
 
     result
 }

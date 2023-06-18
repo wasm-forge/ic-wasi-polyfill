@@ -11,6 +11,9 @@ stable-fs = { git = "https://github.com/wasm-forge/stable-fs", rev = "77575a3f3b
 rand = "0.8.5"
 function_name = "0.3.0"
 
+[features]
+transient=[]
+
 [build]
 target = "wasm32-wasi"
 
