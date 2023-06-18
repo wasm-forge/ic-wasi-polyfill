@@ -18,11 +18,13 @@ thread_local! {
     static RNG : RefCell<Option<rand::rngs::StdRng>> = RefCell::new(None);
     
     static FS: RefCell<FileSystem> = RefCell::new(
+
         if cfg!(feature = "transient") {
-            FileSystem::new(Box::new(TransientStorage::default())).unwrap()
+            FileSystem::new(Box::new(TransientStorage::new())).unwrap()
         } else {
             FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
         }
+
     )
 }
 
