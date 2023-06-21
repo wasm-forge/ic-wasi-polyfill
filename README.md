@@ -94,7 +94,7 @@ Example:
 
 ## Project features
 
-The polyfill library's behavior can be configured using the following [Cargo features]():
+The polyfill library's behavior can be configured using the following [Cargo features](https://doc.rust-lang.org/cargo/reference/features.html):
 
-* `transient` use transient storage only. This works faster but does not take advantage of keeping the file system's state in stable memory.
+* `transient` use the transient file system implementation. This works faster but does not take the advantage of keeping the file system's state in stable memory.
 * `report_wasi_calls` outputs statistical information of the called polyfill functions.
