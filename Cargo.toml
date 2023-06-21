@@ -13,9 +13,8 @@ function_name = "0.3.0"
 
 [features]
 transient=[]
+report_wasi_calls=[]
 
-[build]
-target = "wasm32-wasi"
 
 [lib]
 crate-type = ["staticlib","lib"]

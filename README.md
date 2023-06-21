@@ -92,3 +92,9 @@ Example:
 | `init_seed(seed: &[u8])`                      | Convenience method to explicitly re-initialize the random seed. |
 | `raw_init_seed(seed: *const u8, len: usize)`  | Similar to `init_seed`, but has simpler parameters for calling from C or C++. |
 
+## Project features
+
+The polyfill library's behavior can be configured using the following [Cargo features]():
+
+* `transient` use transient storage only. This works faster but does not take advantage of keeping the file system's state in stable memory.
+* `report_wasi_calls` outputs statistical information of the called polyfill functions.
