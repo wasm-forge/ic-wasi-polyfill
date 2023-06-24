@@ -98,3 +98,4 @@ The polyfill library's behavior can be configured using the following [Cargo fea
 
 * `transient` use the transient file system implementation. This works faster but does not take the advantage of keeping the file system's state in stable memory.
 * `report_wasi_calls` outputs statistical information of the called polyfill functions.
+* `skip_unimplemented_functions` rather than throw exception on calling the unimplemented function, its implementation will be missing in the compilation.

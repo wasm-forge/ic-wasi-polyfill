@@ -28,6 +28,7 @@ thread_local! {
     )
 }
 
+#[allow(unused_macros)]
 macro_rules! debug_instructions {
     ($fn_name:literal) => (ic_cdk::api::print(format!("\t{}", $fn_name)));
     ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("\t{}\tinstructions:\t{}\t", $fn_name, etime-($stime))));
@@ -1169,6 +1170,7 @@ pub extern "C" fn __ic_custom_path_link(
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_path_readlink(
     fd: i32,
     path: *const u8,
@@ -1248,6 +1250,7 @@ pub extern "C" fn __ic_custom_path_rename(
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_path_symlink(
     old_path: i32,
     old_path_len: i32,
@@ -1289,6 +1292,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_poll_oneoff(
     in_: *const wasi::Subscription,
     out: *mut wasi::Event,
@@ -1301,6 +1305,7 @@ pub extern "C" fn __ic_custom_poll_oneoff(
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_proc_raise(sig: i32) -> i32 {
     prevent_elimination(&[sig]);
     unimplemented!("WASI proc_raise is not implemented");
@@ -1315,6 +1320,7 @@ pub extern "C" fn __ic_custom_sched_yield() -> i32 {
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: i32) -> i32 {
     prevent_elimination(&[arg0, arg1, arg2]);
     unimplemented!("WASI sock_accept is not supported");
@@ -1322,6 +1328,7 @@ pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: i32) -> i3
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_recv(
     arg0: i32,
     arg1: i32,
@@ -1336,6 +1343,7 @@ pub extern "C" fn __ic_custom_sock_recv(
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_send(
     arg0: i32,
     arg1: i32,
@@ -1349,6 +1357,7 @@ pub extern "C" fn __ic_custom_sock_send(
 
 #[no_mangle]
 #[inline(never)]
+#[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_shutdown(arg0: i32, arg1: i32) -> i32 {
     prevent_elimination(&[arg0, arg1]);
     unimplemented!("WASI sock_shutdown is not supported");
@@ -1437,24 +1446,36 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_path_filestat_get(0, 0, null::<u8>(), 0, null_mut::<wasi::Filestat>());
                 __ic_custom_path_filestat_set_times(0, 0, null::<u8>(), 0, 0, 0, 0);
                 __ic_custom_path_link(0, 0, null::<u8>(), 0, 0, null::<u8>(), 0);
+
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
+
                 __ic_custom_path_remove_directory(0, null::<u8>(), 0);
                 __ic_custom_path_rename(0, null::<u8>(), 0, 0, null::<u8>(), 0);
+
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_path_symlink(0, 0, 0, 0, 0);
+
                 __ic_custom_path_unlink_file(0, null::<u8>(), 0);
 
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_poll_oneoff(
                     null::<wasi::Subscription>(),
                     null_mut::<wasi::Event>(),
                     0,
                     0,
                 );
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_proc_raise(0);
                 __ic_custom_sched_yield();
 
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_sock_accept(0, 0, 0);
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_sock_send(0, 0, 0, 0, 0);
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_sock_shutdown(0, 0);
 
                 __ic_custom_proc_exit(0);
