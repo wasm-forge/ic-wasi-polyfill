@@ -10,9 +10,11 @@ use stable_fs::storage::transient::TransientStorage;
 
 use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
+use environment::*;
 
 mod wasi;
 mod wasi_helpers;
+mod environment;
 
 thread_local! {
     static RNG : RefCell<Option<rand::rngs::StdRng>> = RefCell::new(None);
@@ -25,7 +27,11 @@ thread_local! {
             FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
         }
 
-    )
+    );
+
+    static ENV: RefCell<Environment> = RefCell::new(Environment::new());
+
+
 }
 
 #[allow(unused_macros)]
@@ -843,30 +849,39 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_environ_get(arg0: i32, arg1: i32) -> i32 {
+pub unsafe extern "C" fn __ic_custom_environ_get(environment: *mut *mut u8, environment_buffer: *mut u8) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
-    prevent_elimination(&[arg0, arg1]);
+    let result = ENV.with(|env| {
+        let env = env.borrow();
+        
+        env.environ_get(environment, environment_buffer)
+    });
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_environ_get", start);
 
-    // No-op.
-    0
+    result.raw() as i32
 }
 
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
-    len1: *mut wasi::Size,
-    len2: *mut wasi::Size,
+    entry_count: *mut wasi::Size,
+    buffer_size: *mut wasi::Size,
 ) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
-    *len1 = 0;
-    *len2 = 0;
+
+    ENV.with(|env| {
+        let env = env.borrow();
+        let (count, size) = env.environ_sizes_get();
+
+        *entry_count = count;
+        *buffer_size = size;
+    });
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_environ_sizes_get", start);
@@ -1419,7 +1434,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<u32>());
                 __ic_custom_random_get(null_mut::<u8>(), 0);
 
-                __ic_custom_environ_get(0, 0);
+                __ic_custom_environ_get(null_mut::<*mut u8>(), null_mut::<u8>());
                 __ic_custom_environ_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
 
                 __ic_custom_args_get(0, 0);
@@ -1484,9 +1499,21 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
     })
 }
 
+#[no_mangle]
+#[allow(clippy::missing_safety_doc)]
+pub unsafe fn set_environment(environment_pairs: &[(&str, &str)]) {
+    ENV.with(|env| {
+        let mut env = env.borrow_mut();
+        env.set_environment(environment_pairs);
+    });
+}
+
 // the init function ensures the module is not thrown away by the linker
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn init(seed: &[u8]) {
+pub unsafe fn init(seed: &[u8], environment_pairs: &[(&str, &str)]) {
+    set_environment(environment_pairs);
+
+    // TODO: environment support in the raw_init
     raw_init(seed.as_ptr(), seed.len());
 }
