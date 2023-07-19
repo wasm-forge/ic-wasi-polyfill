@@ -1500,6 +1500,11 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 }
 
 // the init function ensures the module is not thrown away by the linker
+// seed       -  The seed of the random numbers, up to 32 byte array can be used
+// env_pairs  -  The pre-defined environment variables
+//
+// Example:
+// init(&[12,3,54,1], &[("PATH", "/usr/bin"), ("UID", "1028"), ("HOME", "/home/user")]);
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
