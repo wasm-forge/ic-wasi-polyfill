@@ -1502,10 +1502,10 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 // the init function ensures the module is not thrown away by the linker
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn init(seed: &[u8], environment_pairs: &[(&str, &str)]) {
+pub unsafe fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
     ENV.with(|env| {
         let mut env = env.borrow_mut();
-        env.set_environment(environment_pairs);
+        env.set_environment(env_pairs);
     });
 
     // TODO: environment support in the raw_init

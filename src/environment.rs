@@ -6,6 +6,7 @@ pub struct Environment {
 }
 
 impl Environment {
+    // create new state containing environment
     pub fn new() -> Environment {
         Environment {
             data_size: 0,
@@ -13,10 +14,16 @@ impl Environment {
         }
     }
 
+    // Return the number of environment entries and the total buffer size containing all the environment pairs, compatible with the WASI function signature.
     pub fn environ_sizes_get(&self) -> (usize, usize) {
         (self.data_values.len(), self.data_size)
     }
 
+    // Fill up the memory with the environment variable pairs. The function is compatible with the corresponding WASI function signature.
+    // entries   -   reference to the table of pointers to the buffer parts containing C-style strings in the format: name=value. 
+    //               It must have enough memory to fit in all the pointers.
+    //
+    // buffer    -   The buffer containing all the pairs. The buffer must have enough memory to fit in all the (name,value) pairs.
     pub unsafe fn environ_get(&self, entries: *mut *mut u8, buffer: *mut u8) -> wasi::Errno {
         let entries = std::slice::from_raw_parts_mut(entries, self.data_values.len());
         let buffer = std::slice::from_raw_parts_mut(buffer, self.data_size);
@@ -39,6 +46,7 @@ impl Environment {
         wasi::ERRNO_SUCCESS
     }
 
+    // Sets the environment state to the list of pairs.
     pub fn set_environment(&mut self, pairs: &[(&str, &str)]) {
         self.data_values.clear();
         self.data_size = 0;
@@ -110,8 +118,7 @@ mod tests {
     #[test]
     fn empty_environment() {
         let mut env = Environment::new();
-        let env_values = [];
-        env.set_environment(&env_values);
+        env.set_environment(&[]);
         let env = env;
 
         let (elements, size) = env.environ_sizes_get();
@@ -123,8 +130,7 @@ mod tests {
     fn environment_reset() {
         let mut env = Environment::new();
 
-        let env_values = [("A", "1"), ("B", "2"), ("C", "3")];
-        env.set_environment(&env_values);
+        env.set_environment(&[("A", "1"), ("B", "2"), ("C", "3")]);
 
         let env_values = [];
         env.set_environment(&env_values);

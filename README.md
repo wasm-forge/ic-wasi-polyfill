@@ -9,11 +9,11 @@ The project provides polyfill implementation of *wasi_unstable* and *wasi_snapsh
 
 The intended use is to add this library as a dependency to your rust project. And then run `wasi2ic` on the produced Wasm binary.
 
-In your project you would need to call the `init` function. It makes sure the linker does not remove the functions and can be used to initialize the random seed.
+In your project you would need to call the `init` function. It makes sure the linker does not remove the functions and can be used to initialize the random seed and define some environment variables.
 
 Example:
 ```rust
-    init(&[12,3,54,1]);
+    init(&[12,3,54,1], &[("PATH", "/usr/bin"), ("UID", "1028"), ("HOME", "/home/user")]);
 ```
 
 
@@ -34,8 +34,8 @@ Example:
 | `args_sizes_get`            | No-op           |
 | `clock_res_get`             | Supported       |
 | `clock_time_get`            | Supported       |
-| `environ_get`               | No-op           |
-| `environ_sizes_get`         | No-op           |
+| `environ_get`               | Supported       |
+| `environ_sizes_get`         | Supported       |
 | `fd_advise`                 | No-op           |
 | `fd_allocate`               | No-op           |
 | `fd_close`                  | Supported       |
@@ -79,23 +79,23 @@ Example:
 
 *<sup>1</sup>* - Currently symlinks are not supported by the file system, this affects a few `path_` functions, the `flags` ("follow symlink") parameter is currently ignored.
 
-*<sup>2</sup>* - The `random_get` function utilizes a synchronous pseudorandom number generator.
+*<sup>2</sup>* - The `random_get` function utilizes a synchronous pseudo-random number generator.
 
 
 ## Additional library functions
 
 
-| Function                                      |  Description                  | 
-| --------------------------------------------- | ----------------------------- |
-| `init(seed: &[u8])`                           | Initialization call.          |
-| `raw_init(seed: *const u8, len: usize)`       | Similar to `init`, but has simpler parameters for calling from C or C++. |
-| `init_seed(seed: &[u8])`                      | Convenience method to explicitly re-initialize the random seed. |
-| `raw_init_seed(seed: *const u8, len: usize)`  | Similar to `init_seed`, but has simpler parameters for calling from C or C++. |
+| Function                                          |  Description                  | 
+| ------------------------------------------------- | ----------------------------- |
+| `init(seed: &[u8], env_pairs: &[(&str, &str)])`   | Initialization call.          |
+| `raw_init(seed: *const u8, len: usize)`           | Similar to `init`, but has simpler parameters for calling from C or C++. |
+| `init_seed(seed: &[u8])`                          | Convenience method to explicitly re-initialize the random seed. |
+| `raw_init_seed(seed: *const u8, len: usize)`      | Similar to `init_seed`, but has simpler parameters for calling from C or C++. |
 
 ## Project features
 
 The polyfill library's behavior can be configured using the following [Cargo features](https://doc.rust-lang.org/cargo/reference/features.html):
 
-* `transient` use the transient file system implementation. This works faster but does not take the advantage of keeping the file system's state in stable memory.
+* `transient` use the transient file system implementation. This works faster but does not take the advantage of keeping the file system's state in stable memory (and the ability to keep FS state between canister upgrades).
 * `report_wasi_calls` outputs statistical information of the called polyfill functions.
-* `skip_unimplemented_functions` rather than throw exception on calling the unimplemented function, its implementation will be missing in the compilation.
+* `skip_unimplemented_functions` rather than throw exception on calling the unimplemented function, its implementation will be missing in the compilation. This can be useful if you want to provide custom implementations for those functions.
