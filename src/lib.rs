@@ -796,11 +796,11 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
                 }
 
                 if fst_flags & wasi::FSTFLAGS_ATIM > 0 {
-                    let _ = fs.set_accessed_time(fd as Fd, atim as u64);
+                    let _ = fs.set_accessed_time(fd as Fd, atim);
                 }
 
                 if fst_flags & wasi::FSTFLAGS_MTIM > 0 {
-                    let _ = fs.set_modified_time(fd as Fd, mtim as u64);
+                    let _ = fs.set_modified_time(fd as Fd, mtim);
                 }
 
                 wasi::ERRNO_SUCCESS.raw() as i32
@@ -891,6 +891,7 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
 
 #[no_mangle]
 #[inline(never)]
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_environ_get(
     environment: *mut *mut u8,
     environment_buffer: *mut u8,
