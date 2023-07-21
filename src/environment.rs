@@ -20,7 +20,7 @@ impl Environment {
     }
 
     // Fill up the memory with the environment variable pairs. The function is compatible with the corresponding WASI function signature.
-    // entries   -   reference to the table of pointers to the buffer parts containing C-style strings in the format: name=value. 
+    // entries   -   reference to the table of pointers to the buffer parts containing C-style strings in the format: name=value.
     //               It must have enough memory to fit in all the pointers.
     //
     // buffer    -   The buffer containing all the pairs. The buffer must have enough memory to fit in all the (name,value) pairs.

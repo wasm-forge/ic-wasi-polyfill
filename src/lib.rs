@@ -8,17 +8,17 @@ use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
 use stable_fs::storage::stable::StableStorage;
 use stable_fs::storage::transient::TransientStorage;
 
+use environment::*;
 use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
-use environment::*;
 
+mod environment;
 mod wasi;
 mod wasi_helpers;
-mod environment;
 
 thread_local! {
     static RNG : RefCell<Option<rand::rngs::StdRng>> = RefCell::new(None);
-    
+
     static FS: RefCell<FileSystem> = RefCell::new(
 
         if cfg!(feature = "transient") {
@@ -36,11 +36,27 @@ thread_local! {
 
 #[allow(unused_macros)]
 macro_rules! debug_instructions {
-    ($fn_name:literal) => (ic_cdk::api::print(format!("\t{}", $fn_name)));
-    ($fn_name:literal, $stime:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("\t{}\tinstructions:\t{}\t", $fn_name, etime-($stime))));
-    ($fn_name:literal, $stime:expr, $params:expr) => (let etime=ic_cdk::api::instruction_counter();ic_cdk::api::print(format!("\t{}\tinstructions:\t{}\tparameters:\t{}", $fn_name, etime-($stime), format!($params))));
+    ($fn_name:literal) => {
+        ic_cdk::api::print(format!("\t{}", $fn_name))
+    };
+    ($fn_name:literal, $stime:expr) => {
+        let etime = ic_cdk::api::instruction_counter();
+        ic_cdk::api::print(format!(
+            "\t{}\tinstructions:\t{}\t",
+            $fn_name,
+            etime - ($stime)
+        ))
+    };
+    ($fn_name:literal, $stime:expr, $params:expr) => {
+        let etime = ic_cdk::api::instruction_counter();
+        ic_cdk::api::print(format!(
+            "\t{}\tinstructions:\t{}\tparameters:\t{}",
+            $fn_name,
+            etime - ($stime),
+            format!($params)
+        ))
+    };
 }
-
 
 #[no_mangle]
 #[inline(never)]
@@ -51,7 +67,6 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -91,10 +106,9 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
-    
+
     // for now we don't support reading from the standard streams
     if fd < 3 {
         return wasi::ERRNO_INVAL.raw() as i32;
@@ -136,7 +150,6 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -163,7 +176,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_pwrite", start, "fd={fd:?} len={len:?}");
-    
+
     result
 }
 
@@ -177,7 +190,6 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -207,7 +219,11 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_pread", start, "fd={fd:?} len={len:?} offset={offset:?}");
+    debug_instructions!(
+        "__ic_custom_fd_pread",
+        start,
+        "fd={fd:?} len={len:?} offset={offset:?}"
+    );
 
     result
 }
@@ -221,7 +237,6 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     whence: i32,
     res: *mut wasi::Filesize,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -241,7 +256,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
             ) {
                 Ok(r) => {
                     *res = r as wasi::Filesize;
-                    
+
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
                 Err(er) => {
@@ -253,7 +268,11 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_seek", start, "fd={fd:?} delta={delta:?} whence={whence:?}");
+    debug_instructions!(
+        "__ic_custom_fd_seek",
+        start,
+        "fd={fd:?} delta={delta:?} whence={whence:?}"
+    );
 
     result
 }
@@ -274,7 +293,6 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fdflags: i32,
     res: *mut u32,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -311,7 +329,11 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_open", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
+    debug_instructions!(
+        "__ic_custom_path_open",
+        start,
+        "parent_fd={parent_fd:?} file_name={file_name:?}"
+    );
 
     result
 }
@@ -319,13 +341,12 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
     let result = FS.with(|fs| {
         let res = fs.borrow_mut().close(fd as Fd);
-        
+
         match res {
             Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(er) => into_errno(er),
@@ -341,7 +362,6 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -382,7 +402,6 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -398,7 +417,6 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -414,7 +432,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
             match fs.tell(fd as Fd) {
                 Ok(pos) => {
                     *res = pos as wasi::Filesize;
-                    
+
                     wasi::ERRNO_SUCCESS.raw() as i32
                 }
                 Err(er) => {
@@ -435,7 +453,6 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Prestat) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -478,7 +495,6 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     path: *mut u8,
     max_len: i32,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -510,7 +526,6 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: i32) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -532,19 +547,22 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_advise", start, "fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}");
+    debug_instructions!(
+        "__ic_custom_fd_advise",
+        start,
+        "fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}"
+    );
 
     if is_badf {
         return wasi::ERRNO_BADF.raw() as i32;
     }
-    
+
     wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
@@ -562,7 +580,11 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_allocate", start, "fd={fd:?} offset={offset:?} len={len:?}");
+    debug_instructions!(
+        "__ic_custom_fd_allocate",
+        start,
+        "fd={fd:?} offset={offset:?} len={len:?}"
+    );
 
     result
 }
@@ -662,7 +684,11 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i3
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_fdstat_set_flags", start, "fd={fd:?} new_flags={new_flags:?}");
+    debug_instructions!(
+        "__ic_custom_fd_fdstat_set_flags",
+        start,
+        "fd={fd:?} new_flags={new_flags:?}"
+    );
 
     result
 }
@@ -697,7 +723,11 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_fdstat_set_rights", start, "fd={fd:?} rights_base={rights_base:?} rights_inheriting={rights_inheriting:?}");
+    debug_instructions!(
+        "__ic_custom_fd_fdstat_set_rights",
+        start,
+        "fd={fd:?} rights_base={rights_base:?} rights_inheriting={rights_inheriting:?}"
+    );
 
     result
 }
@@ -725,7 +755,11 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_filestat_set_size", start, "fd={fd:?} size={size:?}");
+    debug_instructions!(
+        "__ic_custom_fd_filestat_set_size",
+        start,
+        "fd={fd:?} size={size:?}"
+    );
 
     result
 }
@@ -776,7 +810,11 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_filestat_set_times", start, "fd={fd:?} atim={atim:?} mtim={mtim:?} fst_flags={fst_flags:?}");
+    debug_instructions!(
+        "__ic_custom_fd_filestat_set_times",
+        start,
+        "fd={fd:?} atim={atim:?} mtim={mtim:?} fst_flags={fst_flags:?}"
+    );
 
     result
 }
@@ -822,7 +860,11 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_renumber", start, "fd_from={fd_from:?} fd_to={fd_to:?}");
+    debug_instructions!(
+        "__ic_custom_fd_renumber",
+        start,
+        "fd_from={fd_from:?} fd_to={fd_to:?}"
+    );
 
     result
 }
@@ -849,13 +891,16 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
 
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn __ic_custom_environ_get(environment: *mut *mut u8, environment_buffer: *mut u8) -> i32 {
+pub unsafe extern "C" fn __ic_custom_environ_get(
+    environment: *mut *mut u8,
+    environment_buffer: *mut u8,
+) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
 
     let result = ENV.with(|env| {
         let env = env.borrow();
-        
+
         env.environ_get(environment, environment_buffer)
     });
 
@@ -897,7 +942,6 @@ pub extern "C" fn __ic_custom_proc_exit(code: i32) -> ! {
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_args_get(arg0: i32, arg1: i32) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("called __ic_custom_args_get");
 
@@ -913,7 +957,6 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
 ) -> i32 {
-
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("called __ic_custom_arg_sizes_get");
 
@@ -988,7 +1031,11 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_create_directory", start, "parent_fd={parent_fd:?} dir_name={dir_name:?}");
+    debug_instructions!(
+        "__ic_custom_path_create_directory",
+        start,
+        "parent_fd={parent_fd:?} dir_name={dir_name:?}"
+    );
 
     result
 }
@@ -1010,7 +1057,6 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     prevent_elimination(&[flags]);
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
@@ -1052,7 +1098,11 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_filestat_get", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
+    debug_instructions!(
+        "__ic_custom_path_filestat_get",
+        start,
+        "parent_fd={parent_fd:?} file_name={file_name:?}"
+    );
 
     result
 }
@@ -1092,12 +1142,10 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 
         match fd {
             Ok(fd) => {
-
                 let res = fs.metadata(fd);
 
                 match res {
                     Ok(mut metadata) => {
-
                         let now = ic_cdk::api::time();
 
                         if fst_flags & wasi::FSTFLAGS_ATIM_NOW > 0 {
@@ -1121,12 +1169,8 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
                         let _ = fs.close(fd);
 
                         match res {
-                            Ok(_) => {
-                                wasi::ERRNO_SUCCESS.raw() as i32
-                            }
-                            Err(er) => {
-                                into_errno(er)
-                            }
+                            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+                            Err(er) => into_errno(er),
                         }
                     }
                     Err(er) => {
@@ -1134,14 +1178,17 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
                         into_errno(er)
                     }
                 }
-
             }
             Err(er) => into_errno(er),
         }
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_filestat_set_times", start, "parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}");
+    debug_instructions!(
+        "__ic_custom_path_filestat_set_times",
+        start,
+        "parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}"
+    );
 
     result
 }
@@ -1212,7 +1259,6 @@ pub extern "C" fn __ic_custom_path_remove_directory(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-
         let res = fs.remove_dir(parent_fd as Fd, file_name);
         match res {
             Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
@@ -1221,7 +1267,11 @@ pub extern "C" fn __ic_custom_path_remove_directory(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_remove_directory", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
+    debug_instructions!(
+        "__ic_custom_path_remove_directory",
+        start,
+        "parent_fd={parent_fd:?} file_name={file_name:?}"
+    );
 
     result
 }
@@ -1238,7 +1288,6 @@ pub extern "C" fn __ic_custom_path_rename(
 ) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
-
 
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1286,7 +1335,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 ) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_cdk::api::instruction_counter();
-    
+
     let file_name = get_file_name(path, path_len as wasi::Size);
 
     let result = FS.with(|fs| {
@@ -1300,7 +1349,11 @@ pub extern "C" fn __ic_custom_path_unlink_file(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_unlink", start, "parent_fd={parent_fd:?} file_name={file_name:?}");
+    debug_instructions!(
+        "__ic_custom_path_unlink",
+        start,
+        "parent_fd={parent_fd:?} file_name={file_name:?}"
+    );
 
     result
 }
@@ -1500,8 +1553,8 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 }
 
 // the init function ensures the module is not thrown away by the linker
-// seed       -  The seed of the random numbers, up to 32 byte array can be used
-// env_pairs  -  The pre-defined environment variables
+// seed       -  The seed of the random numbers, up to 32 byte array can be used.
+// env_pairs  -  The pre-defined environment variables.
 //
 // Example:
 // init(&[12,3,54,1], &[("PATH", "/usr/bin"), ("UID", "1028"), ("HOME", "/home/user")]);
