@@ -17,7 +17,7 @@ mod wasi;
 mod wasi_helpers;
 
 thread_local! {
-    static RNG : RefCell<Option<rand::rngs::StdRng>> = RefCell::new(None);
+    static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
 
     static FS: RefCell<FileSystem> = RefCell::new(
 
@@ -879,7 +879,6 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
     let buf = std::slice::from_raw_parts_mut(buf, buf_len);
     RNG.with(|rng| {
         let mut rng = rng.borrow_mut();
-        let rng = rng.as_mut().unwrap();
         rng.fill_bytes(buf);
     });
 
@@ -1464,7 +1463,7 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 
     RNG.with(|rng| {
         let mut rng = rng.borrow_mut();
-        *rng = Some(rand::rngs::StdRng::from_seed(seed_buf));
+        *rng = rand::rngs::StdRng::from_seed(seed_buf);
     });
 }
 
