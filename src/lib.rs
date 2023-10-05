@@ -13,8 +13,18 @@ use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
 
 mod environment;
-mod wasi;
 mod wasi_helpers;
+
+
+#[cfg(target_arch = "wasm32")]
+mod wasi;
+
+#[cfg(not(all(target_arch = "wasm32")))] 
+mod wasi_mock;
+#[cfg(not(all(target_arch = "wasm32")))] 
+use wasi_mock as wasi;
+
+
 
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
@@ -30,7 +40,6 @@ thread_local! {
     );
 
     static ENV: RefCell<Environment> = RefCell::new(Environment::new());
-
 
 }
 
