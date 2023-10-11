@@ -15,16 +15,13 @@ use wasi_helpers::*;
 mod environment;
 mod wasi_helpers;
 
-
 #[cfg(target_arch = "wasm32")]
 mod wasi;
 
-#[cfg(not(all(target_arch = "wasm32")))] 
+#[cfg(not(all(target_arch = "wasm32")))]
 mod wasi_mock;
-#[cfg(not(all(target_arch = "wasm32")))] 
+#[cfg(not(all(target_arch = "wasm32")))]
 use wasi_mock as wasi;
-
-
 
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
@@ -1578,3 +1575,6 @@ pub unsafe fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
     // TODO: environment support in the raw_init
     raw_init(seed.as_ptr(), seed.len());
 }
+
+#[cfg(test)]
+mod lib_test;
