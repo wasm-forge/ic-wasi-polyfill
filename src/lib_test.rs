@@ -1,4 +1,4 @@
-use crate::{__ic_custom_environ_get, __ic_custom_environ_sizes_get, init, wasi};
+use crate::{__ic_custom_environ_get, __ic_custom_environ_sizes_get, init, wasi, __ic_custom_random_get};
 
 #[test]
 fn test_environ_get() {
@@ -70,5 +70,53 @@ fn test_environ_get() {
     }
     
     assert!(computed_string == expected_string);
+
+}
+
+
+#[test]
+fn test_random_get() {
+
+    let init_env = [
+        ("PATH", "/usr/bin"),
+        ("UID", "1028"),
+        ("HOME", "/home/user"),
+    ];
+
+    let seed = [12, 3, 54, 21];
+
+    unsafe {
+        init(
+            &seed,
+            &init_env,
+        );
+    }
+
+    let buf_len: wasi::Size = 14usize;
+
+    let mut random_buf1: Vec<u8> = Vec::with_capacity(buf_len);
+
+    let res = unsafe { __ic_custom_random_get(random_buf1.as_mut_ptr(), buf_len) };
+
+    assert!(res == 0);
+
+    unsafe { random_buf1.set_len(buf_len) };
+
+    unsafe {
+        init(
+            &seed,
+            &init_env,
+        );
+    }
+
+    let mut random_buf2: Vec<u8> = Vec::with_capacity(buf_len);
+
+    let res = unsafe { __ic_custom_random_get(random_buf2.as_mut_ptr(), buf_len) };
+
+    assert!(res == 0);
+
+    unsafe { random_buf2.set_len(buf_len) };
+
+    assert!(random_buf1 == random_buf2)
 
 }
