@@ -1,8 +1,10 @@
-use crate::{__ic_custom_environ_get, __ic_custom_environ_sizes_get, init, wasi, __ic_custom_random_get};
+use crate::{
+    __ic_custom_args_get, __ic_custom_args_sizes_get, __ic_custom_environ_get,
+    __ic_custom_environ_sizes_get, __ic_custom_proc_exit, __ic_custom_random_get, init, wasi, __ic_custom_clock_res_get, __ic_custom_clock_time_get,
+};
 
 #[test]
 fn test_environ_get() {
-
     let init_env = [
         ("PATH", "/usr/bin"),
         ("UID", "1028"),
@@ -18,10 +20,7 @@ fn test_environ_get() {
     let lines = lines;
 
     unsafe {
-        init(
-            &[12, 3, 54, 1],
-            &init_env,
-        );
+        init(&[12, 3, 54, 1], &init_env);
     }
 
     // get environment sizes
@@ -45,12 +44,15 @@ fn test_environ_get() {
 
     assert!(buffer_size == expected_buffer_size);
 
-
     let mut entry_table: Vec<wasi::Size> = Vec::with_capacity(entry_count);
-    unsafe {entry_table.set_len(entry_count);}
+    unsafe {
+        entry_table.set_len(entry_count);
+    }
 
     let mut buffer: Vec<u8> = Vec::with_capacity(buffer_size);
-    unsafe {buffer.set_len(buffer_size);}
+    unsafe {
+        buffer.set_len(buffer_size);
+    }
 
     // get environment values
     let ret = unsafe {
@@ -68,15 +70,12 @@ fn test_environ_get() {
     for env_string in lines.iter() {
         expected_string += env_string;
     }
-    
+
     assert!(computed_string == expected_string);
-
 }
-
 
 #[test]
 fn test_random_get() {
-
     let init_env = [
         ("PATH", "/usr/bin"),
         ("UID", "1028"),
@@ -86,10 +85,7 @@ fn test_random_get() {
     let seed = [12, 3, 54, 21];
 
     unsafe {
-        init(
-            &seed,
-            &init_env,
-        );
+        init(&seed, &init_env);
     }
 
     let buf_len: wasi::Size = 14usize;
@@ -103,10 +99,7 @@ fn test_random_get() {
     unsafe { random_buf1.set_len(buf_len) };
 
     unsafe {
-        init(
-            &seed,
-            &init_env,
-        );
+        init(&seed, &init_env);
     }
 
     let mut random_buf2: Vec<u8> = Vec::with_capacity(buf_len);
@@ -118,5 +111,84 @@ fn test_random_get() {
     unsafe { random_buf2.set_len(buf_len) };
 
     assert!(random_buf1 == random_buf2)
+}
 
+#[test]
+#[should_panic]
+fn test_proc_exit() {
+    unsafe {
+        init(&[], &[]);
+    }
+
+    __ic_custom_proc_exit(5);
+}
+
+#[test]
+fn test_args_get() {
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let mut entry_count: wasi::Size = 0;
+    let mut buffer_size: wasi::Size = 0;
+
+    let ret = unsafe {
+        __ic_custom_args_sizes_get(
+            (&mut entry_count) as *mut wasi::Size,
+            (&mut buffer_size) as *mut wasi::Size,
+        )
+    };
+
+    assert!(ret == 0);
+    assert!(entry_count == 0);
+
+    let expected_buffer_size = 0;
+
+    assert!(buffer_size == expected_buffer_size);
+
+    let mut entry_table: Vec<wasi::Size> = Vec::with_capacity(entry_count);
+    unsafe {
+        entry_table.set_len(entry_count);
+    }
+
+    let mut buffer: Vec<u8> = Vec::with_capacity(buffer_size);
+    unsafe {
+        buffer.set_len(buffer_size);
+    }
+
+    // get environment values
+    let ret = __ic_custom_args_get(
+        entry_table.as_mut_ptr() as *mut *mut u8,
+        buffer.as_mut_ptr() as *mut u8,
+    );
+
+    assert!(ret == 0);
+
+    let computed_string = String::from_utf8(buffer).unwrap();
+
+    let mut expected_string = String::new();
+
+    assert!(computed_string == expected_string);
+}
+
+
+
+#[test]
+fn test_clock_res_get_clock_time_get() {
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let mut resolution: u64 = 0;
+
+    let res = unsafe { __ic_custom_clock_res_get(0, (&mut resolution) as *mut u64) };
+
+    assert!(res == 0);
+
+    assert!(resolution == 1_000_000_000);
+
+    let res = unsafe { __ic_custom_clock_time_get(0, 1_000_000_000, (&mut resolution) as *mut u64) };
+
+    assert!(res == 0);
+    assert!(resolution == 42);
 }
