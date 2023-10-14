@@ -1,6 +1,6 @@
 use crate::{
     __ic_custom_args_get, __ic_custom_args_sizes_get, __ic_custom_environ_get,
-    __ic_custom_environ_sizes_get, __ic_custom_proc_exit, __ic_custom_random_get, init, wasi, __ic_custom_clock_res_get, __ic_custom_clock_time_get,
+    __ic_custom_environ_sizes_get, __ic_custom_proc_exit, __ic_custom_random_get, init, wasi, __ic_custom_clock_res_get, __ic_custom_clock_time_get, __ic_custom_fd_prestat_dir_name,
 };
 
 #[test]
@@ -184,11 +184,19 @@ fn test_clock_res_get_clock_time_get() {
     let res = unsafe { __ic_custom_clock_res_get(0, (&mut resolution) as *mut u64) };
 
     assert!(res == 0);
-
     assert!(resolution == 1_000_000_000);
 
     let res = unsafe { __ic_custom_clock_time_get(0, 1_000_000_000, (&mut resolution) as *mut u64) };
 
     assert!(res == 0);
     assert!(resolution == 42);
+}
+
+#[test]
+fn test_fd_prestat_dir_name() {
+    unsafe {
+        init(&[], &[]);
+    }
+
+    //__ic_custom_fd_prestat_dir_name();
 }
