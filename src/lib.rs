@@ -512,7 +512,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_prestat_get", start);
+    debug_instructions!("__ic_custom_fd_prestat_get fd={}", start, "fd={fd:?} -> res={res:?}");
 
     result
 }
@@ -534,7 +534,9 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
         let fs = fs.borrow();
 
         if fd as Fd == fs.root_fd() {
+            
             let max_len = std::cmp::max(max_len as i32, fs.root_path().len() as i32) as usize;
+
             for i in 0..max_len {
                 unsafe {
                     path.add(i).write(fs.root_path().as_bytes()[i]);

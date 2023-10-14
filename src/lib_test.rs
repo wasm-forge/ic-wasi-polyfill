@@ -1,6 +1,6 @@
 use crate::{
     __ic_custom_args_get, __ic_custom_args_sizes_get, __ic_custom_environ_get,
-    __ic_custom_environ_sizes_get, __ic_custom_proc_exit, __ic_custom_random_get, init, wasi, __ic_custom_clock_res_get, __ic_custom_clock_time_get, __ic_custom_fd_prestat_dir_name,
+    __ic_custom_environ_sizes_get, __ic_custom_proc_exit, __ic_custom_random_get, init, wasi::{self, Fd}, __ic_custom_clock_res_get, __ic_custom_clock_time_get, __ic_custom_fd_prestat_dir_name, __ic_custom_fd_prestat_get,
 };
 
 #[test]
@@ -166,7 +166,7 @@ fn test_args_get() {
 
     let computed_string = String::from_utf8(buffer).unwrap();
 
-    let mut expected_string = String::new();
+    let expected_string = String::new();
 
     assert!(computed_string == expected_string);
 }
@@ -192,11 +192,57 @@ fn test_clock_res_get_clock_time_get() {
     assert!(resolution == 42);
 }
 
+
 #[test]
-fn test_fd_prestat_dir_name() {
+fn test_fd_prestat_init() {
     unsafe {
         init(&[], &[]);
     }
 
-    //__ic_custom_fd_prestat_dir_name();
+    let mut root_fd = 0;
+    let mut prestat = wasi::Prestat {
+        tag: 0, u: wasi::PrestatU { dir: wasi::PrestatDir { pr_name_len: 0 } }
+    };
+    
+    // find working fd
+    loop {
+
+        let res = unsafe { __ic_custom_fd_prestat_get(root_fd, (&mut prestat) as *mut wasi::Prestat ) };
+
+        if root_fd > 10 {
+            panic!();
+        }
+
+        if res == 0 {
+            break;
+        }
+
+        root_fd += 1;
+    };
+
+    let root_fd = root_fd;
+
+    let un_dir = unsafe {prestat.u.dir};
+    let root_path_len = un_dir.pr_name_len;
+
+    assert!(root_path_len > 0);
+    assert!(root_fd == 3);
+
+    // find root folder
+    let mut path: Vec<u8> = Vec::with_capacity(root_path_len);
+
+    unsafe {
+        path.set_len(root_path_len);
+    }
+
+    let res = unsafe { __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32) };
+
+    assert!(res == 0);
+    
+    let root_path = String::from_utf8(path).unwrap();
+
+    assert!(root_path == "/");
+
 }
+
+

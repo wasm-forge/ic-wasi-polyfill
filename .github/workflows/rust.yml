@@ -25,6 +25,7 @@ jobs:
       uses: actions-rs/tarpaulin@v0.1
       with:
         version: '0.15.0'
+        args: '--features report_wasi_calls,transient
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
