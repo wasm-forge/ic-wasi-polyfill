@@ -150,8 +150,6 @@ fn fill_buffer(
     let buf_len = buf.len();
     let buf = &mut buf[result..buf_len];
 
-    eprintln!("filename: {}", filename.length);
-
     let filename = &filename.bytes[0..filename.length as usize];
 
     let result2 = usize::min(filename.len(), buf.len());

@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 
-
 use ic_stable_structures::DefaultMemoryImpl;
 
 use rand::{RngCore, SeedableRng};
@@ -45,7 +44,6 @@ use ic_cdk::api::time as ic_time;
 fn ic_time() -> u64 {
     42
 }
-
 
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
@@ -321,7 +319,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fs_rights_inheriting: i64,
 
     fdflags: i32,
-    res: *mut u32,
+    res: *mut i32,
 ) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
@@ -348,7 +346,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         match r {
             Ok(r) => {
-                *res = r;
+                *res = r as i32;
                 wasi::ERRNO_SUCCESS.raw() as i32
             }
             Err(er) => {
@@ -512,7 +510,11 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_prestat_get fd={}", start, "fd={fd:?} -> res={res:?}");
+    debug_instructions!(
+        "__ic_custom_fd_prestat_get fd={}",
+        start,
+        "fd={fd:?} -> res={res:?}"
+    );
 
     result
 }
@@ -534,7 +536,6 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
         let fs = fs.borrow();
 
         if fd as Fd == fs.root_fd() {
-            
             let max_len = std::cmp::max(max_len as i32, fs.root_path().len() as i32) as usize;
 
             for i in 0..max_len {
@@ -1516,7 +1517,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_fd_prestat_get(0, null_mut::<wasi::Prestat>());
                 __ic_custom_fd_prestat_dir_name(0, null_mut::<u8>(), 0);
 
-                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<u32>());
+                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<i32>());
                 __ic_custom_random_get(null_mut::<u8>(), 0);
 
                 __ic_custom_environ_get(null_mut::<*mut u8>(), null_mut::<u8>());
@@ -1526,6 +1527,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_args_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
                 __ic_custom_clock_res_get(0, null_mut::<u64>());
                 __ic_custom_clock_time_get(0, 0, null_mut::<u64>());
+                
                 __ic_custom_fd_advise(0, 0, 0, 0);
                 __ic_custom_fd_allocate(0, 0, 0);
                 __ic_custom_fd_datasync(0);
