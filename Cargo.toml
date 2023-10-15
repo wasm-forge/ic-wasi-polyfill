@@ -7,8 +7,7 @@ edition = "2021"
 [dependencies]
 ic-cdk = "0.8"
 ic-stable-structures = "0.5.4"
-#stable-fs = { git = "https://github.com/wasm-forge/stable-fs", rev = "600be4d7fd3b7335d504623c43e4da030bf424c2" }
-stable-fs = { path = "/home/stas/wasi4ic/stable-fs" }
+stable-fs = { git = "https://github.com/wasm-forge/stable-fs", rev = "600be4d7fd3b7335d504623c43e4da030bf424c2" }
 
 rand = "0.8.5"
 function_name = "0.3.0"
