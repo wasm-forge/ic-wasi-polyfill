@@ -18,6 +18,7 @@ pub fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     file_name
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn into_errno(error: Error) -> i32 {
     let errno = match error {
         stable_fs::error::Error::NotFound => wasi::ERRNO_INVAL,
@@ -38,6 +39,7 @@ pub fn into_errno(error: Error) -> i32 {
     errno.raw() as i32
 }
 
+#[cfg(not(tarpaulin_include))]
 pub fn into_wasi_filetype(file_type: stable_fs::storage::types::FileType) -> wasi::Filetype {
     match file_type {
         stable_fs::storage::types::FileType::Directory => wasi::FILETYPE_DIRECTORY,

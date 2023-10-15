@@ -328,7 +328,11 @@ fn test_create_dirs_and_file_in_it() {
 
     assert!(res == 0);
 
-    // check there are now 3 directories in the root folder and 1 file in the first directory
+    // delete the second directory
+    let ret = __ic_custom_path_remove_directory( root_fd, new_folder_name2.as_ptr(), new_folder_name2.len() as i32);
+    assert!(ret == 0);
+
+    // check there are now 2 directories in the root folder and 1 file in the first directory
 
     let len = 1000;
     let mut bytes: Vec<u8> = Vec::with_capacity(len);
@@ -375,10 +379,9 @@ fn test_create_dirs_and_file_in_it() {
         }
     }
 
-    assert!(folders.len() == 3);
+    assert!(folders.len() == 2);
     assert!(folders[0] == "test_folder1");
-    assert!(folders[1] == "test_folder2");
-    assert!(folders[2] == "test_folder3");
+    assert!(folders[1] == "test_folder3");
 
 }
 
@@ -776,6 +779,69 @@ fn test_link_seek_tell() {
     assert!(res == 0);
 
     assert!(buf_to_read1 == "sample text.1234");
+
+}
+
+#[test]
+fn test_seek_types() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let root_fd = 3;
+    let new_file_name = String::from("file.txt");
+
+    let mut file_fd = 0;
+
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            1 + 4 + 8,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    unsafe { __ic_custom_fd_write(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    // test seek and tell
+    let mut position: wasi::Filesize = 0;
+    unsafe { __ic_custom_fd_tell(file_fd, &mut position as *mut wasi::Filesize) };
+    assert!(position == 32);
+
+    let mut position_after_seek: wasi::Filesize = 0;
+    unsafe { __ic_custom_fd_seek(file_fd, 10, 0, &mut position_after_seek as *mut wasi::Filesize) };
+    assert!(position_after_seek == 10);
+
+    let mut position_after_seek: wasi::Filesize = 0;
+    unsafe { __ic_custom_fd_seek(file_fd, 2, 1, &mut position_after_seek as *mut wasi::Filesize) };
+    assert!(position_after_seek == 12);
+
+    let mut position_after_seek: wasi::Filesize = 0;
+    unsafe { __ic_custom_fd_seek(file_fd, -2, 2, &mut position_after_seek as *mut wasi::Filesize) };
+
+    assert!(position_after_seek == 30);
 
 }
 
