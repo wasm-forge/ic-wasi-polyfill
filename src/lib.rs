@@ -10,12 +10,6 @@ use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
 use stable_fs::storage::stable::StableStorage;
 use stable_fs::storage::transient::TransientStorage;
 
-use environment::*;
-use stable_fs::storage::types::FileSize;
-use wasi_helpers::*;
-
-mod environment;
-mod wasi_helpers;
 
 #[cfg(target_arch = "wasm32")]
 mod wasi;
@@ -24,17 +18,19 @@ mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
 use wasi_mock as wasi;
 
-#[cfg(target_arch = "wasm32")]
-use ic_cdk::api::print as ic_print;
-#[cfg(not(all(target_arch = "wasm32")))]
-fn ic_print(value: String) {
-    println!("{}", value);
-}
+
+use environment::*;
+use stable_fs::storage::types::FileSize;
+use wasi_helpers::*;
+
+mod environment;
+mod wasi_helpers;
+
 
 #[cfg(target_arch = "wasm32")]
 use ic_cdk::api::instruction_counter as ic_instruction_counter;
 #[cfg(not(all(target_arch = "wasm32")))]
-fn ic_instruction_counter() -> u64 {
+pub fn ic_instruction_counter() -> u64 {
     0
 }
 
@@ -44,6 +40,31 @@ use ic_cdk::api::time as ic_time;
 fn ic_time() -> u64 {
     42
 }
+
+#[cfg(target_arch = "wasm32")]
+use ic_cdk::api::print as ic_print;
+#[cfg(not(all(target_arch = "wasm32")))]
+fn ic_print(value: &str) {
+    println!("{}", value);
+}
+
+pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
+    let iovs = std::slice::from_raw_parts(iovs, len as usize);
+
+    let mut written = 0;
+
+    for iov in iovs {
+        let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
+        let str = std::str::from_utf8(buf).unwrap_or("");
+        ic_print(str);
+        written += iov.buf_len;
+    }
+
+    *res = written;
+
+    wasi::ERRNO_SUCCESS.raw() as i32
+}
+
 
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
@@ -99,7 +120,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     let start = ic_instruction_counter();
 
     let result = if fd < 3 {
-        wasi_helpers::forward_to_debug(iovs, len, res)
+        forward_to_debug(iovs, len, res)
     } else {
         FS.with(|fs| {
             let mut fs = fs.borrow_mut();
@@ -182,7 +203,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     let start = ic_instruction_counter();
 
     let result = if fd < 3 {
-        wasi_helpers::forward_to_debug(iovs, len, res)
+        forward_to_debug(iovs, len, res)
     } else {
         FS.with(|fs| {
             let mut fs = fs.borrow_mut();
@@ -232,8 +253,10 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 
         unsafe {
             let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
-
-            match fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize) {
+            
+            let reading_result = fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize);
+            
+            match reading_result {
                 Ok(r) => {
                     *res = r as wasi::Size;
                     wasi::ERRNO_SUCCESS.raw() as i32
@@ -596,6 +619,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32 {
+    
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 

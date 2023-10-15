@@ -1,15 +1,8 @@
-use std::{mem::transmute, ptr::slice_from_raw_parts};
 
-use ic_stable_structures::Storable;
-use stable_fs::fs::FdStat;
 
-use crate::{
-    __ic_custom_args_get, __ic_custom_args_sizes_get, __ic_custom_clock_res_get,
-    __ic_custom_clock_time_get, __ic_custom_environ_get, __ic_custom_environ_sizes_get,
-    __ic_custom_fd_prestat_dir_name, __ic_custom_fd_prestat_get, __ic_custom_path_create_directory,
-    __ic_custom_path_open, __ic_custom_proc_exit, __ic_custom_random_get, init,
-    wasi::{self, Fd, Dircookie, Filetype, FILETYPE_DIRECTORY}, __ic_custom_fd_readdir,
-};
+use crate::*;
+
+use crate::wasi;
 
 #[test]
 fn test_environ_get() {
@@ -259,13 +252,12 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
 }
 
 #[test]
-fn test_create_dir_and_file_in_it() {
+fn test_create_dirs_and_file_in_it() {
     unsafe {
         init(&[], &[]);
     }
 
     let root_fd = 3;
-
     let new_file_name = String::from("file.txt");
 
     // create dirs
@@ -367,12 +359,12 @@ fn test_create_dir_and_file_in_it() {
             let d_namlen = bytes[idx + 16] as usize;
             
             let bytes_ptr = bytes.as_mut_ptr().add(idx + 21);
-            let name = unsafe {
-                let name_slice = std::slice::from_raw_parts(bytes_ptr, d_namlen);
-                std::str::from_utf8(name_slice)
+
+            let name_slice = std::slice::from_raw_parts(bytes_ptr, d_namlen);
+
+            let name = std::str::from_utf8(name_slice)
                     .expect("Failed to convert bytes to string")
-                    .to_string()
-            };
+                    .to_string();
 
             folders.push(name);
             
@@ -389,5 +381,181 @@ fn test_create_dir_and_file_in_it() {
     assert!(folders[0] == "test_folder1");
     assert!(folders[1] == "test_folder2");
     assert!(folders[2] == "test_folder3");
+
+}
+
+
+#[test]
+fn test_writing_and_reading() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let root_fd = 3;
+    let new_file_name = String::from("file.txt");
+
+    let mut file_fd = 0;
+
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            1 + 4 + 8,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    unsafe { __ic_custom_fd_write(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    ) };
+
+    __ic_custom_fd_close(file_fd);
+
+
+    // open file for reading
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            0,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+
+    let mut buf_to_read1 = String::from("................");
+    let mut buf_to_read2 = String::from("................");
+
+    let mut read_buf = vec![
+        wasi::Ciovec { buf: buf_to_read1.as_mut_ptr(), buf_len: buf_to_read1.len()},
+        wasi::Ciovec { buf: buf_to_read2.as_mut_ptr(), buf_len: buf_to_read2.len()},
+    ];
+
+    let mut bytes_read: wasi::Size = 0;
+
+    let res = unsafe {__ic_custom_fd_read(file_fd,
+        read_buf.as_mut_ptr(), read_buf.len() as i32,
+        (&mut bytes_read) as *mut wasi::Size
+    )};
+    assert!(res == 0);
+
+    assert!(buf_to_read1 == "This is a sample");
+    assert!(buf_to_read2 == " text.1234567890");
+
+}
+
+
+#[test]
+fn test_writing_and_reading_from_a_stationary_pointer() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let root_fd = 3;
+    let new_file_name = String::from("file.txt");
+
+    let mut file_fd = 0;
+
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            1 + 4 + 8,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    unsafe { __ic_custom_fd_pwrite(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        0,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    __ic_custom_fd_close(file_fd);
+
+
+    // open file for reading
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            0,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    let mut buf_to_read1 = String::from("................");
+    let mut buf_to_read2 = String::from("................");
+
+    let mut read_buf = vec![
+        wasi::Ciovec { buf: buf_to_read1.as_mut_ptr(), buf_len: buf_to_read1.len()},
+        wasi::Ciovec { buf: buf_to_read2.as_mut_ptr(), buf_len: buf_to_read2.len()}
+    ];
+
+    let mut bytes_read: wasi::Size = 0;
+
+    let res = unsafe {__ic_custom_fd_pread(file_fd,
+        read_buf.as_mut_ptr(), (read_buf.len()) as i32, 2, 
+        (&mut bytes_read) as *mut wasi::Size
+    )};
+
+    assert!(res == 0);
+
+    println!("info read1: {}", buf_to_read1);
+    println!("info read2: {}", buf_to_read2);
+ 
+    assert!(buf_to_read1 == "is is a sample t");
+    assert!(buf_to_read2 == "ext.1234567890..");
+
+
 
 }

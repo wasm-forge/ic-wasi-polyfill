@@ -4,7 +4,12 @@ use stable_fs::{
     storage::types::DirEntryIndex,
 };
 
+#[cfg(target_arch = "wasm32")]
 use crate::wasi;
+#[cfg(not(all(target_arch = "wasm32")))]
+use crate::wasi_mock as wasi;
+
+
 
 pub fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     let path_bytes = unsafe { std::slice::from_raw_parts(path, path_len as wasi::Size) };
@@ -169,23 +174,6 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
     }
 
     panic!("Unsupported whence type!");
-}
-
-pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
-    let iovs = std::slice::from_raw_parts(iovs, len as usize);
-
-    let mut written = 0;
-
-    for iov in iovs {
-        let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
-        let str = std::str::from_utf8(buf).unwrap_or("");
-        ic_cdk::api::print(str);
-        written += iov.buf_len;
-    }
-
-    *res = written;
-
-    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 #[cfg(test)]
