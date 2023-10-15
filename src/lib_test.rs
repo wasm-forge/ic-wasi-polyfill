@@ -99,9 +99,7 @@ fn test_random_get() {
 
     unsafe { random_buf1.set_len(buf_len) };
 
-    unsafe {
-        init(&seed, &init_env);
-    }
+    unsafe { init_seed(&seed) };
 
     let mut random_buf2: Vec<u8> = Vec::with_capacity(buf_len);
 
@@ -641,3 +639,143 @@ fn test_writing_and_reading_file_stats() {
     assert!(file_stat.atim == atime);
     assert!(file_stat.mtim == mtime);
 }
+
+#[test]
+fn test_forward_to_debug_is_called() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    let res = unsafe { __ic_custom_fd_write(1,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    assert!(res == 0);
+    assert!(bytes_written > 0);
+    
+}
+
+
+
+#[test]
+fn test_link_seek_tell() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let root_fd = 3;
+    let new_file_name = String::from("file.txt");
+
+    let mut file_fd = 0;
+
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            1 + 4 + 8,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    unsafe { __ic_custom_fd_write(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    // test seek and tell
+    let mut position: wasi::Filesize = 0;
+
+    unsafe { __ic_custom_fd_tell(file_fd, &mut position as *mut wasi::Filesize) };
+
+    assert!(position == 32);
+
+    let mut position_after_seek: wasi::Filesize = 0;
+    unsafe { __ic_custom_fd_seek(file_fd, 10, 0, &mut position_after_seek as *mut wasi::Filesize) };
+
+    assert!(position_after_seek == 10);
+
+
+    // create link
+    let link_file_name = String::from("file_link.txt");
+
+    let res = __ic_custom_path_link(root_fd, 0, 
+        new_file_name.as_ptr(), new_file_name.len() as i32, 
+        root_fd, link_file_name.as_ptr(), link_file_name.len() as i32);
+
+    assert!(res == 0);
+
+    let mut link_file_fd = 0;
+
+    // open file for reading
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            link_file_name.as_ptr(),
+            link_file_name.len() as i32,
+            0,
+            0,
+            0,
+            0,
+            (&mut link_file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    // the file should be on the position
+    let mut position_link: wasi::Filesize = 0;
+    unsafe { __ic_custom_fd_seek(link_file_fd, 10, 0, &mut position_link as *mut wasi::Filesize) };
+
+    assert!(position_link == 10);
+
+
+    let mut buf_to_read1 = String::from("................");
+
+    let mut read_buf = vec![
+        wasi::Ciovec { buf: buf_to_read1.as_mut_ptr(), buf_len: buf_to_read1.len()}
+    ];
+
+    let mut bytes_read: wasi::Size = 0;
+
+    let res = unsafe {__ic_custom_fd_read(link_file_fd,
+        read_buf.as_mut_ptr(), (read_buf.len()) as i32, 
+        (&mut bytes_read) as *mut wasi::Size
+    )};
+
+    assert!(res == 0);
+
+    assert!(buf_to_read1 == "sample text.1234");
+
+}
+

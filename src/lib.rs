@@ -12,8 +12,10 @@ use stable_fs::storage::transient::TransientStorage;
 
 
 #[cfg(target_arch = "wasm32")]
+#[cfg(not(tarpaulin_include))]
 mod wasi;
 #[cfg(not(all(target_arch = "wasm32")))]
+#[cfg(not(tarpaulin_include))]
 mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
 use wasi_mock as wasi;
@@ -1530,6 +1532,7 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
+#[cfg(not(tarpaulin_include))]
 pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
     raw_init_seed(seed, len);
 
