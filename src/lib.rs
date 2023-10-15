@@ -86,11 +86,12 @@ thread_local! {
 #[allow(unused_macros)]
 macro_rules! debug_instructions {
     ($fn_name:literal) => {
-        ic_print(format!("\t{}", $fn_name))
+        ic_print(&format!("\t{}", $fn_name))
     };
     ($fn_name:literal, $stime:expr) => {
         let etime = ic_instruction_counter();
-        ic_print(format!(
+
+        ic_print(&format!(
             "\t{}\tinstructions:\t{}\t",
             $fn_name,
             etime - ($stime)
@@ -98,7 +99,7 @@ macro_rules! debug_instructions {
     };
     ($fn_name:literal, $stime:expr, $params:expr) => {
         let etime = ic_instruction_counter();
-        ic_print(format!(
+        ic_print(&format!(
             "\t{}\tinstructions:\t{}\tparameters:\t{}",
             $fn_name,
             etime - ($stime),
