@@ -38,7 +38,10 @@ pub fn ic_instruction_counter() -> u64 {
 use ic_cdk::api::time as ic_time;
 #[cfg(not(all(target_arch = "wasm32")))]
 fn ic_time() -> u64 {
-    42
+    use std::time::UNIX_EPOCH;
+    let ret = std::time::SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64;
+
+    ret
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -413,7 +416,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut u8) -> i32 {
+pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi::Filestat) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
@@ -1559,7 +1562,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_fd_fdstat_get(0, null_mut::<wasi::Fdstat>());
                 __ic_custom_fd_fdstat_set_flags(0, 0);
                 __ic_custom_fd_fdstat_set_rights(0, 0, 0);
-                __ic_custom_fd_filestat_get(0, null_mut::<u8>());
+                __ic_custom_fd_filestat_get(0, null_mut::<wasi::Filestat>());
                 __ic_custom_fd_filestat_set_size(0, 0);
                 __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
                 __ic_custom_fd_pread(0, null::<wasi::Ciovec>(), 0, 0, null_mut::<wasi::Size>());

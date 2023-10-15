@@ -189,7 +189,7 @@ fn test_clock_res_get_clock_time_get() {
         unsafe { __ic_custom_clock_time_get(0, 1_000_000_000, (&mut resolution) as *mut u64) };
 
     assert!(res == 0);
-    assert!(resolution == 42);
+    assert!(resolution > 0);
 }
 
 #[test]
@@ -550,12 +550,94 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
 
     assert!(res == 0);
 
-    println!("info read1: {}", buf_to_read1);
-    println!("info read2: {}", buf_to_read2);
- 
     assert!(buf_to_read1 == "is is a sample t");
     assert!(buf_to_read2 == "ext.1234567890..");
 
 
 
+}
+
+#[test]
+fn test_writing_and_reading_file_stats() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let root_fd = 3;
+    let new_file_name = String::from("file.txt");
+
+    let mut file_fd = 0;
+
+    unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            1 + 4 + 8,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    unsafe { __ic_custom_fd_write(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    __ic_custom_fd_sync(file_fd);
+
+    let mut file_stat: wasi::Filestat = wasi::Filestat {
+        dev: 0,
+        ino: 0,
+        filetype: wasi::FILETYPE_UNKNOWN,
+        nlink: 0,
+        size: 0,
+        atim: 0,
+        mtim: 0,
+        ctim: 0,
+    };
+
+    __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+
+    let mtime = ic_time();
+    let atime = ic_time();
+
+    __ic_custom_fd_filestat_set_times(file_fd, 1 as i64, 2 as i64, 1 + 2 + 4 + 8);
+    __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+
+    assert!(file_stat.filetype == wasi::FILETYPE_REGULAR_FILE);
+    assert!(file_stat.nlink == 1);
+    assert!(file_stat.size == 32);
+    assert!(file_stat.atim > file_stat.ctim);
+    assert!(file_stat.mtim > file_stat.ctim);
+    
+    unsafe { __ic_custom_fd_write(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    __ic_custom_fd_filestat_set_times(file_fd, atime as i64, mtime as i64, 1 + 4);
+    __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+
+    assert!(file_stat.filetype == wasi::FILETYPE_REGULAR_FILE);
+    assert!(file_stat.nlink == 1);
+    assert!(file_stat.size == 64);
+    assert!(file_stat.atim == atime);
+    assert!(file_stat.mtim == mtime);
 }
