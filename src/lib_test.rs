@@ -1,8 +1,100 @@
 
 
 use crate::*;
-
 use crate::wasi;
+
+#[cfg(test)]
+fn create_test_file(root_fd: Fd, file_name: &str) -> Fd {
+
+    let new_file_name = String::from(file_name);
+
+    let mut file_fd = 0;
+
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd as i32,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            1 + 4 + 8,
+            0,
+            0,
+            0,
+            (&mut file_fd) as *mut i32,
+        )
+    };
+    assert!(res == 0);
+
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+    
+    let src = vec![
+        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
+        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
+    ];
+
+    let mut bytes_written: wasi::Size = 0;
+
+    unsafe { __ic_custom_fd_write(file_fd,
+        src.as_ptr(),
+        src.len() as i32,
+        (&mut bytes_written) as *mut wasi::Size
+    )};
+
+    file_fd as Fd
+}
+
+#[cfg(test)]
+fn read_directory(root_fd: Fd) -> Vec<String> {
+
+    let len = 1000;
+    let mut bytes: Vec<u8> = Vec::with_capacity(len);
+
+    let mut new_length: wasi::Size = 0;
+
+    let res = __ic_custom_fd_readdir(
+        root_fd as i32,
+        bytes.as_mut_ptr(), len as i32,
+        0,
+        (&mut new_length) as * mut wasi::Size
+    );
+
+    assert!(res == 0);
+
+    unsafe { bytes.set_len(new_length) };
+  
+
+    let mut folders: Vec<String> = Vec::new();
+
+    let mut idx = 0usize;
+
+    loop {
+
+        unsafe {
+
+            let d_namlen = bytes[idx + 16] as usize;
+            
+            let bytes_ptr = bytes.as_mut_ptr().add(idx + 21);
+
+            let name_slice = std::slice::from_raw_parts(bytes_ptr, d_namlen);
+
+            let name = std::str::from_utf8(name_slice)
+                    .expect("Failed to convert bytes to string")
+                    .to_string();
+
+            folders.push(name);
+            
+            idx += 21 + d_namlen;
+        };
+
+
+        if idx >= bytes.len() {
+            break;
+        }
+    }
+
+    folders
+}
 
 #[test]
 fn test_environ_get() {
@@ -350,6 +442,9 @@ fn test_create_dirs_and_file_in_it() {
 
     unsafe { bytes.set_len(new_length) };
 
+
+
+
     let mut folders: Vec<String> = Vec::new();
 
     let mut idx = 0usize;
@@ -393,41 +488,10 @@ fn test_writing_and_reading() {
         init(&[], &[]);
     }
 
-    let root_fd = 3;
+    let root_fd = 3i32;
     let new_file_name = String::from("file.txt");
 
-    let mut file_fd = 0;
-
-    let res = unsafe {
-        __ic_custom_path_open(
-            root_fd,
-            0,
-            new_file_name.as_ptr(),
-            new_file_name.len() as i32,
-            1 + 4 + 8,
-            0,
-            0,
-            0,
-            (&mut file_fd) as *mut i32,
-        )
-    };
-    assert!(res == 0);
-
-    let text_to_write1 = String::from("This is a sample text.");
-    let text_to_write2 = String::from("1234567890");
-    
-    let src = vec![
-        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
-        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
-    ];
-
-    let mut bytes_written: wasi::Size = 0;
-
-    unsafe { __ic_custom_fd_write(file_fd,
-        src.as_ptr(),
-        src.len() as i32,
-        (&mut bytes_written) as *mut wasi::Size
-    ) };
+    let mut file_fd = create_test_file(root_fd as Fd, &new_file_name) as i32;
 
     __ic_custom_fd_close(file_fd);
 
@@ -680,41 +744,11 @@ fn test_link_seek_tell() {
         init(&[], &[]);
     }
 
-    let root_fd = 3;
+    let root_fd = 3i32;
     let new_file_name = String::from("file.txt");
 
-    let mut file_fd = 0;
+    let file_fd = create_test_file(root_fd as Fd, &new_file_name) as i32;
 
-    let res = unsafe {
-        __ic_custom_path_open(
-            root_fd,
-            0,
-            new_file_name.as_ptr(),
-            new_file_name.len() as i32,
-            1 + 4 + 8,
-            0,
-            0,
-            0,
-            (&mut file_fd) as *mut i32,
-        )
-    };
-    assert!(res == 0);
-
-    let text_to_write1 = String::from("This is a sample text.");
-    let text_to_write2 = String::from("1234567890");
-    
-    let src = vec![
-        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
-        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
-    ];
-
-    let mut bytes_written: wasi::Size = 0;
-
-    unsafe { __ic_custom_fd_write(file_fd,
-        src.as_ptr(),
-        src.len() as i32,
-        (&mut bytes_written) as *mut wasi::Size
-    )};
 
     // test seek and tell
     let mut position: wasi::Filesize = 0;
@@ -782,6 +816,8 @@ fn test_link_seek_tell() {
 
 }
 
+
+
 #[test]
 fn test_seek_types() {
 
@@ -789,41 +825,7 @@ fn test_seek_types() {
         init(&[], &[]);
     }
 
-    let root_fd = 3;
-    let new_file_name = String::from("file.txt");
-
-    let mut file_fd = 0;
-
-    let res = unsafe {
-        __ic_custom_path_open(
-            root_fd,
-            0,
-            new_file_name.as_ptr(),
-            new_file_name.len() as i32,
-            1 + 4 + 8,
-            0,
-            0,
-            0,
-            (&mut file_fd) as *mut i32,
-        )
-    };
-    assert!(res == 0);
-
-    let text_to_write1 = String::from("This is a sample text.");
-    let text_to_write2 = String::from("1234567890");
-    
-    let src = vec![
-        wasi::Ciovec { buf: text_to_write1.as_ptr(), buf_len: text_to_write1.len()},
-        wasi::Ciovec { buf: text_to_write2.as_ptr(), buf_len: text_to_write2.len()},
-    ];
-
-    let mut bytes_written: wasi::Size = 0;
-
-    unsafe { __ic_custom_fd_write(file_fd,
-        src.as_ptr(),
-        src.len() as i32,
-        (&mut bytes_written) as *mut wasi::Size
-    )};
+    let file_fd = create_test_file(3 as Fd, "file.txt") as i32;
 
     // test seek and tell
     let mut position: wasi::Filesize = 0;
@@ -842,6 +844,92 @@ fn test_seek_types() {
     unsafe { __ic_custom_fd_seek(file_fd, -2, 2, &mut position_after_seek as *mut wasi::Filesize) };
 
     assert!(position_after_seek == 30);
+
+}
+
+
+#[test]
+fn test_advice() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let file_fd = create_test_file(3, "file.txt") as i32;
+
+    assert!(__ic_custom_fd_advise(file_fd, 0, 500, 0) == 0);
+
+    assert!(__ic_custom_fd_advise(file_fd + 10, 0, 500, 0) > 0);
+
+    assert!(__ic_custom_fd_advise(file_fd, 0, 500, 10) > 0);
+
+}
+
+#[test]
+fn test_allocate() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let file_fd = create_test_file(3, "file.txt") as i32;
+
+    assert!(__ic_custom_fd_allocate(file_fd, 0, 500) == 0);
+    assert!(__ic_custom_fd_allocate(7, 0, 500) == wasi::ERRNO_BADF.raw() as i32);
+
+
+}
+
+#[test]
+fn test_datasync() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let file_fd = create_test_file(3, "file.txt") as i32;
+
+    assert!(__ic_custom_fd_datasync(file_fd) == 0);
+    assert!(__ic_custom_fd_datasync(7) == wasi::ERRNO_BADF.raw() as i32);
+
+}
+
+
+#[test]
+fn test_rename_unlink() {
+
+    unsafe {
+        init(&[], &[]);
+    }
+
+    let filename1 = "file1.txt";
+    let filename2 = "file2.txt";
+    let filename3 = "file3.txt";
+    let filename1_renamed = "file1_renamed.txt";
+
+    let file_fd = create_test_file(3, filename1) as i32;
+    __ic_custom_fd_close(file_fd);
+    let file_fd = create_test_file(3, filename2) as i32;
+    __ic_custom_fd_close(file_fd);
+    let file_fd = create_test_file(3, filename3) as i32;
+    __ic_custom_fd_close(file_fd);
+
+
+    let res = __ic_custom_path_rename(
+        3, filename1.as_ptr(), filename1.len() as i32, 
+        3, filename1_renamed.as_ptr(), filename1_renamed.len() as i32);
+    assert!(res == 0);
+
+    let res = __ic_custom_path_unlink_file(3,filename3.as_ptr(), filename3.len() as i32);
+    assert!(res == 0);
+
+    // list files
+    let persons = read_directory(3);
+
+    assert!(persons.len() == 2);
+
+    assert!(persons.contains(&String::from("file1_renamed.txt")));
+    assert!(persons.contains(&String::from("file2.txt")));
 
 }
 
