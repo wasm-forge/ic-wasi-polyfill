@@ -1,5 +1,7 @@
 
 
+use std::ptr::{null, null_mut};
+
 use crate::*;
 use crate::wasi;
 
@@ -441,9 +443,6 @@ fn test_create_dirs_and_file_in_it() {
     assert!(res == 0);
 
     unsafe { bytes.set_len(new_length) };
-
-
-
 
     let mut folders: Vec<String> = Vec::new();
 
@@ -931,5 +930,60 @@ fn test_rename_unlink() {
     assert!(persons.contains(&String::from("file1_renamed.txt")));
     assert!(persons.contains(&String::from("file2.txt")));
 
+}
+
+
+
+#[test]
+#[should_panic]
+fn test_unimplemented_path_readlink() {
+    __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_path_symlink() {
+    __ic_custom_path_symlink(0, 0, 0, 0, 0);
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_poll_oneoff() {
+    __ic_custom_poll_oneoff(
+        null::<wasi::Subscription>(),
+        null_mut::<wasi::Event>(),
+        0,
+        0,
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_proc_raise() {
+    __ic_custom_proc_raise(0);
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_sock_accept() {
+    __ic_custom_sock_accept(0, 0, 0);
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_sock_recv() {
+    __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_sock_send() {
+    __ic_custom_sock_send(0, 0, 0, 0, 0);
+}
+
+#[test]
+#[should_panic]
+fn test_unimplemented_sock_shutdown() {
+    __ic_custom_sock_shutdown(0, 0);
 }
 
