@@ -10,7 +10,6 @@ use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
 use stable_fs::storage::stable::StableStorage;
 use stable_fs::storage::transient::TransientStorage;
 
-
 #[cfg(target_arch = "wasm32")]
 #[cfg(not(tarpaulin_include))]
 mod wasi;
@@ -20,14 +19,12 @@ mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
 use wasi_mock as wasi;
 
-
 use environment::*;
 use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
 
 mod environment;
 mod wasi_helpers;
-
 
 #[cfg(target_arch = "wasm32")]
 use ic_cdk::api::instruction_counter as ic_instruction_counter;
@@ -41,7 +38,10 @@ use ic_cdk::api::time as ic_time;
 #[cfg(not(all(target_arch = "wasm32")))]
 fn ic_time() -> u64 {
     use std::time::UNIX_EPOCH;
-    let ret = std::time::SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64;
+    let ret = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as u64;
 
     ret
 }
@@ -69,7 +69,6 @@ pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wa
 
     wasi::ERRNO_SUCCESS.raw() as i32
 }
-
 
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
@@ -259,9 +258,9 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 
         unsafe {
             let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
-            
+
             let reading_result = fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize);
-            
+
             match reading_result {
                 Ok(r) => {
                     *res = r as wasi::Size;
@@ -625,7 +624,6 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32 {
-    
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
@@ -721,15 +719,13 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i3
     let start = ic_instruction_counter();
 
     let result = FS.with(|fs| {
-        let new_flags = new_flags as wasi::Fdflags;
-
         let mut fs = fs.borrow_mut();
 
         let stat = fs.get_stat(fd as Fd);
 
         match stat {
             Ok((_ftype, mut fdstat)) => {
-                let new_flags = FdFlags::from_bits(new_flags);
+                let new_flags = FdFlags::from_bits(new_flags as u16);
 
                 if new_flags.is_none() {
                     return wasi::ERRNO_INVAL.raw() as i32;
@@ -1108,7 +1104,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     parent_fd: i32,
-    flags: i32,
+    simlink_flags: i32,
     path: *const u8,
     path_len: i32,
     result: *mut wasi::Filestat,
@@ -1117,7 +1113,8 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     let start = ic_instruction_counter();
     let file_name = get_file_name(path, path_len as wasi::Size);
 
-    prevent_elimination(&[flags]);
+    prevent_elimination(&[simlink_flags]);
+
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
@@ -1558,7 +1555,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_args_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
                 __ic_custom_clock_res_get(0, null_mut::<u64>());
                 __ic_custom_clock_time_get(0, 0, null_mut::<u64>());
-                
+
                 __ic_custom_fd_advise(0, 0, 0, 0);
                 __ic_custom_fd_allocate(0, 0, 0);
                 __ic_custom_fd_datasync(0);
