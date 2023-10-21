@@ -1174,4 +1174,3 @@ fn test_fd_renumber_over_opened_file() {
     assert!(position == 32);
 
 }
- 

@@ -15,19 +15,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: rustup update stable
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
+      
     - name: Run tests
       run: cargo test --verbose
       
-    - name: Run coverage
-      uses: actions-rs/tarpaulin@v0.1
-      with:
-        version: '0.15.0'
-        args: '--features report_wasi_calls,transient'
 
-    - name: Upload coverage reports to Codecov
+    - name: Generate code coverage
+      run: cargo llvm-cov --features report_wasi_calls,transient --ignore-filename-regex=wasi_mock.rs --workspace --lcov --output-path lcov.info
+
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} 
+        files: lcov.info
+        fail_ci_if_error: true
+    
+
