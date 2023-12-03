@@ -32,7 +32,7 @@ fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Vec<St
             buf_len: str.len(),
         });
     }
-    
+
     let mut bytes_written: wasi::Size = 0;
 
     unsafe {
@@ -44,17 +44,19 @@ fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Vec<St
         )
     };
 
-
     file_fd as Fd
 }
 
 #[cfg(test)]
 fn create_test_file(parent_fd: Fd, file_name: &str) -> Fd {
-
-    create_test_file_with_content(parent_fd, file_name, vec![
-        String::from("This is a sample text."),
-        String::from("1234567890")
-    ])
+    create_test_file_with_content(
+        parent_fd,
+        file_name,
+        vec![
+            String::from("This is a sample text."),
+            String::from("1234567890"),
+        ],
+    )
 }
 
 #[cfg(test)]
@@ -121,9 +123,9 @@ fn test_environ_get() {
 
     let lines = lines;
 
-    unsafe {
-        init(&[12, 3, 54, 1], &init_env);
-    }
+    
+    init(&[12, 3, 54, 1], &init_env);
+    
 
     // get environment sizes
     let mut entry_count: wasi::Size = 0;
@@ -186,10 +188,8 @@ fn test_random_get() {
 
     let seed = [12, 3, 54, 21];
 
-    unsafe {
-        init(&seed, &init_env);
-    }
-
+    init(&seed, &init_env);
+    
     let buf_len: wasi::Size = 14usize;
 
     let mut random_buf1: Vec<u8> = Vec::with_capacity(buf_len);
@@ -200,7 +200,7 @@ fn test_random_get() {
 
     unsafe { random_buf1.set_len(buf_len) };
 
-    unsafe { init_seed(&seed) };
+    init_seed(&seed);
 
     let mut random_buf2: Vec<u8> = Vec::with_capacity(buf_len);
 
@@ -216,18 +216,14 @@ fn test_random_get() {
 #[test]
 #[should_panic]
 fn test_proc_exit() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     __ic_custom_proc_exit(5);
 }
 
 #[test]
 fn test_args_get() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let mut entry_count: wasi::Size = 0;
     let mut buffer_size: wasi::Size = 0;
@@ -273,9 +269,7 @@ fn test_args_get() {
 
 #[test]
 fn test_clock_res_get_clock_time_get() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let mut resolution: u64 = 0;
 
@@ -293,9 +287,7 @@ fn test_clock_res_get_clock_time_get() {
 
 #[test]
 fn test_fd_prestat_init_fd_prestat_dir_name() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let mut root_fd = 0;
     let mut prestat = wasi::Prestat {
@@ -352,9 +344,7 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
 
 #[test]
 fn test_create_dirs_and_file_in_it() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
@@ -489,9 +479,7 @@ fn test_create_dirs_and_file_in_it() {
 
 #[test]
 fn test_writing_and_reading() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let root_fd = 3i32;
     let new_file_name = String::from("file.txt");
@@ -548,9 +536,7 @@ fn test_writing_and_reading() {
 
 #[test]
 fn test_writing_and_reading_from_a_stationary_pointer() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
@@ -650,9 +636,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
 
 #[test]
 fn test_writing_and_reading_file_stats() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
@@ -711,13 +695,18 @@ fn test_writing_and_reading_file_stats() {
         ctim: 0,
     };
 
-    __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+    unsafe {
+        __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+    }
 
     let mtime = ic_time();
     let atime = ic_time();
 
     __ic_custom_fd_filestat_set_times(file_fd, 1 as i64, 2 as i64, 1 + 2 + 4 + 8);
-    __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+
+    unsafe {
+        __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+    }
 
     assert!(file_stat.filetype == wasi::FILETYPE_REGULAR_FILE);
     assert!(file_stat.nlink == 1);
@@ -735,7 +724,10 @@ fn test_writing_and_reading_file_stats() {
     };
 
     __ic_custom_fd_filestat_set_times(file_fd, atime as i64, mtime as i64, 1 + 4);
-    __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+
+    unsafe {
+        __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+    }
 
     assert!(file_stat.filetype == wasi::FILETYPE_REGULAR_FILE);
     assert!(file_stat.nlink == 1);
@@ -746,9 +738,7 @@ fn test_writing_and_reading_file_stats() {
 
 #[test]
 fn test_forward_to_debug_is_called() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let text_to_write1 = String::from("This is a sample text.");
     let text_to_write2 = String::from("1234567890");
@@ -781,9 +771,7 @@ fn test_forward_to_debug_is_called() {
 
 #[test]
 fn test_link_seek_tell() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let root_fd = 3i32;
     let new_file_name = String::from("file.txt");
@@ -880,9 +868,7 @@ fn test_link_seek_tell() {
 
 #[test]
 fn test_seek_types() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
 
     let file_fd = create_test_file(3 as Fd, "file.txt") as i32;
 
@@ -928,9 +914,8 @@ fn test_seek_types() {
 
 #[test]
 fn test_advice() {
-    unsafe {
-        init(&[], &[]);
-    }
+    
+    init(&[], &[]);
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
@@ -943,9 +928,8 @@ fn test_advice() {
 
 #[test]
 fn test_allocate() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
+
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
@@ -955,9 +939,8 @@ fn test_allocate() {
 
 #[test]
 fn test_datasync() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
+
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
@@ -967,9 +950,8 @@ fn test_datasync() {
 
 #[test]
 fn test_rename_unlink() {
-    unsafe {
-        init(&[], &[]);
-    }
+    init(&[], &[]);
+
 
     let filename1 = "file1.txt";
     let filename2 = "file2.txt";
@@ -1060,6 +1042,9 @@ fn test_unimplemented_sock_shutdown() {
 
 #[test]
 fn test_fd_stat_get_fd_stat_set_flags() {
+    
+    init(&[], &[]);
+    
     let mut stat: wasi::Fdstat = wasi::Fdstat {
         fs_filetype: wasi::FILETYPE_UNKNOWN,
         fs_flags: 0,
@@ -1067,7 +1052,7 @@ fn test_fd_stat_get_fd_stat_set_flags() {
         fs_rights_inheriting: wasi::RIGHTS_FD_READ,
     };
 
-    let mut file_fd = create_test_file(3, "file.txt") as i32;
+    let file_fd = create_test_file(3, "file.txt") as i32;
 
     let ret = unsafe { __ic_custom_fd_fdstat_get(file_fd, (&mut stat) as *mut wasi::Fdstat) };
     assert!(ret == 0);
@@ -1087,6 +1072,10 @@ fn test_fd_stat_get_fd_stat_set_flags() {
 
 #[test]
 fn test_path_filestat_get_set_times() {
+    
+    init(&[], &[]);
+
+
     let filename = "file.txt";
 
     let file_fd = create_test_file(3, filename) as i32;
@@ -1123,7 +1112,6 @@ fn test_path_filestat_get_set_times() {
         1 + 4,
     );
 
-
     let mut filestat2: wasi::Filestat = wasi::Filestat {
         dev: 0,
         ino: 0,
@@ -1147,19 +1135,20 @@ fn test_path_filestat_get_set_times() {
 
     assert!(filestat2.atim == 123);
     assert!(filestat2.mtim == 456);
-
-
 }
-
 
 #[test]
 fn test_fd_renumber_over_opened_file() {
+     
+    init(&[], &[]);
+
     let filename = "file.txt";
 
     let file_fd = create_test_file(3, filename) as i32;
 
     let filename2 = "file2.txt";
-    let second_file_fd = create_test_file_with_content(3, filename2, vec![String::from("12345")]) as i32;
+    let second_file_fd =
+        create_test_file_with_content(3, filename2, vec![String::from("12345")]) as i32;
 
     let mut position: wasi::Filesize = 0 as wasi::Filesize;
     unsafe { __ic_custom_fd_tell(second_file_fd, &mut position as *mut wasi::Filesize) };
@@ -1172,5 +1161,4 @@ fn test_fd_renumber_over_opened_file() {
 
     // we expect the create_test_file to leave the cursor at the position 32
     assert!(position == 32);
-
 }
