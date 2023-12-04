@@ -1,13 +1,13 @@
 [package]
 name = "ic-wasi-polyfill"
-version = "0.3.11"
+version = "0.3.12"
 edition = "2021"
 
 
 [dependencies]
 ic-cdk = "0.8"
 ic-stable-structures = "0.5.4"
-stable-fs = { git = "https://github.com/wasm-forge/stable-fs", rev = "61cfc97b4b82ef2dc155542c12c91c84fcce9f10" }
+stable-fs = { git = "https://github.com/wasm-forge/stable-fs", rev = "40b00f0b8fe3b874caff83b8b63eb421fcc971ea" }
 
 rand = "0.8.5"
 function_name = "0.3.0"

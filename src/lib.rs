@@ -1,12 +1,13 @@
 use std::cell::RefCell;
 
-use ic_stable_structures::DefaultMemoryImpl;
+use ic_stable_structures::{DefaultMemoryImpl, Memory};
 
 use rand::{RngCore, SeedableRng};
 
 use stable_fs::fs::{DstBuf, Fd, SrcBuf};
 use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
 
+use stable_fs::storage::dummy::DummyStorage;
 use stable_fs::storage::stable::StableStorage;
 use stable_fs::storage::transient::TransientStorage;
 
@@ -38,12 +39,12 @@ use ic_cdk::api::time as ic_time;
 #[cfg(not(all(target_arch = "wasm32")))]
 fn ic_time() -> u64 {
     use std::time::UNIX_EPOCH;
-    let ret = std::time::SystemTime::now()
+
+    std::time::SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_nanos() as u64;
-
-    ret
+        .as_nanos() as u64
+    
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -53,6 +54,7 @@ fn ic_print(value: &str) {
     println!("{}", value);
 }
 
+#[allow(clippy::missing_safety_doc)]
 pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
     let iovs = std::slice::from_raw_parts(iovs, len as usize);
 
@@ -74,17 +76,10 @@ thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
 
     static FS: RefCell<FileSystem> = RefCell::new(
-
-        if cfg!(feature = "transient") {
-            FileSystem::new(Box::new(TransientStorage::new())).unwrap()
-        } else {
-            FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
-        }
-
+        FileSystem::new(Box::new(DummyStorage::new())).unwrap()
     );
 
     static ENV: RefCell<Environment> = RefCell::new(Environment::new());
-
 }
 
 #[allow(unused_macros)]
@@ -417,7 +412,8 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi::Filestat) -> i32 {
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi::Filestat) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
@@ -439,7 +435,6 @@ pub extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi::Files
                 };
 
                 unsafe {
-                    let ret_val = ret_val as *mut wasi::Filestat;
                     *ret_val = value;
                 }
 
@@ -1504,9 +1499,10 @@ fn prevent_elimination(args: &[i32]) {
 }
 
 #[no_mangle]
-#[allow(clippy::missing_safety_doc)]
-pub unsafe fn init_seed(seed: &[u8]) {
-    raw_init_seed(seed.as_ptr(), seed.len());
+pub fn init_seed(seed: &[u8]) {
+    unsafe {
+        raw_init_seed(seed.as_ptr(), seed.len());
+    }
 }
 
 #[no_mangle]
@@ -1531,6 +1527,19 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 #[allow(clippy::missing_safety_doc)]
 #[cfg(not(tarpaulin_include))]
 pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
+
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+        
+        if fs.get_storage_version() == 0 {
+            *fs = if cfg!(feature = "transient") {
+                FileSystem::new(Box::new(TransientStorage::new())).unwrap()
+            } else {
+                FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
+            }
+        }
+    });
+    
     raw_init_seed(seed, len);
 
     COUNTER.with(|var| {
@@ -1620,16 +1629,29 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 //
 // Example:
 // init(&[12,3,54,1], &[("PATH", "/usr/bin"), ("UID", "1028"), ("HOME", "/home/user")]);
-#[no_mangle]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
+pub fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
     ENV.with(|env| {
         let mut env = env.borrow_mut();
         env.set_environment(env_pairs);
     });
 
-    // TODO: environment support in the raw_init
-    raw_init(seed.as_ptr(), seed.len());
+    unsafe {
+        raw_init(seed.as_ptr(), seed.len());
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub fn init_with_memory<M: Memory+'static>(seed: &[u8], env_pairs: &[(&str, &str)], memory: M) {
+
+
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+        
+        *fs = FileSystem::new(Box::new(StableStorage::new(memory))).unwrap();
+    });
+
+    init(seed, env_pairs);
 }
 
 #[cfg(test)]
