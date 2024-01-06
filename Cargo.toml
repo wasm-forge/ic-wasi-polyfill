@@ -1,6 +1,6 @@
 [package]
 name = "ic-wasi-polyfill"
-version = "0.3.12"
+version = "0.3.13"
 edition = "2021"
 keywords = ["ic", "wasi-polyfill"]
 description = "The project provides polyfill implementation of *wasi_unstable* and *wasi_snapshot_preview1* functions using IC System API."
@@ -9,7 +9,8 @@ license = "MIT"
 [dependencies]
 ic-cdk = "0.8"
 ic-stable-structures = "0.5.4"
-stable-fs = "0.1.9"
+stable-fs = "0.1.10"
+
 
 rand = "0.8.5"
 function_name = "0.3.0"
