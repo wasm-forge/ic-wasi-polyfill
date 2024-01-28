@@ -7,9 +7,9 @@ description = "The project provides polyfill implementation of *wasi_unstable* a
 license = "MIT"
 
 [dependencies]
-ic-cdk = "0.8"
-ic-stable-structures = "0.5.4"
-stable-fs = "0.1.10"
+ic-cdk = "0.12.1"
+ic-stable-structures = "0.6.2"
+stable-fs = "0.1.11"
 
 
 rand = "0.8.5"

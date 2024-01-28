@@ -12,10 +12,8 @@ use stable_fs::storage::stable::StableStorage;
 use stable_fs::storage::transient::TransientStorage;
 
 #[cfg(target_arch = "wasm32")]
-#[cfg(not(tarpaulin_include))]
 mod wasi;
 #[cfg(not(all(target_arch = "wasm32")))]
-#[cfg(not(tarpaulin_include))]
 mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
 use wasi_mock as wasi;
@@ -28,6 +26,7 @@ mod environment;
 mod wasi_helpers;
 
 #[cfg(target_arch = "wasm32")]
+#[cfg(feature = "report_wasi_calls")]
 use ic_cdk::api::instruction_counter as ic_instruction_counter;
 #[cfg(not(all(target_arch = "wasm32")))]
 pub fn ic_instruction_counter() -> u64 {
@@ -44,7 +43,6 @@ fn ic_time() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos() as u64
-    
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1527,10 +1525,9 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 #[allow(clippy::missing_safety_doc)]
 #[cfg(not(tarpaulin_include))]
 pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
-
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-        
+
         if fs.get_storage_version() == 0 {
             *fs = if cfg!(feature = "transient") {
                 FileSystem::new(Box::new(TransientStorage::new())).unwrap()
@@ -1539,7 +1536,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
             }
         }
     });
-    
+
     raw_init_seed(seed, len);
 
     COUNTER.with(|var| {
@@ -1642,12 +1639,10 @@ pub fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub fn init_with_memory<M: Memory+'static>(seed: &[u8], env_pairs: &[(&str, &str)], memory: M) {
-
-
+pub fn init_with_memory<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &str)], memory: M) {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
-        
+
         *fs = FileSystem::new(Box::new(StableStorage::new(memory))).unwrap();
     });
 

@@ -123,9 +123,7 @@ fn test_environ_get() {
 
     let lines = lines;
 
-    
     init(&[12, 3, 54, 1], &init_env);
-    
 
     // get environment sizes
     let mut entry_count: wasi::Size = 0;
@@ -189,7 +187,7 @@ fn test_random_get() {
     let seed = [12, 3, 54, 21];
 
     init(&seed, &init_env);
-    
+
     let buf_len: wasi::Size = 14usize;
 
     let mut random_buf1: Vec<u8> = Vec::with_capacity(buf_len);
@@ -914,7 +912,6 @@ fn test_seek_types() {
 
 #[test]
 fn test_advice() {
-    
     init(&[], &[]);
 
     let file_fd = create_test_file(3, "file.txt") as i32;
@@ -930,7 +927,6 @@ fn test_advice() {
 fn test_allocate() {
     init(&[], &[]);
 
-
     let file_fd = create_test_file(3, "file.txt") as i32;
 
     assert!(__ic_custom_fd_allocate(file_fd, 0, 500) == 0);
@@ -941,7 +937,6 @@ fn test_allocate() {
 fn test_datasync() {
     init(&[], &[]);
 
-
     let file_fd = create_test_file(3, "file.txt") as i32;
 
     assert!(__ic_custom_fd_datasync(file_fd) == 0);
@@ -951,7 +946,6 @@ fn test_datasync() {
 #[test]
 fn test_rename_unlink() {
     init(&[], &[]);
-
 
     let filename1 = "file1.txt";
     let filename2 = "file2.txt";
@@ -1042,9 +1036,8 @@ fn test_unimplemented_sock_shutdown() {
 
 #[test]
 fn test_fd_stat_get_fd_stat_set_flags() {
-    
     init(&[], &[]);
-    
+
     let mut stat: wasi::Fdstat = wasi::Fdstat {
         fs_filetype: wasi::FILETYPE_UNKNOWN,
         fs_flags: 0,
@@ -1072,9 +1065,7 @@ fn test_fd_stat_get_fd_stat_set_flags() {
 
 #[test]
 fn test_path_filestat_get_set_times() {
-    
     init(&[], &[]);
-
 
     let filename = "file.txt";
 
@@ -1139,7 +1130,6 @@ fn test_path_filestat_get_set_times() {
 
 #[test]
 fn test_fd_renumber_over_opened_file() {
-     
     init(&[], &[]);
 
     let filename = "file.txt";
