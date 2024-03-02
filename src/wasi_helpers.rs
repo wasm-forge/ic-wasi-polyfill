@@ -113,15 +113,15 @@ pub fn fd_readdir(
                 }
             }
 
-/*             // fill extra 8 bytes with 255
-            let mut i = 0;
-            while i < 8 && result + i < bytes_len {
-                buf[result + i] = 255;
-                i += 1;
-            }
-*/
+            /*             // fill extra 8 bytes with 255
+                        let mut i = 0;
+                        while i < 8 && result + i < bytes_len {
+                            buf[result + i] = 255;
+                            i += 1;
+                        }
+            */
             unsafe {
-                *res = std::cmp::min(result , bytes_len);
+                *res = std::cmp::min(result, bytes_len);
             }
 
             wasi::ERRNO_SUCCESS.raw() as i32
@@ -197,7 +197,7 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
 
 #[cfg(test)]
 mod tests {
-    use crate::{wasi, wasi_helpers::put_single_entry};
+    use crate::{wasi, wasi_helpers::put_single_entry, DIRENT_SIZE};
     use ic_stable_structures::DefaultMemoryImpl;
     use stable_fs::{
         fs::{FdStat, FileSystem},
@@ -230,12 +230,17 @@ mod tests {
         };
 
         let expected = [
-            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115, 116,
-            46, 116, 120, 116,
+            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101,
+            115, 116, 46, 116, 120, 116,
         ];
 
         let mut buf = [0u8; 100];
         let len = fill_buffer(wasi_dirent, &mut buf, &direntry.name);
+
+        // stabilize test, the three bytes can take random value here...
+        buf[DIRENT_SIZE - 3] = 0;
+        buf[DIRENT_SIZE - 2] = 0;
+        buf[DIRENT_SIZE - 1] = 0;
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());
@@ -277,13 +282,18 @@ mod tests {
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
 
         let expected = [
-            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115, 116, 46,
-            116, 120, 116
+            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115,
+            116, 46, 116, 120, 116,
         ];
 
         let mut buf = [0u8; 100];
 
         let len = put_single_entry(&fs, dir_fd, first_entry as DirEntryIndex, &mut buf).unwrap();
+
+        // stabilize test, the three bytes can take random value here...
+        buf[DIRENT_SIZE - 3] = 0;
+        buf[DIRENT_SIZE - 2] = 0;
+        buf[DIRENT_SIZE - 1] = 0;
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());
