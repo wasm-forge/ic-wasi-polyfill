@@ -888,8 +888,14 @@ pub extern "C" fn __ic_custom_fd_readdir(
         wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res)
     });
 
-    #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_readdir", start, "fd={fd:?}");
+    #[cfg(feature = "report_wasi_calls")] 
+    {
+        let mn = std::cmp::min(std::cmp::min(bytes_len as usize, unsafe {*res} as usize), 50);
+        let buf = unsafe { std::slice::from_raw_parts_mut(bytes, mn) };
+
+        let parms = format!("fd={fd:?} cookie={cookie:?} buf={buf:?}... bytes_len={bytes_len:?} res={:?}", unsafe {*res});
+        debug_instructions!("__ic_custom_fd_readdir", start, "{parms}");
+    }
 
     result
 }

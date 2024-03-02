@@ -16,12 +16,15 @@ pub fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     file_name
 }
 
+pub const DIRENT_SIZE: usize = std::mem::size_of::<wasi::Dirent>();
+
 #[cfg(not(tarpaulin_include))]
 pub fn into_errno(error: Error) -> i32 {
     let errno = match error {
         stable_fs::error::Error::NotFound => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidOffset => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidFileType => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidFileName => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidFileDescriptor => wasi::ERRNO_BADF,
         stable_fs::error::Error::InvalidBufferLength => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidOpenFlags => wasi::ERRNO_INVAL,
@@ -65,6 +68,13 @@ pub fn fd_readdir(
     bytes_len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
+    if cookie == -1 {
+        unsafe {
+            *res = 0;
+        }
+        return wasi::ERRNO_SUCCESS.raw() as i32;
+    }
+
     let fd = fd as Fd;
     let bytes_len = bytes_len as usize;
     let mut result = 0usize;
@@ -103,8 +113,15 @@ pub fn fd_readdir(
                 }
             }
 
+/*             // fill extra 8 bytes with 255
+            let mut i = 0;
+            while i < 8 && result + i < bytes_len {
+                buf[result + i] = 255;
+                i += 1;
+            }
+*/
             unsafe {
-                *res = result;
+                *res = std::cmp::min(result , bytes_len);
             }
 
             wasi::ERRNO_SUCCESS.raw() as i32
@@ -121,13 +138,16 @@ pub fn put_single_entry(
 ) -> Result<usize, Error> {
     let direntry = fs.get_direntry(fd, index)?;
     let file_type = fs.metadata_from_node(direntry.node)?.file_type;
+
+    let d_next = direntry
+        .next_entry
+        .map(|x| x as u64)
+        .unwrap_or(u64::MAX)
+        .to_le();
+
     let wasi_dirent = wasi::Dirent {
-        d_next: direntry
-            .next_entry
-            .map(|x| x as u64)
-            .unwrap_or(u64::MAX)
-            .to_le(),
-        d_ino: direntry.node.to_le(),
+        d_next,
+        d_ino: (index as u64).to_le(),
         d_namlen: (direntry.name.length as wasi::Dirnamlen).to_le(),
         d_type: into_wasi_filetype(file_type),
     };
@@ -141,13 +161,12 @@ fn fill_buffer(
     buf: &mut [u8],
     filename: &stable_fs::storage::types::FileName,
 ) -> usize {
-    use std::mem;
     use std::slice;
 
     let p: *const wasi::Dirent = &wasi_dirent;
     let p: *const u8 = p as *const u8;
 
-    let s: &[u8] = unsafe { slice::from_raw_parts(p, mem::size_of::<wasi::Dirent>() - 3) };
+    let s: &[u8] = unsafe { slice::from_raw_parts(p, DIRENT_SIZE) };
 
     let result = usize::min(s.len(), buf.len());
     buf[0..result].copy_from_slice(&s[0..result]);
@@ -197,7 +216,7 @@ mod tests {
     #[test]
     fn test_fill_buffer_normal_and_trimmed() {
         let direntry = DirEntry {
-            name: FileName::new("test.txt").unwrap(),
+            name: FileName::new("test.txt".as_bytes()).unwrap(),
             node: 45 as Node,
             next_entry: None,
             prev_entry: None,
@@ -211,7 +230,7 @@ mod tests {
         };
 
         let expected = [
-            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116,
+            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115, 116,
             46, 116, 120, 116,
         ];
 
@@ -258,8 +277,8 @@ mod tests {
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
 
         let expected = [
-            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 116, 101, 115, 116, 46,
-            116, 120, 116,
+            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115, 116, 46,
+            116, 120, 116
         ];
 
         let mut buf = [0u8; 100];
@@ -303,8 +322,8 @@ mod tests {
             buf.len() as i32,
             &mut bytes_used as *mut wasi::Size,
         );
-        println!("{buf:?} result = {result} bytes_used = {bytes_used}");
+
         assert_eq!(result, 0);
-        assert_eq!(bytes_used, 90);
+        assert_eq!(bytes_used, 99);
     }
 }

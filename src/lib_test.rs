@@ -86,7 +86,7 @@ fn read_directory(root_fd: Fd) -> Vec<String> {
         unsafe {
             let d_namlen = bytes[idx + 16] as usize;
 
-            let bytes_ptr = bytes.as_mut_ptr().add(idx + 21);
+            let bytes_ptr = bytes.as_mut_ptr().add(idx + DIRENT_SIZE);
 
             let name_slice = std::slice::from_raw_parts(bytes_ptr, d_namlen);
 
@@ -96,7 +96,7 @@ fn read_directory(root_fd: Fd) -> Vec<String> {
 
             folders.push(name);
 
-            idx += 21 + d_namlen;
+            idx += DIRENT_SIZE + d_namlen;
         };
 
         if idx >= bytes.len() {
@@ -452,7 +452,7 @@ fn test_create_dirs_and_file_in_it() {
         unsafe {
             let d_namlen = bytes[idx + 16] as usize;
 
-            let bytes_ptr = bytes.as_mut_ptr().add(idx + 21);
+            let bytes_ptr = bytes.as_mut_ptr().add(idx + DIRENT_SIZE);
 
             let name_slice = std::slice::from_raw_parts(bytes_ptr, d_namlen);
 
@@ -462,7 +462,7 @@ fn test_create_dirs_and_file_in_it() {
 
             folders.push(name);
 
-            idx += 21 + d_namlen;
+            idx += DIRENT_SIZE + d_namlen;
         };
 
         if idx >= bytes.len() {
@@ -975,7 +975,7 @@ fn test_rename_unlink() {
     // list files
     let persons = read_directory(3);
 
-    assert!(persons.len() == 2);
+    assert_eq!(persons.len(), 2);
 
     assert!(persons.contains(&String::from("file1_renamed.txt")));
     assert!(persons.contains(&String::from("file2.txt")));
