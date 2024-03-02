@@ -230,7 +230,7 @@ mod tests {
         };
 
         let expected = [
-            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101,
+            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 243, 243, 116, 101,
             115, 116, 46, 116, 120, 116,
         ];
 
@@ -238,15 +238,19 @@ mod tests {
         let len = fill_buffer(wasi_dirent, &mut buf, &direntry.name);
 
         // stabilize test, the three bytes can take random value here...
-        buf[DIRENT_SIZE - 3] = 0;
-        buf[DIRENT_SIZE - 2] = 0;
-        buf[DIRENT_SIZE - 1] = 0;
+        buf[DIRENT_SIZE - 3] = 243;
+        buf[DIRENT_SIZE - 2] = 243;
+        buf[DIRENT_SIZE - 1] = 243;
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());
 
         let mut buf = [0u8; 27];
         let len = fill_buffer(wasi_dirent, &mut buf, &direntry.name);
+        // stabilize test, the three bytes can take random value here...
+        buf[DIRENT_SIZE - 3] = 243;
+        buf[DIRENT_SIZE - 2] = 243;
+        buf[DIRENT_SIZE - 1] = 243;
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, buf.len());
@@ -282,7 +286,7 @@ mod tests {
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
 
         let expected = [
-            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115,
+            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 245, 246, 116, 101, 115,
             116, 46, 116, 120, 116,
         ];
 
@@ -291,9 +295,9 @@ mod tests {
         let len = put_single_entry(&fs, dir_fd, first_entry as DirEntryIndex, &mut buf).unwrap();
 
         // stabilize test, the three bytes can take random value here...
-        buf[DIRENT_SIZE - 3] = 0;
-        buf[DIRENT_SIZE - 2] = 0;
-        buf[DIRENT_SIZE - 1] = 0;
+        buf[DIRENT_SIZE - 3] = 243;
+        buf[DIRENT_SIZE - 2] = 245;
+        buf[DIRENT_SIZE - 1] = 246;
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());
