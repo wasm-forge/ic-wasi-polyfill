@@ -113,13 +113,6 @@ pub fn fd_readdir(
                 }
             }
 
-            /*             // fill extra 8 bytes with 255
-                        let mut i = 0;
-                        while i < 8 && result + i < bytes_len {
-                            buf[result + i] = 255;
-                            i += 1;
-                        }
-            */
             unsafe {
                 *res = std::cmp::min(result, bytes_len);
             }
@@ -142,13 +135,12 @@ pub fn put_single_entry(
     let d_next = direntry
         .next_entry
         .map(|x| x as u64)
-        .unwrap_or(u64::MAX)
-        .to_le();
+        .unwrap_or(u64::MAX);
 
     let wasi_dirent = wasi::Dirent {
         d_next,
-        d_ino: (index as u64).to_le(),
-        d_namlen: (direntry.name.length as wasi::Dirnamlen).to_le(),
+        d_ino: (index as u64),
+        d_namlen: (direntry.name.length as wasi::Dirnamlen),
         d_type: into_wasi_filetype(file_type),
     };
 
