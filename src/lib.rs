@@ -441,7 +441,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi
             Err(er) => into_errno(er),
         }
     });
-
+    
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_filestat_get", start, "fd={fd:?}");
 
@@ -1161,6 +1161,8 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
             Err(er) => into_errno(er),
         }
     });
+
+println!("result = {:?}", result);
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(

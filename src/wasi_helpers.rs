@@ -21,7 +21,7 @@ pub const DIRENT_SIZE: usize = std::mem::size_of::<wasi::Dirent>();
 #[cfg(not(tarpaulin_include))]
 pub fn into_errno(error: Error) -> i32 {
     let errno = match error {
-        stable_fs::error::Error::NotFound => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::NotFound => wasi::ERRNO_NOENT,
         stable_fs::error::Error::InvalidOffset => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidFileType => wasi::ERRNO_INVAL,
         stable_fs::error::Error::InvalidFileName => wasi::ERRNO_INVAL,
