@@ -5,6 +5,7 @@ edition = "2021"
 keywords = ["ic", "wasi-polyfill"]
 description = "The project provides polyfill implementation of *wasi_unstable* and *wasi_snapshot_preview1* functions using IC System API."
 license = "MIT"
+repository = "https://github.com/wasm-forge/ic-wasi-polyfill"
 
 [dependencies]
 ic-cdk = "0.13.1"
