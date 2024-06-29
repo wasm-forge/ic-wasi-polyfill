@@ -132,10 +132,7 @@ pub fn put_single_entry(
     let direntry = fs.get_direntry(fd, index)?;
     let file_type = fs.metadata_from_node(direntry.node)?.file_type;
 
-    let d_next = direntry
-        .next_entry
-        .map(|x| x as u64)
-        .unwrap_or(u64::MAX);
+    let d_next = direntry.next_entry.map(|x| x as u64).unwrap_or(u64::MAX);
 
     let wasi_dirent = wasi::Dirent {
         d_next,
@@ -222,8 +219,8 @@ mod tests {
         };
 
         let expected = [
-            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 243, 243, 116, 101,
-            115, 116, 46, 116, 120, 116,
+            123, 0, 0, 0, 0, 0, 0, 0, 234, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 243, 243, 116,
+            101, 115, 116, 46, 116, 120, 116,
         ];
 
         let mut buf = [0u8; 100];
@@ -278,8 +275,8 @@ mod tests {
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
 
         let expected = [
-            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 245, 246, 116, 101, 115,
-            116, 46, 116, 120, 116,
+            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 245, 246, 116, 101,
+            115, 116, 46, 116, 120, 116,
         ];
 
         let mut buf = [0u8; 100];
