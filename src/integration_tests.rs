@@ -1,6 +1,6 @@
 use candid::Principal;
 use pocket_ic::PocketIc;
-use std::{cell::RefCell, env, fs};
+use std::{cell::RefCell, fs};
 
 const BACKEND_WASM: &str = "src/tests/benchmark_test/target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm";
 const BACKEND_WASM_UPGRADED: &str = "src/tests/benchmark_test_upgraded/target/wasm32-wasi/release/benchmark_test_upgraded_backend_nowasi.wasm";
@@ -138,38 +138,6 @@ mod fns {
             panic!("unintended call failure!");
         }
     }
-
-    pub(crate) fn current_dir(pic: &PocketIc) -> String {
-
-        let response = pic
-            .query_call(
-                active_canister(),
-                Principal::anonymous(),
-                "current_dir",
-                encode_one(()).unwrap(),
-            )
-            .unwrap();
-
-        if let WasmResult::Reply(response) = response {
-            let result: String = decode_one(&response).unwrap();
-
-            return result;
-        } else {
-            panic!("unintended call failure!");
-        }
-    }
-
-    pub(crate) fn set_current_dir(pic: &PocketIc, new_dir: &str) {
-
-        pic.query_call(
-                active_canister(),
-                Principal::anonymous(),
-                "set_current_dir",
-                encode_one(new_dir).unwrap(),
-            )
-            .unwrap();
-    }
-
     
 }
 
@@ -299,17 +267,13 @@ fn long_paths_and_file_names() {
 
     let file_count = 20;
 
-    // wasi max path length is 512 bytes, have to reduce test limits accordingly
-
-    // maximal file name length is 255 bytes or max possible length with some utf8 chars
-    let long_name = "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDE";
-    let long_name2 = "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEFä";
-    let long_name3 = "1234567890ABCDEF1234567890ABCDEF💖567890ABCDEF1234567890A💖";
-
+    // wasi max path length limit is 512 bytes, have to reduce test limits accordingly
+    let long_name = "1234567890ABCD7890ABCDEFABCDEF1234567890ABCDE";
+    let long_name2 = "1234567890ABCFABCDEF12345678904567890ABCDEFä";
+    let long_name3 = "1234567890ABC34567890ABCDEF💖567890ABCDEFA💖";
 
     let mut path = "".to_string();
-    // form long path (total depth - 300 folders)
-    for _ in 0..2 {
+    for _ in 0..3 {
         path.push_str(long_name);
         path.push('/');
         path.push_str(long_name2);
@@ -318,7 +282,6 @@ fn long_paths_and_file_names() {
         path.push('/');
     }
 
- 
     fns::create_files(&pic, &path, file_count);
  
     let result = fns::list_files(&pic, &path);
@@ -350,6 +313,65 @@ fn long_paths_and_file_names() {
     assert_eq!(expected_content, content);
 
     let expected_content = "A💖//13.txt";
+    let content = fns::read_text(&pic, &format!("{path}/13.txt"), content_length as i64 - expected_content.len() as i64, 100);
+
+    assert_eq!(expected_content, content);
+
+}
+
+
+#[test]
+fn deep_subfolder_structure() {
+    let pic = setup_initial_canister();
+
+    let file_count = 20;
+
+    // wasi max path length limit is 512 bytes, have to reduce test limits accordingly
+    let long_name = "A";
+    let long_name2 = "B";
+    let long_name3 = "C";
+
+    let mut path = "".to_string();
+    for _ in 0..83 {
+        path.push_str(long_name);
+        path.push('/');
+        path.push_str(long_name2);
+        path.push('/');
+        path.push_str(long_name3);
+        path.push('/');
+    }
+
+    fns::create_files(&pic, &path, file_count);
+ 
+    let result = fns::list_files(&pic, &path);
+
+    let mut filenames = vec![];
+
+    for i in 0..file_count {
+        filenames.push(format!("{i}.txt"))
+    }
+    assert_eq!(result, filenames);
+
+    let filenames = vec![long_name];
+
+    let result = fns::list_files(&pic, "");
+    assert_eq!(result, filenames);
+
+    // try reading one of the files
+
+    let file_content_start = "0123456789012345678901234567890123456789012345678901234567890123:";
+    let file_name = "13.txt";
+    let expected_content = format!("{file_content_start}{path}/{file_name}");
+    let content_length = expected_content.len();
+
+    let content = fns::read_text(&pic, &format!("{path}/{file_name}"), 0, 100000);
+    assert_eq!(expected_content, content);
+    
+    let expected_content = "0123:A/B";
+    let content = fns::read_text(&pic, &format!("{path}/3.txt"), 60, expected_content.len() as u64);
+    assert_eq!(expected_content, content);
+
+    let expected_content = "C//13.txt";
     let content = fns::read_text(&pic, &format!("{path}/13.txt"), content_length as i64 - expected_content.len() as i64, 100);
 
     assert_eq!(expected_content, content);
