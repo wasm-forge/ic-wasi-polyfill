@@ -73,7 +73,7 @@ pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wa
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
 
-    static FS: RefCell<FileSystem> = RefCell::new(
+    pub static FS: RefCell<FileSystem> = RefCell::new(
         FileSystem::new(Box::new(DummyStorage::new())).unwrap()
     );
 
@@ -441,7 +441,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi
             Err(er) => into_errno(er),
         }
     });
-    
+
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_filestat_get", start, "fd={fd:?}");
 
@@ -1162,8 +1162,6 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         }
     });
 
-println!("result = {:?}", result);
-
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_path_filestat_get",
@@ -1663,5 +1661,9 @@ pub fn init_with_memory<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &s
     init(seed, env_pairs);
 }
 
+
 #[cfg(test)]
 mod lib_test;
+
+#[cfg(test)]
+mod integration_tests;

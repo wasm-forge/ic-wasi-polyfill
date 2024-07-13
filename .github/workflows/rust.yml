@@ -18,12 +18,21 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update stable
+
+    - name: Install target
+      run: rustup target add wasm32-wasi
+
+    - name: Install pocket-ic
+      run: src/tests/download-pocket-ic.sh
+
+    - name: Install wasi2ic
+      run: cargo install wasi2ic
+      
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
       
     - name: Run tests
       run: cargo test --verbose
-      
 
     - name: Generate code coverage
       run: cargo llvm-cov --features report_wasi_calls,transient --ignore-filename-regex=wasi_mock.rs --workspace --lcov --output-path lcov.info
