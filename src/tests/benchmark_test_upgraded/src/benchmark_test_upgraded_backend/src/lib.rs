@@ -1,4 +1,4 @@
-use std::{cell::RefCell, env, fs::{self, File, OpenOptions}, io::{BufReader, BufWriter, Read, Seek, Write}};
+use std::{cell::RefCell, fs::{self, File, OpenOptions}, io::{BufReader, BufWriter, Read, Seek, Write}};
 
 use ic_stable_structures::{memory_manager::{MemoryId, MemoryManager}, DefaultMemoryImpl, Memory};
 use stable_fs::fs::{FdStat, OpenFlags, SrcBuf, Whence};
@@ -9,7 +9,7 @@ const WASI_MEMORY_ID: MemoryId = MemoryId::new(1);
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
-    format!("Hello, {}!", name)
+    format!("Greetings, {}!", name)
 }
 
 thread_local! {
@@ -229,19 +229,6 @@ fn delete_folder(path: String) {
 
 
 #[ic_cdk::query]
-fn current_dir() -> String {
-    let res = env::current_dir().unwrap().into_os_string().into_string().unwrap();
-
-    res
-}
-
-#[ic_cdk::query]
-fn set_current_dir(path: String) {
-    env::set_current_dir(path).unwrap();
-
-}
-
-#[ic_cdk::query]
 fn list_files(path: String) -> Vec<String> {
 
     let mut res = vec![];
@@ -286,6 +273,9 @@ fn list_all_files(path: String) -> Vec<String> {
 
     res
 }
+
+
+
 
 #[ic_cdk::update]
 fn create_depth_folders(path: String, count: usize) -> String {

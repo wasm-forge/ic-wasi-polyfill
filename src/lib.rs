@@ -1162,8 +1162,6 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         }
     });
 
-    println!("result = {:?}", result);
-
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_path_filestat_get",
@@ -1668,4 +1666,4 @@ pub fn init_with_memory<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &s
 mod lib_test;
 
 #[cfg(test)]
-mod lib_p_test;
+mod integration_tests;

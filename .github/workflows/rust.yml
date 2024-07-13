@@ -18,12 +18,12 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update stable
+      
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
       
     - name: Run tests
       run: cargo test --verbose
-      
 
     - name: Generate code coverage
       run: cargo llvm-cov --features report_wasi_calls,transient --ignore-filename-regex=wasi_mock.rs --workspace --lcov --output-path lcov.info
