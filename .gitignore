@@ -2,5 +2,8 @@ target
 Cargo.lock
 wasi2ic
 pocket-ic
+*.wasm
 **/*.rs.bk
 tarpaulin-report.html
+/.vscode/
+lcov.info
