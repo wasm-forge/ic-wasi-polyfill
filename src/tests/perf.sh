@@ -45,14 +45,14 @@ let wasm_name = "benchmark_test/target/wasm32-wasi/release/benchmark_test_backen
 function perf_file_write_10KiB_fs() {
   let cid = install(wasm_profiling(wasm_name, rs_config), encode (), null);
   call cid.fs_write_kb_text( "files/test.txt", (10: nat64) );
-  flamegraph(cid, "benchmark_10kb_write_fs", "svg/benchmark_10kb_write_fs.svg");
+  flamegraph(cid, "perf_file_write_10KiB_fs", "svg/perf_file_write_10KiB_fs.svg");
   uninstall(cid);
 };
 
 function perf_file_write_10KiB() {
   let cid = install(wasm_profiling(wasm_name, rs_config), encode (), null);
   call cid.write_kb_text( "files/test.txt", (10: nat64) );
-  flamegraph(cid, "benchmark_10kb_write", "svg/benchmark_10kb_write.svg");
+  flamegraph(cid, "perf_file_write_10KiB", "svg/perf_file_write_10KiB.svg");
   uninstall(cid);
 };
 
@@ -60,7 +60,7 @@ function perf_file_write_10KiB_buf() {
 
   let cid = install(wasm_profiling(wasm_name, rs_config), encode (), null);
   call cid.write_kb_text_buf( "files/test.txt", (10: nat64) );
-  flamegraph(cid, "benchmark_10kb_buf_write", "svg/benchmark_10kb_buf_write.svg");
+  flamegraph(cid, "perf_file_write_10KiB_buf", "svg/perf_file_write_10KiB_buf.svg");
   uninstall(cid);
 };
 
@@ -112,11 +112,11 @@ function perf_delete_folders() {
 
 
 /// files
-//perf_file_write_10KiB();
-//perf_file_write_10KiB_buf();
-//perf_file_write_10KiB_fs();
+perf_file_write_10KiB();
+perf_file_write_10KiB_buf();
+perf_file_write_10KiB_fs();
 
-perf_file_write_10MiB_buf();
+//perf_file_write_10MiB_buf();
 
 //perf_create_folders();
 //perf_delete_folders();

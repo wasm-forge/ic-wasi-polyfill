@@ -85,20 +85,22 @@ macro_rules! debug_instructions {
     ($fn_name:literal) => {
         ic_print(&format!("\t{}", $fn_name))
     };
-    ($fn_name:literal, $stime:expr) => {
+    ($fn_name:literal, $sresult:expr, $stime:expr) => {
         let etime = ic_instruction_counter();
 
         ic_print(&format!(
-            "\t{}\tinstructions:\t{}\t",
+            "\t{} -> {}\tinstructions:\t{}\t",
             $fn_name,
+            $sresult,
             etime - ($stime)
         ))
     };
-    ($fn_name:literal, $stime:expr, $params:expr) => {
+    ($fn_name:literal, $sresult:expr, $stime:expr, $params:expr) => {
         let etime = ic_instruction_counter();
         ic_print(&format!(
-            "\t{}\tinstructions:\t{}\tparameters:\t{}",
+            "\t{} -> {}\tinstructions:\t{}\tparameters:\t{}",
             $fn_name,
+            $sresult,
             etime - ($stime),
             format!($params)
         ))
@@ -139,7 +141,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     };
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_write", start, "fd={fd:?} len={len:?}");
+    debug_instructions!("__ic_custom_fd_write", result, start, "fd={fd:?} len={len:?}");
 
     result
 }
@@ -182,7 +184,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_read", start, "fd={fd:?} len={len:?}");
+    debug_instructions!("__ic_custom_fd_read", result, start, "fd={fd:?} len={len:?}");
 
     result
 }
@@ -222,7 +224,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     };
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_pwrite", start, "fd={fd:?} len={len:?}");
+    debug_instructions!("__ic_custom_fd_pwrite", result, start, "fd={fd:?} len={len:?}");
 
     result
 }
@@ -269,7 +271,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_pread",
+        "__ic_custom_fd_pread", result,
         start,
         "fd={fd:?} len={len:?} offset={offset:?}"
     );
@@ -318,7 +320,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_seek",
+        "__ic_custom_fd_seek", result,
         start,
         "fd={fd:?} delta={delta:?} whence={whence:?}"
     );
@@ -379,9 +381,9 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_open",
+        "__ic_custom_path_open", result,
         start,
-        "parent_fd={parent_fd:?} file_name={file_name:?}"
+        "parent_fd={parent_fd:?} file_name={file_name:?} oflags={oflags}"
     );
 
     result
@@ -443,7 +445,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_filestat_get", start, "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_filestat_get", result, start, "fd={fd:?}");
 
     result
 }
@@ -457,7 +459,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
     prevent_elimination(&[fd]);
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_sync", start, "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_sync", result, start, "fd={fd:?}");
 
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -493,7 +495,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_tell", start, "{fd:?} -> {res:?}");
+    debug_instructions!("__ic_custom_fd_tell", result, start, "{fd:?} -> {res:?}");
 
     result
 }
@@ -532,7 +534,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_prestat_get fd={}",
+        "__ic_custom_fd_prestat_get fd={}", result,
         start,
         "fd={fd:?} -> res={res:?}"
     );
@@ -572,7 +574,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_prestat_dir_name", start, "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_prestat_dir_name", result, start, "fd={fd:?}");
 
     result
 }
@@ -602,7 +604,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_advise",
+        "__ic_custom_fd_advise", result,
         start,
         "fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}"
     );
@@ -635,7 +637,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_allocate",
+        "__ic_custom_fd_allocate", result,
         start,
         "fd={fd:?} offset={offset:?} len={len:?}"
     );
@@ -663,7 +665,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_datasync", start, "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_datasync", result, start, "fd={fd:?}");
 
     result
 }
@@ -700,7 +702,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut was
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_fdstat_get", start, "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_fdstat_get", result, start, "fd={fd:?}");
 
     result
 }
@@ -737,7 +739,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i3
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_fdstat_set_flags",
+        "__ic_custom_fd_fdstat_set_flags", result,
         start,
         "fd={fd:?} new_flags={new_flags:?}"
     );
@@ -776,7 +778,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_fdstat_set_rights",
+        "__ic_custom_fd_fdstat_set_rights", result,
         start,
         "fd={fd:?} rights_base={rights_base:?} rights_inheriting={rights_inheriting:?}"
     );
@@ -808,7 +810,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_filestat_set_size",
+        "__ic_custom_fd_filestat_set_size", result,
         start,
         "fd={fd:?} size={size:?}"
     );
@@ -863,7 +865,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_filestat_set_times",
+        "__ic_custom_fd_filestat_set_times", result,
         start,
         "fd={fd:?} atim={atim:?} mtim={mtim:?} fst_flags={fst_flags:?}"
     );
@@ -900,7 +902,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
             "fd={fd:?} cookie={cookie:?} buf={buf:?}... bytes_len={bytes_len:?} res={:?}",
             unsafe { *res }
         );
-        debug_instructions!("__ic_custom_fd_readdir", start, "{parms}");
+        debug_instructions!("__ic_custom_fd_readdir", result, start, "{parms}");
     }
 
     result
@@ -925,7 +927,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_renumber",
+        "__ic_custom_fd_renumber", result,
         start,
         "fd_from={fd_from:?} fd_to={fd_to:?}"
     );
@@ -947,7 +949,7 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_random_get", start);
+    debug_instructions!("__ic_custom_random_get", result, start);
 
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -969,7 +971,7 @@ pub unsafe extern "C" fn __ic_custom_environ_get(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_environ_get", start);
+    debug_instructions!("__ic_custom_environ_get", result, start);
 
     result.raw() as i32
 }
@@ -993,7 +995,7 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_environ_sizes_get", start);
+    debug_instructions!("__ic_custom_environ_sizes_get", result, start);
 
     0
 }
@@ -1007,7 +1009,7 @@ pub extern "C" fn __ic_custom_proc_exit(code: i32) -> ! {
 #[inline(never)]
 pub extern "C" fn __ic_custom_args_get(arg_entries: *mut *mut u8, arg_buffer: *mut u8) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("called __ic_custom_args_get");
+    debug_instructions!("__ic_custom_args_get -> 0");
 
     prevent_elimination(&[arg_entries as i32, arg_buffer as i32]);
     // No-op.
@@ -1022,7 +1024,7 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     len2: *mut wasi::Size,
 ) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("called __ic_custom_arg_sizes_get");
+    debug_instructions!("__ic_custom_arg_sizes_get -> 0");
 
     *len1 = 0;
     *len2 = 0;
@@ -1036,7 +1038,7 @@ pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) ->
     prevent_elimination(&[id]);
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("called __ic_custom_clock_res_get");
+    debug_instructions!("__ic_custom_clock_res_get -> 0");
 
     *result = 1_000_000_000; // 1 second.
     wasi::ERRNO_SUCCESS.raw() as i32
@@ -1048,15 +1050,20 @@ pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) ->
 pub unsafe extern "C" fn __ic_custom_clock_time_get(
     id: i32,
     precision: i64,
-    result: *mut u64,
+    time: *mut u64,
 ) -> i32 {
     prevent_elimination(&[id, precision as i32]);
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("called __ic_custom_clock_time_get");
+    let start = ic_instruction_counter();
 
-    *result = ic_time();
-    wasi::ERRNO_SUCCESS.raw() as i32
+    *time = ic_time();
+    let result = wasi::ERRNO_SUCCESS.raw() as i32;
+
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_clock_time_get", result, start);
+
+    result
 }
 
 #[no_mangle]
@@ -1096,7 +1103,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_create_directory",
+        "__ic_custom_path_create_directory", result,
         start,
         "parent_fd={parent_fd:?} dir_name={dir_name:?}"
     );
@@ -1164,7 +1171,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_filestat_get",
+        "__ic_custom_path_filestat_get", result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?}"
     );
@@ -1250,7 +1257,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_filestat_set_times",
+        "__ic_custom_path_filestat_set_times", result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}"
     );
@@ -1290,7 +1297,7 @@ pub extern "C" fn __ic_custom_path_link(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_link", start, "old_parent_fd={old_fd:?} old_path={old_path:?} <- new_parent_fd={new_fd:?} new_path={new_path:?}");
+    debug_instructions!("__ic_custom_path_link", result, start, "old_parent_fd={old_fd:?} old_path={old_path:?} <- new_parent_fd={new_fd:?} new_path={new_path:?}");
 
     result
 }
@@ -1333,7 +1340,7 @@ pub extern "C" fn __ic_custom_path_remove_directory(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_remove_directory",
+        "__ic_custom_path_remove_directory", result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?}"
     );
@@ -1372,7 +1379,7 @@ pub extern "C" fn __ic_custom_path_rename(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_rename", start, "old_parent_fd={old_fd:?} old_path={old_path:?} -> new_parent_fd={new_fd:?} new_path={new_path:?}");
+    debug_instructions!("__ic_custom_path_rename", result, start, "old_parent_fd={old_fd:?} old_path={old_path:?} -> new_parent_fd={new_fd:?} new_path={new_path:?}");
 
     result
 }
@@ -1415,7 +1422,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_unlink",
+        "__ic_custom_path_unlink", result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?}"
     );
