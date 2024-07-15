@@ -1,11 +1,11 @@
-use std::{cell::RefCell, fs::{self, File, OpenOptions}, io::{BufReader, BufWriter, Read, Seek, Write}};
+use std::{cell::RefCell, env, fs::{self, File, OpenOptions}, io::{BufReader, BufWriter, Read, Seek, Write}};
 
 use ic_stable_structures::{memory_manager::{MemoryId, MemoryManager}, DefaultMemoryImpl, Memory};
 use stable_fs::fs::{FdStat, OpenFlags, SrcBuf, Whence};
 
 
 const PROFILING: MemoryId = MemoryId::new(100);
-const WASI_MEMORY_ID: MemoryId = MemoryId::new(1);
+const WASI_MEMORY_ID: u8 = 1;
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
@@ -27,16 +27,21 @@ pub fn profiling_init() {
 fn init() {
     profiling_init();
 
-    let wasi_memory = MEMORY_MANAGER.with(|m| m.borrow().get(WASI_MEMORY_ID));
-    ic_wasi_polyfill::init_with_memory(&[0u8; 32], &[], wasi_memory);
+    MEMORY_MANAGER.with(|m| {
+        let m = m.borrow();
+        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID);
+    });
+    
 }
 
 #[ic_cdk::post_upgrade]
 fn post_upgrade() {
     profiling_init();
 
-    let wasi_memory = MEMORY_MANAGER.with(|m| m.borrow().get(WASI_MEMORY_ID));
-    ic_wasi_polyfill::init_with_memory(&[0u8; 32], &[], wasi_memory);    
+    MEMORY_MANAGER.with(|m| {
+        let m = m.borrow();
+        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID);
+    });
 }
 
 
@@ -155,6 +160,21 @@ fn read_text(filename: String, offset: i64, size: usize) -> String {
     content
 }
 
+#[ic_cdk::query]
+fn file_size(filename: String) -> usize {
+
+    let mut f = OpenOptions::new()
+        .create(false)
+        .write(false)
+        .open(filename)
+        .unwrap();
+
+    let pos = f.seek(std::io::SeekFrom::End(0)).unwrap();
+
+    pos as usize
+}
+
+/*
 #[ic_cdk::update]
 fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();    
@@ -195,7 +215,7 @@ fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
 
     etime - stime
 }
-
+*/
 
 #[ic_cdk::update]
 fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
@@ -227,6 +247,19 @@ fn delete_folder(path: String) {
     fs::remove_dir_all(path).unwrap();
 }
 
+
+#[ic_cdk::query]
+fn current_dir() -> String {
+    let res = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+
+    res
+}
+
+#[ic_cdk::query]
+fn set_current_dir(path: String) {
+    env::set_current_dir(path).unwrap();
+
+}
 
 #[ic_cdk::query]
 fn list_files(path: String) -> Vec<String> {
@@ -273,9 +306,6 @@ fn list_all_files(path: String) -> Vec<String> {
 
     res
 }
-
-
-
 
 #[ic_cdk::update]
 fn create_depth_folders(path: String, count: usize) -> String {

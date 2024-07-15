@@ -110,6 +110,25 @@ mod fns {
         }
     }
 
+    pub(crate) fn file_size(pic: &PocketIc, filename: &str) -> usize {
+        let response = pic
+            .query_call(
+                active_canister(),
+                Principal::anonymous(),
+                "file_size",
+                candid::encode_one(filename).unwrap(),
+            )
+            .unwrap();
+
+        if let WasmResult::Reply(response) = response {
+            let result: usize = decode_one(&response).unwrap();
+
+            return result;
+        } else {
+            panic!("unintended call failure!");
+        }
+    }    
+
     pub(crate) fn create_files(pic: &PocketIc, path: &str, count: u64) {
         pic.update_call(
             active_canister(),
@@ -195,7 +214,6 @@ fn reading_file_after_upgrade() {
     let result = fns::read_text(&pic, "d1/d2/test2.txt", 40i64, 15u64);
     assert_eq!(result, "test2test2abcab");
 }
-
 
 #[test]
 fn list_folders_after_upgrade() {

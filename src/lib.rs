@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use ic_stable_structures::memory_manager::{self, MemoryManager};
 use ic_stable_structures::{DefaultMemoryImpl, Memory};
 
 use rand::{RngCore, SeedableRng};
@@ -97,6 +98,7 @@ macro_rules! debug_instructions {
     };
     ($fn_name:literal, $sresult:expr, $stime:expr, $params:expr) => {
         let etime = ic_instruction_counter();
+
         ic_print(&format!(
             "\t{} -> {}\tinstructions:\t{}\tparameters:\t{}",
             $fn_name,
@@ -405,7 +407,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_close", start, "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_close", result, start, "fd={fd:?}");
 
     result
 }
@@ -458,10 +460,12 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 
     prevent_elimination(&[fd]);
 
+    let result = wasi::ERRNO_SUCCESS.raw() as i32;
+
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_sync", result, start, "fd={fd:?}");
 
-    wasi::ERRNO_SUCCESS.raw() as i32
+    result
 }
 
 #[no_mangle]
@@ -602,6 +606,12 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
         }
     });
 
+    let result = if is_badf {
+        wasi::ERRNO_BADF.raw() as i32
+    } else {
+        wasi::ERRNO_SUCCESS.raw() as i32
+    };
+
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_fd_advise", result,
@@ -609,11 +619,8 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
         "fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}"
     );
 
-    if is_badf {
-        return wasi::ERRNO_BADF.raw() as i32;
-    }
+    result
 
-    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 #[no_mangle]
@@ -948,10 +955,12 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
         rng.fill_bytes(buf);
     });
 
+    let result = wasi::ERRNO_SUCCESS.raw() as i32;
+
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_random_get", result, start);
 
-    wasi::ERRNO_SUCCESS.raw() as i32
+    result
 }
 
 #[no_mangle]
@@ -970,10 +979,12 @@ pub unsafe extern "C" fn __ic_custom_environ_get(
         env.environ_get(environment, environment_buffer)
     });
 
+    let result = result.raw() as i32;
+
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_environ_get", result, start);
 
-    result.raw() as i32
+    result
 }
 
 #[no_mangle]
@@ -994,10 +1005,12 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
         *buffer_size = size;
     });
 
+    let result = 0;
+
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_environ_sizes_get", result, start);
 
-    0
+    result
 }
 
 #[no_mangle]
@@ -1663,6 +1676,17 @@ pub fn init_with_memory<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &s
         let mut fs = fs.borrow_mut();
 
         *fs = FileSystem::new(Box::new(StableStorage::new(memory))).unwrap();
+    });
+
+    init(seed, env_pairs);
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub fn init_with_memory_manager<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &str)], memory_manager: &MemoryManager<M>, start_index: u8) {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        *fs = FileSystem::new(Box::new(StableStorage::new_with_memory_manager(&memory_manager, start_index))).unwrap();
     });
 
     init(seed, env_pairs);
