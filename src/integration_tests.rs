@@ -111,6 +111,7 @@ mod fns {
         }
     }
 
+    /*
     pub(crate) fn file_size(pic: &PocketIc, filename: &str) -> usize {
         let response = pic
             .query_call(
@@ -129,6 +130,7 @@ mod fns {
             panic!("unintended call failure!");
         }
     }
+    */
 
     pub(crate) fn create_files(pic: &PocketIc, path: &str, count: u64) {
         pic.update_call(
