@@ -1,7 +1,6 @@
-use std::{cell::RefCell, env, fs::{self, File, OpenOptions}, io::{BufReader, BufWriter, Read, Seek, Write}};
+use std::{cell::RefCell, env, fs::{self, File, OpenOptions}, io::{BufWriter, Read, Seek, Write}};
 
 use ic_stable_structures::{memory_manager::{MemoryId, MemoryManager}, DefaultMemoryImpl, Memory};
-use stable_fs::fs::{FdStat, OpenFlags, SrcBuf, Whence};
 
 
 const PROFILING: MemoryId = MemoryId::new(100);
@@ -177,6 +176,8 @@ fn file_size(filename: String) -> usize {
 /*
 #[ic_cdk::update]
 fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
+    use stable_fs::fs::{FdStat, OpenFlags, SrcBuf, Whence};
+
     let stime = ic_cdk::api::instruction_counter();    
 
     ic_wasi_polyfill::FS.with(|fs| {

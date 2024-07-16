@@ -24,4 +24,4 @@ crate-type = ["staticlib","lib"]
 
 [dev-dependencies]
 candid = "0.10.8"
-pocket-ic="3.1"
+pocket-ic = "3.1"
