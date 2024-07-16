@@ -2,7 +2,8 @@ use candid::Principal;
 use pocket_ic::PocketIc;
 use std::{cell::RefCell, fs};
 
-const BACKEND_WASM: &str = "src/tests/benchmark_test/target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm";
+const BACKEND_WASM: &str =
+    "src/tests/benchmark_test/target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm";
 const BACKEND_WASM_UPGRADED: &str = "src/tests/benchmark_test_upgraded/target/wasm32-wasi/release/benchmark_test_upgraded_backend_nowasi.wasm";
 
 thread_local!(
@@ -127,7 +128,7 @@ mod fns {
         } else {
             panic!("unintended call failure!");
         }
-    }    
+    }
 
     pub(crate) fn create_files(pic: &PocketIc, path: &str, count: u64) {
         pic.update_call(
@@ -157,7 +158,6 @@ mod fns {
             panic!("unintended call failure!");
         }
     }
-    
 }
 
 #[test]
@@ -175,7 +175,6 @@ fn greet_after_upgrade() {
     assert_eq!(result, "Greetings, ICP!");
 }
 
- 
 #[test]
 fn writing_10mib() {
     let pic = setup_initial_canister();
@@ -246,7 +245,6 @@ fn list_folders_after_upgrade() {
     );
 }
 
-
 #[test]
 fn create_1000_files() {
     let pic = setup_initial_canister();
@@ -270,13 +268,12 @@ fn create_1000_files() {
         filenames.push(format!("{i}.txt"))
     }
     assert_eq!(result, filenames);
- 
+
     let result = fns::list_files(&pic, "");
 
     let filenames = vec!["files1", "files2", "files3", "files4"];
 
     assert_eq!(result, filenames);
-    
 }
 
 #[test]
@@ -301,7 +298,7 @@ fn long_paths_and_file_names() {
     }
 
     fns::create_files(&pic, &path, file_count);
- 
+
     let result = fns::list_files(&pic, &path);
 
     let mut filenames = vec![];
@@ -325,18 +322,26 @@ fn long_paths_and_file_names() {
 
     let content = fns::read_text(&pic, &format!("{path}/{file_name}"), 0, 100000);
     assert_eq!(expected_content, content);
-    
+
     let expected_content = "0123:123";
-    let content = fns::read_text(&pic, &format!("{path}/3.txt"), 60, expected_content.len() as u64);
+    let content = fns::read_text(
+        &pic,
+        &format!("{path}/3.txt"),
+        60,
+        expected_content.len() as u64,
+    );
     assert_eq!(expected_content, content);
 
     let expected_content = "A💖//13.txt";
-    let content = fns::read_text(&pic, &format!("{path}/13.txt"), content_length as i64 - expected_content.len() as i64, 100);
+    let content = fns::read_text(
+        &pic,
+        &format!("{path}/13.txt"),
+        content_length as i64 - expected_content.len() as i64,
+        100,
+    );
 
     assert_eq!(expected_content, content);
-
 }
-
 
 #[test]
 fn deep_subfolder_structure() {
@@ -360,7 +365,7 @@ fn deep_subfolder_structure() {
     }
 
     fns::create_files(&pic, &path, file_count);
- 
+
     let result = fns::list_files(&pic, &path);
 
     let mut filenames = vec![];
@@ -384,15 +389,23 @@ fn deep_subfolder_structure() {
 
     let content = fns::read_text(&pic, &format!("{path}/{file_name}"), 0, 100000);
     assert_eq!(expected_content, content);
-    
+
     let expected_content = "0123:A/B";
-    let content = fns::read_text(&pic, &format!("{path}/3.txt"), 60, expected_content.len() as u64);
+    let content = fns::read_text(
+        &pic,
+        &format!("{path}/3.txt"),
+        60,
+        expected_content.len() as u64,
+    );
     assert_eq!(expected_content, content);
 
     let expected_content = "C//13.txt";
-    let content = fns::read_text(&pic, &format!("{path}/13.txt"), content_length as i64 - expected_content.len() as i64, 100);
+    let content = fns::read_text(
+        &pic,
+        &format!("{path}/13.txt"),
+        content_length as i64 - expected_content.len() as i64,
+        100,
+    );
 
     assert_eq!(expected_content, content);
-
 }
-

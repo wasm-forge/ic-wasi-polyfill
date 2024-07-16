@@ -29,7 +29,7 @@ fn init() {
 
     MEMORY_MANAGER.with(|m| {
         let m = m.borrow();
-        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID);
+        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID..WASI_MEMORY_ID+10);
     });
     
 }
@@ -40,7 +40,7 @@ fn post_upgrade() {
 
     MEMORY_MANAGER.with(|m| {
         let m = m.borrow();
-        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID);
+        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID..WASI_MEMORY_ID+10);
     });
 }
 

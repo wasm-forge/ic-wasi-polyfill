@@ -1,6 +1,7 @@
 use std::cell::RefCell;
+use std::ops::Range;
 
-use ic_stable_structures::memory_manager::{self, MemoryManager};
+use ic_stable_structures::memory_manager::MemoryManager;
 use ic_stable_structures::{DefaultMemoryImpl, Memory};
 
 use rand::{RngCore, SeedableRng};
@@ -143,7 +144,12 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     };
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_write", result, start, "fd={fd:?} len={len:?}");
+    debug_instructions!(
+        "__ic_custom_fd_write",
+        result,
+        start,
+        "fd={fd:?} len={len:?}"
+    );
 
     result
 }
@@ -186,7 +192,12 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_read", result, start, "fd={fd:?} len={len:?}");
+    debug_instructions!(
+        "__ic_custom_fd_read",
+        result,
+        start,
+        "fd={fd:?} len={len:?}"
+    );
 
     result
 }
@@ -226,7 +237,12 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     };
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_pwrite", result, start, "fd={fd:?} len={len:?}");
+    debug_instructions!(
+        "__ic_custom_fd_pwrite",
+        result,
+        start,
+        "fd={fd:?} len={len:?}"
+    );
 
     result
 }
@@ -273,7 +289,8 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_pread", result,
+        "__ic_custom_fd_pread",
+        result,
         start,
         "fd={fd:?} len={len:?} offset={offset:?}"
     );
@@ -322,7 +339,8 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_seek", result,
+        "__ic_custom_fd_seek",
+        result,
         start,
         "fd={fd:?} delta={delta:?} whence={whence:?}"
     );
@@ -383,7 +401,8 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_open", result,
+        "__ic_custom_path_open",
+        result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?} oflags={oflags}"
     );
@@ -538,7 +557,8 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, res: *mut wasi::Pre
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_prestat_get fd={}", result,
+        "__ic_custom_fd_prestat_get fd={}",
+        result,
         start,
         "fd={fd:?} -> res={res:?}"
     );
@@ -578,7 +598,12 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     });
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_prestat_dir_name", result, start, "fd={fd:?}");
+    debug_instructions!(
+        "__ic_custom_fd_prestat_dir_name",
+        result,
+        start,
+        "fd={fd:?}"
+    );
 
     result
 }
@@ -614,13 +639,13 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_advise", result,
+        "__ic_custom_fd_advise",
+        result,
         start,
         "fd={fd:?} offset={offset:?} len={len:?} advice={advice:?}"
     );
 
     result
-
 }
 
 #[no_mangle]
@@ -644,7 +669,8 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_allocate", result,
+        "__ic_custom_fd_allocate",
+        result,
         start,
         "fd={fd:?} offset={offset:?} len={len:?}"
     );
@@ -746,7 +772,8 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i3
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_fdstat_set_flags", result,
+        "__ic_custom_fd_fdstat_set_flags",
+        result,
         start,
         "fd={fd:?} new_flags={new_flags:?}"
     );
@@ -785,7 +812,8 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_fdstat_set_rights", result,
+        "__ic_custom_fd_fdstat_set_rights",
+        result,
         start,
         "fd={fd:?} rights_base={rights_base:?} rights_inheriting={rights_inheriting:?}"
     );
@@ -817,7 +845,8 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_filestat_set_size", result,
+        "__ic_custom_fd_filestat_set_size",
+        result,
         start,
         "fd={fd:?} size={size:?}"
     );
@@ -872,7 +901,8 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_filestat_set_times", result,
+        "__ic_custom_fd_filestat_set_times",
+        result,
         start,
         "fd={fd:?} atim={atim:?} mtim={mtim:?} fst_flags={fst_flags:?}"
     );
@@ -934,7 +964,8 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_fd_renumber", result,
+        "__ic_custom_fd_renumber",
+        result,
         start,
         "fd_from={fd_from:?} fd_to={fd_to:?}"
     );
@@ -1116,7 +1147,8 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_create_directory", result,
+        "__ic_custom_path_create_directory",
+        result,
         start,
         "parent_fd={parent_fd:?} dir_name={dir_name:?}"
     );
@@ -1184,7 +1216,8 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_filestat_get", result,
+        "__ic_custom_path_filestat_get",
+        result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?}"
     );
@@ -1270,7 +1303,8 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_filestat_set_times", result,
+        "__ic_custom_path_filestat_set_times",
+        result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?} atim={atim:?} mtim={mtim:?}"
     );
@@ -1353,7 +1387,8 @@ pub extern "C" fn __ic_custom_path_remove_directory(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_remove_directory", result,
+        "__ic_custom_path_remove_directory",
+        result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?}"
     );
@@ -1435,7 +1470,8 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
-        "__ic_custom_path_unlink", result,
+        "__ic_custom_path_unlink",
+        result,
         start,
         "parent_fd={parent_fd:?} file_name={file_name:?}"
     );
@@ -1517,7 +1553,7 @@ pub extern "C" fn __ic_custom_sock_shutdown(arg0: i32, arg1: i32) -> i32 {
 }
 
 thread_local! {
-    static COUNTER: RefCell<i32> = RefCell::new(0);
+    static COUNTER: RefCell<i32> = const {RefCell::new(0)};
 }
 
 fn prevent_elimination(args: &[i32]) {
@@ -1682,16 +1718,24 @@ pub fn init_with_memory<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &s
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub fn init_with_memory_manager<M: Memory + 'static>(seed: &[u8], env_pairs: &[(&str, &str)], memory_manager: &MemoryManager<M>, start_index: u8) {
+pub fn init_with_memory_manager<M: Memory + 'static>(
+    seed: &[u8],
+    env_pairs: &[(&str, &str)],
+    memory_manager: &MemoryManager<M>,
+    memory_index_range: Range<u8>,
+) {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        *fs = FileSystem::new(Box::new(StableStorage::new_with_memory_manager(&memory_manager, start_index))).unwrap();
+        *fs = FileSystem::new(Box::new(StableStorage::new_with_memory_manager(
+            memory_manager,
+            memory_index_range,
+        )))
+        .unwrap();
     });
 
     init(seed, env_pairs);
 }
-
 
 #[cfg(test)]
 mod lib_test;
