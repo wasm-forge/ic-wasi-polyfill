@@ -93,7 +93,7 @@ Example:
 | `init_seed(seed: &[u8])`                          | Convenience method to explicitly re-initialize the random seed. |
 | `raw_init_seed(seed: *const u8, len: usize)`      | Similar to `init_seed`, but has simpler parameters for calling from C or C++. |
 | `init_with_memory(seed: &[u8], env_pairs: &[(&str, &str)]), memory: Memory)`    | Initialization on top of custom memory provided by user. |
-| `init_with_memory_manager(seed: &[u8], env_pairs: &[(&str, &str)]), memory_manager: &MemoryManager, start_memory_index: u8)`    | Initialization with the provided memory manager and a starting memory index. Four consequent indices will be used by the file system. |
+| `init_with_memory_manager(seed: &[u8], env_pairs: &[(&str, &str)]), memory_manager: &MemoryManager, memory_index_range: Range<u8>)`    | Initialization with the provided memory manager and a range of memory indices to be used by the stable storage. |
 
 ## Project features
 
