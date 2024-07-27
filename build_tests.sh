@@ -1,9 +1,9 @@
 #!/bin/bash
 rustup target add wasm32-wasi
 
-mkdir src/tests/svg
+mkdir tests/svg
 
-cd src/tests/fs_tests
+cd tests/fs_tests
 
 cargo build --release --target wasm32-wasi
 

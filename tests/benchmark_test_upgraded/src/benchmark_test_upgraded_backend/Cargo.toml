@@ -1,5 +1,5 @@
 [package]
-name = "benchmark_test_backend"
+name = "benchmark_test_upgraded_backend"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 [dependencies]
 candid = "0.10"
 ic-cdk = "0.15"
+ic-cdk-timers = "0.7" # Feel free to remove this dependency if you don't need timers
 ic-stable-structures = "0.6.5"
-stable-fs = {version = "0.5.1", path="../../../../../../stable-fs"}
-ic-wasi-polyfill = {path="../../../../../../ic-wasi-polyfill"}
+stable-fs = "0.5.1"
+ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill"}

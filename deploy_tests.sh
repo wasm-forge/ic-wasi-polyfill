@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd src/tests/benchmark_test
+cd tests/benchmark_test
 
 dfx canister create benchmark_test_backend
 
