@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/fs_tests_backend"
+]
+resolver = "2"

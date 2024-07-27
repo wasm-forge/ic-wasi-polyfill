@@ -2,9 +2,8 @@ use candid::Principal;
 use pocket_ic::PocketIc;
 use std::{cell::RefCell, fs};
 
-const BACKEND_WASM: &str =
-    "src/tests/benchmark_test/target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm";
-const BACKEND_WASM_UPGRADED: &str = "src/tests/benchmark_test_upgraded/target/wasm32-wasi/release/benchmark_test_upgraded_backend_nowasi.wasm";
+const BACKEND_WASM: &str = "tests/benchmark_test/target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm";
+const BACKEND_WASM_UPGRADED: &str = "tests/benchmark_test_upgraded/target/wasm32-wasi/release/benchmark_test_upgraded_backend_nowasi.wasm";
 
 thread_local!(
     static ACTIVE_CANISTER: RefCell<Option<Principal>> = RefCell::new(None);
@@ -160,6 +159,112 @@ mod fns {
             panic!("unintended call failure!");
         }
     }
+
+    pub(crate) fn append_chunk(pic: &PocketIc, text: &str, times: usize) -> (u64, usize) {
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "append_chunk",
+                candid::encode_args((text, times)).unwrap(),
+            )
+            .unwrap();
+
+        if let WasmResult::Reply(response) = response {
+
+            let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
+
+            return (time, size);
+
+        } else {
+            panic!("unintended call failure!");
+        }
+    }
+
+    pub(crate) fn read_chunk(pic: &PocketIc, offset: usize, size: usize) -> String {
+        let response = pic
+            .query_call(
+                active_canister(),
+                Principal::anonymous(),
+                "read_chunk",
+                candid::encode_args((offset, size)).unwrap(),
+            )
+            .unwrap();
+
+        if let WasmResult::Reply(response) = response {
+
+            let result: String = decode_one(&response).unwrap();
+
+            return result;
+
+        } else {
+            panic!("unintended call failure!");
+        }
+    }
+
+    pub(crate) fn store_chunk(pic: &PocketIc, filename: &str) -> (u64, usize) {
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "store_chunk",
+                candid::encode_one(filename.to_string()).unwrap(),
+            )
+            .unwrap();
+
+        if let WasmResult::Reply(response) = response {
+
+            let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
+
+            return (time, size);
+        } else {
+            panic!("unintended call failure!");
+        }
+    }
+
+    //pub fn store_chunk_map(key: u64) -> (u64, usize)
+    pub(crate) fn store_chunk_map(pic: &PocketIc, key: u64) -> (u64, usize) {
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "store_chunk_map",
+                candid::encode_one(key).unwrap(),
+            )
+            .unwrap();
+
+        if let WasmResult::Reply(response) = response {
+
+            let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
+
+            return (time, size);
+
+        } else {
+            panic!("unintended call failure!");
+        }
+    }
+
+    //pub fn store_chunk_map(key: u64) -> (u64, usize)
+    pub(crate) fn store_chunk_map4k(pic: &PocketIc, key: u64) -> (u64, usize) {
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "store_chunk_map4k",
+                candid::encode_one(key).unwrap(),
+            )
+            .unwrap();
+
+        if let WasmResult::Reply(response) = response {
+
+            let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
+
+            return (time, size);
+
+        } else {
+            panic!("unintended call failure!");
+        }
+    }    
 }
 
 #[test]
@@ -410,4 +515,21 @@ fn deep_subfolder_structure() {
     );
 
     assert_eq!(expected_content, content);
+}
+
+
+#[test]
+fn long_chunk() {
+    let pic = setup_initial_canister();
+
+    let (time, size) = fns::append_chunk(&pic, "abc1234567", 10_000_000);
+
+    println!("creating the chunk time={time} size={size}");
+
+//    let (time, size) = fns::store_chunk(&pic, "text.txt");
+    let (time, size) = fns::store_chunk_map4k(&pic, 2131);
+
+    println!("store_chunk_map time={time} size={size}");
+    
+
 }

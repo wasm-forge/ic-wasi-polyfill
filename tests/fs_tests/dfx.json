@@ -1,0 +1,17 @@
+{
+  "canisters": {
+    "fs_tests_backend": {
+      "candid": "src/fs_tests_backend/fs_tests_backend.did",
+      "package": "fs_tests_backend",
+      "type": "rust"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

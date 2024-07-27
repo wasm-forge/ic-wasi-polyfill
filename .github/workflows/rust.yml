@@ -23,7 +23,7 @@ jobs:
       run: rustup target add wasm32-wasi
 
     - name: Install pocket-ic
-      run: src/tests/download-pocket-ic.sh
+      run: tests/download-pocket-ic.sh
 
     - name: Install wasi2ic
       run: cargo install wasi2ic
