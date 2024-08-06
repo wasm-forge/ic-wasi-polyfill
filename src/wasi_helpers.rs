@@ -18,7 +18,6 @@ pub fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
 
 pub const DIRENT_SIZE: usize = std::mem::size_of::<wasi::Dirent>();
 
-#[cfg(not(tarpaulin_include))]
 pub fn into_errno(error: Error) -> i32 {
     let errno = match error {
         stable_fs::error::Error::NotFound => wasi::ERRNO_NOENT,
@@ -35,12 +34,13 @@ pub fn into_errno(error: Error) -> i32 {
         stable_fs::error::Error::ExpectedToRemoveFile => wasi::ERRNO_ISDIR,
         stable_fs::error::Error::ExpectedToRemoveDirectory => wasi::ERRNO_NOTDIR,
         stable_fs::error::Error::CannotRemoveOpenedNode => wasi::ERRNO_BUSY,
+        stable_fs::error::Error::FileIsNotMounted => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::FileIsMountedAlready => wasi::ERRNO_INVAL,
     };
 
     errno.raw() as i32
 }
 
-#[cfg(not(tarpaulin_include))]
 pub fn into_wasi_filetype(file_type: stable_fs::storage::types::FileType) -> wasi::Filetype {
     match file_type {
         stable_fs::storage::types::FileType::Directory => wasi::FILETYPE_DIRECTORY,

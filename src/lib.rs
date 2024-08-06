@@ -1737,6 +1737,71 @@ pub fn init_with_memory_manager<M: Memory + 'static>(
     init(seed, env_pairs);
 }
 
+// mount external memory onto a file to speed-up file access. All further file reads and writes be forwarded to this memory.
+// file_name    -  Name of the host file to mount on
+// memory       -  Memory to use as file storage
+//
+pub fn mount_memory_file(file_name: &str, memory: Box<dyn Memory>) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let result = fs.mount_memory_file(file_name, memory);
+
+        match result {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
+}
+
+// unmount external memory from a host file. All further file reads and writes are written to a normal file.
+// file_name    -  Name of the host file holding the mount
+//
+pub fn unmount_memory_file(file_name: &str) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let result = fs.unmount_memory_file(file_name);
+
+        match result {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
+}
+
+// initialize mouned memory with the contents of the host file.
+// file_name    -  Name of the host file holding the mount
+//
+pub fn init_memory_file(file_name: &str) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let result = fs.init_memory_file(file_name);
+
+        match result {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
+}
+
+// Store memory contents into the host file.
+// file_name    -  Name of the host file holding the mount
+//
+pub fn store_memory_file(file_name: &str) -> i32 {
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let result = fs.store_memory_file(file_name);
+
+        match result {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
+    })
+}
+
 #[cfg(test)]
 mod lib_test;
 
