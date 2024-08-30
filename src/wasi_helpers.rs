@@ -34,8 +34,11 @@ pub fn into_errno(error: Error) -> i32 {
         stable_fs::error::Error::ExpectedToRemoveFile => wasi::ERRNO_ISDIR,
         stable_fs::error::Error::ExpectedToRemoveDirectory => wasi::ERRNO_NOTDIR,
         stable_fs::error::Error::CannotRemoveOpenedNode => wasi::ERRNO_BUSY,
-        stable_fs::error::Error::FileIsNotMounted => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::FileIsMountedAlready => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::MemoryFileIsNotMounted => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::MemoryFileIsMountedAlready => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::CannotRemoveMountedMemoryFile => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::IncompatibleChunkSize => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::InvalidMagicMarker => wasi::ERRNO_INVAL,
     };
 
     errno.raw() as i32
@@ -174,9 +177,11 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
     if whence == wasi::WHENCE_SET.raw() {
         return stable_fs::fs::Whence::SET;
     }
+
     if whence == wasi::WHENCE_CUR.raw() {
         return stable_fs::fs::Whence::CUR;
     }
+
     if whence == wasi::WHENCE_END.raw() {
         return stable_fs::fs::Whence::END;
     }
