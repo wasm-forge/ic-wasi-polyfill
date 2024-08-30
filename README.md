@@ -94,6 +94,11 @@ Example:
 | `raw_init_seed(seed: *const u8, len: usize)`      | Similar to `init_seed`, but has simpler parameters for calling from C or C++. |
 | `init_with_memory(seed: &[u8], env_pairs: &[(&str, &str)]), memory: Memory)`    | Initialization on top of custom memory provided by user. |
 | `init_with_memory_manager(seed: &[u8], env_pairs: &[(&str, &str)]), memory_manager: &MemoryManager, memory_index_range: Range<u8>)`    | Initialization with the provided memory manager and a range of memory indices to be used by the stable storage. |
+| `mount_memory_file(file_name: &str, memory: Box<dyn Memory>)`    | mount `memory` onto a given `file_name`. Any read and write calls will be forwarded to reading and writing in the memory provided. |
+| `unmount_memory_file(file_name: &str)`    | unmount memory from a host file `file_name`. The file will work as usual. |
+| `init_memory_file(file_name: &str)`       | Initialize memory contents with the contents of the file. |
+| `store_memory_file(file_name: &str)`      | Store memory contents into the file. |
+
 
 ## Project features
 
