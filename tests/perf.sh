@@ -39,7 +39,7 @@ let file = "README.md";
 
 let rs_config = record { start_page = 1; page_limit = 128};
 
-let wasm_name = "benchmark_test/target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm";
+let wasm_name = "canister_initial/target/wasm32-wasi/release/canister_initial_backend_nowasi.wasm";
 
 
 function perf_file_write_10KiB_fs() {

@@ -311,7 +311,7 @@ pub fn load_chunk(filename: String) -> (u64, usize) {
 
         let mut f = File::open(filename).expect("Unable to create file");
 
-        let size = f.metadata().unwrap().len() as usize;
+        let _size = f.metadata().unwrap().len() as usize;
 
 //        chunk.0.clear();
  //       chunk.0.reserve(size);

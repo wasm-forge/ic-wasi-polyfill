@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "benchmark_test_backend": {
-      "candid": "src/benchmark_test_backend/benchmark_test_backend.did",
-      "package": "benchmark_test_backend",
+    "canister_initial_backend": {
+      "candid": "src/canister_upgraded_backend/canister_upgraded_backend.did",
+      "package": "canister_upgraded_backend",
       "type": "rust"
     }
   },

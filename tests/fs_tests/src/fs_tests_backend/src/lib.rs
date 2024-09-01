@@ -1,7 +1,6 @@
 use std::{cell::RefCell, fs::{self}};
 use ic_stable_structures::{memory_manager::{MemoryId, MemoryManager}, DefaultMemoryImpl, Memory};
 
-
 const PROFILING: MemoryId = MemoryId::new(100);
 const WASI_MEMORY_ID: MemoryId = MemoryId::new(1);
 
@@ -21,6 +20,11 @@ fn init() {
 
     let wasi_memory = MEMORY_MANAGER.with(|m| m.borrow().get(WASI_MEMORY_ID));
     ic_wasi_polyfill::init_with_memory(&[0u8; 32], &[], wasi_memory);
+
+    ic_wasi_polyfill::FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+        fs.storage.set_chunk_size(ic_wasi_polyfill::ChunkSize::CHUNK16K).unwrap();
+    });
 }
 
 #[ic_cdk::post_upgrade]

@@ -1,14 +1,14 @@
 #!/bin/bash
 
-cd tests/benchmark_test
+cd tests/canister_initial
 
-dfx canister create benchmark_test_backend
+dfx canister create canister_initial_backend
 
 pwd
 
 ls
 
-dfx canister install --mode reinstall -y --wasm target/wasm32-wasi/release/benchmark_test_backend_nowasi.wasm benchmark_test_backend 
+dfx canister install --mode reinstall -y --wasm target/wasm32-wasi/release/canister_initial_backend_nowasi.wasm canister_initial_backend 
 
 
 

@@ -7,11 +7,10 @@ use ic_stable_structures::{DefaultMemoryImpl, Memory};
 use rand::{RngCore, SeedableRng};
 
 use stable_fs::fs::{DstBuf, Fd, SrcBuf};
-use stable_fs::fs::{FdFlags, FdStat, FileSystem, OpenFlags};
+use stable_fs::fs::{FdFlags, FdStat, FileSize, OpenFlags};
+//use stable_fs::fs::{DstIoVec, OpenFlags, SrcBuf, SrcIoVec, Whence};
 
 use stable_fs::storage::dummy::DummyStorage;
-use stable_fs::storage::stable::StableStorage;
-use stable_fs::storage::transient::TransientStorage;
 
 #[cfg(target_arch = "wasm32")]
 mod wasi;
@@ -21,11 +20,15 @@ mod wasi_mock;
 use wasi_mock as wasi;
 
 use environment::*;
-use stable_fs::storage::types::FileSize;
 use wasi_helpers::*;
 
 mod environment;
 mod wasi_helpers;
+
+pub use stable_fs::fs::FileSystem;
+pub use stable_fs::fs::{ChunkSize, ChunkType};
+pub use stable_fs::storage::stable::StableStorage;
+pub use stable_fs::storage::transient::TransientStorage;
 
 #[cfg(target_arch = "wasm32")]
 #[cfg(feature = "report_wasi_calls")]
