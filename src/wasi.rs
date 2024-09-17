@@ -1194,13 +1194,21 @@ pub struct PrestatDir {
     /// The length of the directory name for use with `fd_prestat_dir_name`.
     pub pr_name_len: Size,
 }
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union PrestatU {
     pub dir: PrestatDir,
 }
+
+impl std::fmt::Debug for PrestatU {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        unsafe { write!(f, "PrestatU {{ dir: {:?} }}", self.dir) }
+    }
+}
+
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Prestat {
     pub tag: u8,
     pub u: PrestatU,
