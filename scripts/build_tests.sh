@@ -1,7 +1,6 @@
 #!/bin/bash
-rustup target add wasm32-wasi
+set -e
 
-mkdir tests/svg
 
 cd tests/fs_tests
 
