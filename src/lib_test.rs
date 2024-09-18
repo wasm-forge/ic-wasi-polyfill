@@ -160,7 +160,7 @@ fn test_environ_get() {
     let ret = unsafe {
         __ic_custom_environ_get(
             entry_table.as_mut_ptr() as *mut *mut u8,
-            buffer.as_mut_ptr() as *mut u8,
+            buffer.as_mut_ptr(),
         )
     };
 
@@ -253,7 +253,7 @@ fn test_args_get() {
     // get environment values
     let ret = __ic_custom_args_get(
         entry_table.as_mut_ptr() as *mut *mut u8,
-        buffer.as_mut_ptr() as *mut u8,
+        buffer.as_mut_ptr(),
     );
 
     assert!(ret == 0);
@@ -559,7 +559,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let text_to_write1 = String::from("This is a sample text.");
     let text_to_write2 = String::from("1234567890");
 
-    let src = vec![
+    let src = [
         wasi::Ciovec {
             buf: text_to_write1.as_ptr(),
             buf_len: text_to_write1.len(),
@@ -603,7 +603,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let mut buf_to_read1 = String::from("................");
     let mut buf_to_read2 = String::from("................");
 
-    let mut read_buf = vec![
+    let mut read_buf = [
         wasi::Ciovec {
             buf: buf_to_read1.as_mut_ptr(),
             buf_len: buf_to_read1.len(),
@@ -700,7 +700,7 @@ fn test_writing_and_reading_file_stats() {
     let mtime = ic_time();
     let atime = ic_time();
 
-    __ic_custom_fd_filestat_set_times(file_fd, 1 as i64, 2 as i64, 1 + 2 + 4 + 8);
+    __ic_custom_fd_filestat_set_times(file_fd, 1i64, 2i64, 1 + 2 + 4 + 8);
 
     unsafe {
         __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);

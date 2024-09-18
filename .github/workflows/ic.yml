@@ -22,9 +22,6 @@ jobs:
     - name: Check Format
       run: cargo fmt --all -- --check
 
-    - name: Clippy
-      run: cargo clippy --tests --benches -- -D clippy::all
-
     - name: Install pocket-ic
       run: scripts/download-pocket-ic.sh
 

@@ -8,7 +8,7 @@ const BACKEND_WASM_UPGRADED: &str =
     "tests/canister_upgraded/target/wasm32-wasi/release/canister_upgraded_backend_nowasi.wasm";
 
 thread_local!(
-    static ACTIVE_CANISTER: RefCell<Option<Principal>> = RefCell::new(None);
+    static ACTIVE_CANISTER: RefCell<Option<Principal>> = const { RefCell::new(None) };
 );
 
 fn set_active_canister(new_canister: Principal) {
@@ -106,7 +106,7 @@ mod fns {
         if let WasmResult::Reply(response) = response {
             let result: String = decode_one(&response).unwrap();
 
-            return result;
+            result
         } else {
             panic!("unintended call failure!");
         }
@@ -156,7 +156,7 @@ mod fns {
         if let WasmResult::Reply(response) = response {
             let result: Vec<String> = decode_one(&response).unwrap();
 
-            return result;
+            result
         } else {
             panic!("unintended call failure!");
         }
@@ -175,7 +175,7 @@ mod fns {
         if let WasmResult::Reply(response) = response {
             let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
 
-            return (time, size);
+            (time, size)
         } else {
             panic!("unintended call failure!");
         }
@@ -259,7 +259,7 @@ mod fns {
         if let WasmResult::Reply(response) = response {
             let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
 
-            return (time, size);
+            (time, size)
         } else {
             panic!("unintended call failure!");
         }
