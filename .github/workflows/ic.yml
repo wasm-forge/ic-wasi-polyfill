@@ -17,7 +17,7 @@ jobs:
       run: rustup update stable
 
     - name: Install target
-      run: rustup target add wasm32-unknown-unknown
+      run: rustup target add wasm32-wasip1
       
     - name: Check Format
       run: cargo fmt --all -- --check

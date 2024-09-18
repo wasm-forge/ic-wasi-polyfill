@@ -8,7 +8,7 @@ pwd
 
 ls
 
-dfx canister install --mode reinstall -y --wasm target/wasm32-wasi/release/canister_initial_backend_nowasi.wasm canister_initial_backend 
+dfx canister install --mode reinstall -y --wasm target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm canister_initial_backend 
 
 
 
