@@ -3,9 +3,9 @@ use pocket_ic::PocketIc;
 use std::{cell::RefCell, fs};
 
 const BACKEND_WASM: &str =
-    "tests/canister_initial/target/wasm32-wasi/release/canister_initial_backend_nowasi.wasm";
+    "tests/canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
 const BACKEND_WASM_UPGRADED: &str =
-    "tests/canister_upgraded/target/wasm32-wasi/release/canister_upgraded_backend_nowasi.wasm";
+    "tests/canister_upgraded/target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
 
 thread_local!(
     static ACTIVE_CANISTER: RefCell<Option<Principal>> = const { RefCell::new(None) };
