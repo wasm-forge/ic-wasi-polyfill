@@ -1153,7 +1153,6 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     result
 }
 
-
 #[no_mangle]
 pub extern "C" fn __ic_custom_proc_exit(code: i32) -> ! {
     panic!("WASI proc_exit called with code: {code}");
@@ -1801,7 +1800,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_proc_raise(0);
-                
+
                 __ic_custom_sched_yield();
 
                 #[cfg(not(feature = "skip_unimplemented_functions"))]

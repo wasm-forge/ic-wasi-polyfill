@@ -211,7 +211,6 @@ fn test_random_get() {
     assert!(random_buf1 == random_buf2)
 }
 
-
 #[test]
 fn test_args_get() {
     init(&[], &[]);
@@ -974,9 +973,7 @@ fn test_rename_unlink() {
     assert!(persons.contains(&String::from("file2.txt")));
 }
 
-
-
-/* 
+/*
 #[cfg(test)]
 mod panic_tests {
     use std::panic::catch_unwind;
@@ -985,25 +982,25 @@ mod panic_tests {
     use crate::wasi;
     use crate::*;
 
-    
+
     #[test]
     #[should_panic]
     fn test_proc_exit() {
         __ic_custom_proc_exit(5);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_path_readlink() {
         __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_path_symlink() {
         __ic_custom_path_symlink(0, 0, 0, 0, 0);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_poll_oneoff() {
@@ -1014,31 +1011,31 @@ mod panic_tests {
             0,
         );
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_proc_raise() {
         __ic_custom_proc_raise(0);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_sock_accept() {
         __ic_custom_sock_accept(0, 0, 0);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_sock_recv() {
         __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_sock_send() {
         __ic_custom_sock_send(0, 0, 0, 0, 0);
     }
-    
+
     #[test]
     #[should_panic]
     fn test_unimplemented_sock_shutdown() {
