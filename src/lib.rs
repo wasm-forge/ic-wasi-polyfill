@@ -1092,7 +1092,9 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
     let result = wasi::ERRNO_SUCCESS.raw() as i32;
 
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_random_get", result, start);
+    {
+        debug_instructions!("__ic_custom_random_get", result, start, "buf={buf:?}");
+    }
 
     result
 }
@@ -1297,7 +1299,8 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
-            rights_base: 0,
+            // just allow any operation
+            rights_base: wasi::RIGHTS_FD_DATASYNC | wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READDIR,
             rights_inheriting: 0,
         };
 

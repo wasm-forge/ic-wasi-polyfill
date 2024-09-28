@@ -12,4 +12,4 @@ crate-type = ["cdylib"]
 candid = "0.10"
 ic-cdk = "0.16"
 ic-stable-structures = "0.6.5"
-ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill"}
+ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill", features = ["report_wasi_calls"]}

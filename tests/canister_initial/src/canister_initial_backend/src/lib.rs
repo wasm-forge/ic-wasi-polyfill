@@ -668,7 +668,6 @@ fn delete_depth_folders(path: String, count: usize) -> String {
     dir_name
 }
 
-
 #[ic_cdk::update]
 fn create_files(path: String, count: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
@@ -688,4 +687,56 @@ fn create_files(path: String, count: usize) -> u64 {
     let etime = ic_cdk::api::instruction_counter();    
 
     etime - stime
+}
+
+
+#[ic_cdk::update]
+fn check_new_dir_is_writable(dirname: String) -> String {
+
+    std::fs::create_dir(&dirname).unwrap();
+    
+    let md = fs::metadata(&dirname).unwrap();
+
+    let permissions = md.permissions();
+    let readonly = permissions.readonly();
+
+    if readonly {
+        "Is readonly".to_string()
+    } else {
+        "Is writable".to_string()
+    }
+}
+
+
+#[ic_cdk::update]
+fn check_dir_is_writable(dirname: String) -> String {
+
+    let md = fs::metadata(&dirname).unwrap();
+
+    let permissions = md.permissions();
+    let readonly = permissions.readonly();
+
+    if readonly {
+        "Is readonly".to_string()
+    } else {
+        "Is writable".to_string()
+    }
+}
+
+
+#[ic_cdk::update]
+fn check_new_file_is_writable(file: String) -> String {
+
+    std::fs::File::create(&file).unwrap();
+    
+    let md = fs::metadata(&file).unwrap();
+
+    let permissions = md.permissions();
+    let readonly = permissions.readonly();
+
+    if readonly {
+        "Is readonly".to_string()
+    } else {
+        "Is writable".to_string()
+    }
 }

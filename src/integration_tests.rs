@@ -83,6 +83,52 @@ mod fns {
         result
     }
 
+    pub(crate) fn check_new_dir_is_writable(pic: &PocketIc, dirname: &str) -> String {
+
+        let Ok(WasmResult::Reply(response)) = pic.update_call(
+            active_canister(),
+            Principal::anonymous(),
+            "check_new_dir_is_writable",
+            encode_one(dirname).unwrap(),
+        ) else {
+            panic!("Expected reply");
+        };
+
+        let result: String = decode_one(&response).unwrap();
+        result
+    }
+
+    pub(crate) fn check_dir_is_writable(pic: &PocketIc, dirname: &str) -> String {
+
+        let Ok(WasmResult::Reply(response)) = pic.update_call(
+            active_canister(),
+            Principal::anonymous(),
+            "check_dir_is_writable",
+            encode_one(dirname).unwrap(),
+        ) else {
+            panic!("Expected reply");
+        };
+
+        let result: String = decode_one(&response).unwrap();
+        result
+    }
+
+    pub(crate) fn check_new_file_is_writable(pic: &PocketIc, dirname: &str) -> String {
+
+        let Ok(WasmResult::Reply(response)) = pic.update_call(
+            active_canister(),
+            Principal::anonymous(),
+            "check_new_file_is_writable",
+            encode_one(dirname).unwrap(),
+        ) else {
+            panic!("Expected reply");
+        };
+
+        let result: String = decode_one(&response).unwrap();
+        result
+    }
+
+
     pub(crate) fn append_text(pic: &PocketIc, filename: &str, content: &str, count: u64) {
         pic.update_call(
             active_canister(),
@@ -528,4 +574,32 @@ fn long_chunk() {
     let (time, size) = fns::store_chunk_map4k(&pic, 2131);
 
     println!("store_chunk_map time={time} size={size}");
+}
+
+#[test]
+fn created_dir_is_writable() {
+    let pic = setup_initial_canister();
+
+    let result = fns::check_new_dir_is_writable(&pic, "/usr/tmp");
+
+    assert_eq!(result, "Is writable");
+}
+
+#[test]
+fn created_file_is_writable() {
+    let pic = setup_initial_canister();
+
+ 
+    let result = fns::check_new_file_is_writable(&pic, "text_file.txt");
+
+    assert_eq!(result, "Is writable");
+}
+
+#[test]
+fn root_dir_is_writable() {
+    let pic = setup_initial_canister();
+
+    let result = fns::check_dir_is_writable(&pic, ".");
+
+    assert_eq!(result, "Is writable");
 }
