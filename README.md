@@ -102,7 +102,7 @@ Example:
 
 ## Project features
 
-The polyfill library's behavior can be configured using the following [Cargo features](https://doc.rust-lang.org/cargo/reference/features.html):
+The polyfill library's behavior can be configured using the following [features](https://doc.rust-lang.org/cargo/reference/features.html):
 
 * `transient` use the transient file system implementation. This works faster but does not take the advantage of keeping the file system's state in stable memory (and the ability to keep FS state between canister upgrades).
 * `report_wasi_calls` outputs statistical information of the called polyfill functions.
