@@ -2,8 +2,6 @@
 
 ## [0.6.3]
 
-### Added
-
 - Add changelog.
 
 ## [0.6.2]
