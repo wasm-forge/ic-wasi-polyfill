@@ -84,7 +84,6 @@ mod fns {
     }
 
     pub(crate) fn check_new_dir_is_writable(pic: &PocketIc, dirname: &str) -> String {
-
         let Ok(WasmResult::Reply(response)) = pic.update_call(
             active_canister(),
             Principal::anonymous(),
@@ -99,7 +98,6 @@ mod fns {
     }
 
     pub(crate) fn check_dir_is_writable(pic: &PocketIc, dirname: &str) -> String {
-
         let Ok(WasmResult::Reply(response)) = pic.update_call(
             active_canister(),
             Principal::anonymous(),
@@ -114,7 +112,6 @@ mod fns {
     }
 
     pub(crate) fn check_new_file_is_writable(pic: &PocketIc, dirname: &str) -> String {
-
         let Ok(WasmResult::Reply(response)) = pic.update_call(
             active_canister(),
             Principal::anonymous(),
@@ -127,7 +124,6 @@ mod fns {
         let result: String = decode_one(&response).unwrap();
         result
     }
-
 
     pub(crate) fn append_text(pic: &PocketIc, filename: &str, content: &str, count: u64) {
         pic.update_call(
@@ -589,7 +585,6 @@ fn created_dir_is_writable() {
 fn created_file_is_writable() {
     let pic = setup_initial_canister();
 
- 
     let result = fns::check_new_file_is_writable(&pic, "text_file.txt");
 
     assert_eq!(result, "Is writable");

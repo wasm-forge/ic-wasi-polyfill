@@ -1300,7 +1300,10 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(0),
             // just allow any operation
-            rights_base: wasi::RIGHTS_FD_DATASYNC | wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READDIR,
+            rights_base: wasi::RIGHTS_FD_DATASYNC
+                | wasi::RIGHTS_FD_READ
+                | wasi::RIGHTS_FD_WRITE
+                | wasi::RIGHTS_FD_READDIR,
             rights_inheriting: 0,
         };
 
