@@ -1,28 +1,29 @@
 # Changelog
 
-## [0.6.3]
+## [v0.6.3]
 
 - Add changelog.
+- Add exploration tests for C language.
 
-## [0.6.2]
+## [v0.6.2]
 
 - Improved debug messages.
 
 
-## [0.6.1]
+## [v0.6.1]
 
 - More benchmark tests.
 
-## [0.6.0]
+## [v0.6.0]
 
 - API change: add mounted memory files support.
 - improved project structure.
 
-## [0.5.0]
+## [v0.5.0]
 
 - API change: to initialize with memory index range rather than starting memoryId index.
 
-## [0.4.3]
+## [v0.4.3]
 
 - Support init with memory manager (requires start memory index).
 - Support init with predefine environment variables #7.
