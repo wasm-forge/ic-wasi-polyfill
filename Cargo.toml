@@ -10,7 +10,8 @@ repository = "https://github.com/wasm-forge/ic-wasi-polyfill"
 [dependencies]
 ic-cdk = "0.16.0"
 ic-stable-structures = "0.6.5"
-stable-fs = "0.6.2"
+stable-fs = "0.6.3"
+
 rand = "0.8.5"
 function_name = "0.3.0"
 

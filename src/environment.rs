@@ -46,6 +46,11 @@ impl Environment {
         wasi::ERRNO_SUCCESS
     }
 
+    #[cfg(feature = "report_wasi_calls")]
+    pub fn get_data_values(&self) -> Vec<String> {
+        self.data_values.clone()
+    }
+
     // Sets the environment state to the list of pairs.
     pub fn set_environment(&mut self, pairs: &[(&str, &str)]) {
         self.data_values.clear();

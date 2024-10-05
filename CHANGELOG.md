@@ -1,9 +1,10 @@
 # Changelog
 
-## [unreleased]
+## [v0.6.3]
 
 - Add changelog.
 - Add some exploration tests for the C language canisters.
+- Fix file access status error.
 
 ## [v0.6.2]
 
@@ -30,7 +31,7 @@
 - Benchmark tests added.
 
 
-[unreleased]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.2...main
+[v0.6.3]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.5.0...v0.6.0
