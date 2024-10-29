@@ -1655,8 +1655,10 @@ pub extern "C" fn __ic_custom_poll_oneoff(
     nsubscriptions: i32,
     neventsp: i32,
 ) -> i32 {
+    prevent_elimination(&[in_ as i32, out as i32, nsubscriptions, neventsp]);
+
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_path_unlink");
+    debug_instructions!("__ic_custom_poll_oneoff");
 
     // avoid panic, just return an error because the function is not supported yet
     wasi::ERRNO_IO.raw() as i32
