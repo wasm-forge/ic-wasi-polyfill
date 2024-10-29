@@ -1653,10 +1653,13 @@ pub extern "C" fn __ic_custom_poll_oneoff(
     in_: *const wasi::Subscription,
     out: *mut wasi::Event,
     nsubscriptions: i32,
-    rp0: i32,
+    neventsp: i32,
 ) -> i32 {
-    prevent_elimination(&[in_ as i32, out as i32, nsubscriptions, rp0]);
-    unimplemented!("WASI poll_oneoff is not implemented");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_path_unlink");
+
+    // avoid panic, just return an error because the function is not supported yet
+    wasi::ERRNO_IO.raw() as i32
 }
 
 #[no_mangle]

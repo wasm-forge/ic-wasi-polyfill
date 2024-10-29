@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.6.4]
+
+- Update Pocket-ic client version to V0.5.
+- Update dependencies to the latest versions.
+- Add default implementation for poll_oneoff to avoid panic by default.
+
 ## [v0.6.3]
 
 - Add changelog.
@@ -31,6 +37,7 @@
 - Benchmark tests added.
 
 
+[v0.6.4]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.3...v0.6.4
 [v0.6.3]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.2...v0.6.3
 [v0.6.2]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.0...v0.6.1
