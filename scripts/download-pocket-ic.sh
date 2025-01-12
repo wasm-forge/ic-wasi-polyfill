@@ -1,6 +1,6 @@
 #!/bin/bash
 
-POCKET_IC_VERSION="6.0.0"
+POCKET_IC_VERSION="7.0.0"
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   PLATFORM=linux

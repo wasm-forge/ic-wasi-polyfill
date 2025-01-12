@@ -1,5 +1,3 @@
-use std::ptr::{null, null_mut};
-
 use crate::wasi;
 use crate::*;
 
@@ -177,7 +175,7 @@ fn test_environ_get() {
 }
 
 #[test]
-fn test_random_get() {
+fn test_random_get_reuse_seed() {
     let init_env = [
         ("PATH", "/usr/bin"),
         ("UID", "1028"),
@@ -188,7 +186,8 @@ fn test_random_get() {
 
     init(&seed, &init_env);
 
-    let buf_len: wasi::Size = 14usize;
+    // test large buffer
+    let buf_len: wasi::Size = 1024usize;
 
     let mut random_buf1: Vec<u8> = Vec::with_capacity(buf_len);
 
@@ -278,6 +277,7 @@ fn test_clock_res_get_clock_time_get() {
 #[test]
 fn test_fd_prestat_init_fd_prestat_dir_name() {
     init(&[], &[]);
+    // TODO: fix this test
 
     let mut root_fd = 0;
     let mut prestat = wasi::Prestat {
@@ -313,15 +313,15 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
     // our default root_fd is known
     assert!(root_fd == 3);
 
-    // find root folder
-    let mut path: Vec<u8> = Vec::with_capacity(root_path_len);
+    // find root folder (intensionally allow bigger than necessary buffer)
+    let mut path: Vec<u8> = Vec::with_capacity(root_path_len + 10);
 
     unsafe {
         path.set_len(root_path_len);
     }
 
     let res = unsafe {
-        __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32)
+        __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32 + 10)
     };
 
     assert!(res == 0);
@@ -330,6 +330,122 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
 
     // our default path is known
     assert!(root_path == "/");
+
+    // misusing root_fd as a file
+}
+
+#[test]
+fn test_misusing_root_fd_as_a_file() {
+    init(&[], &[]);
+
+    // assign pre-opened root file descriptor
+    let dir_fd = 3;
+
+    // read buffers
+    let mut buf_to_read1 = String::from("................");
+    let mut buf_to_read2 = String::from("................");
+
+    let read_buf = [
+        wasi::Ciovec {
+            buf: buf_to_read1.as_mut_ptr(),
+            buf_len: buf_to_read1.len(),
+        },
+        wasi::Ciovec {
+            buf: buf_to_read2.as_mut_ptr(),
+            buf_len: buf_to_read2.len(),
+        },
+    ];
+
+    // write buffers
+    let text_to_write1 = String::from("This is a sample text.");
+    let text_to_write2 = String::from("1234567890");
+
+    let mut write_buf = [
+        wasi::Ciovec {
+            buf: text_to_write1.as_ptr(),
+            buf_len: text_to_write1.len(),
+        },
+        wasi::Ciovec {
+            buf: text_to_write2.as_ptr(),
+            buf_len: text_to_write2.len(),
+        },
+    ];
+
+    let mut r: wasi::Size = 0;
+    let badf = wasi::ERRNO_BADF.raw() as i32;
+
+    // reading from root folder
+    let res: i32 = unsafe { __ic_custom_fd_read(dir_fd, read_buf.as_ptr(), 0, &mut r) };
+    assert_eq!(res, badf, "fd_read error");
+
+    let res = unsafe { __ic_custom_fd_pread(dir_fd, read_buf.as_ptr(), 0, 0, &mut r) };
+    assert_eq!(res, badf, "fd_pread error");
+
+    // writing into root folder
+    let res = unsafe { __ic_custom_fd_write(dir_fd, write_buf.as_mut_ptr(), 0, &mut r) };
+    assert_eq!(res, badf, "fd_write error");
+
+    let res = unsafe { __ic_custom_fd_pwrite(dir_fd, write_buf.as_mut_ptr(), 0, 0, &mut r) };
+    assert_eq!(res, badf, "fd_pwrite error");
+
+    // seeking on dir fd is always an error
+    let mut r: wasi::Filesize = 0;
+
+    let res = unsafe { __ic_custom_fd_seek(dir_fd, 0, wasi::WHENCE_CUR.raw() as i32, &mut r) };
+    assert_eq!(res, badf, "fd_seek WHENCE_CUR error");
+    let res = unsafe { __ic_custom_fd_seek(dir_fd, 0, wasi::WHENCE_SET.raw() as i32, &mut r) };
+    assert_eq!(res, badf, "fd_seek WHENCE_SET error");
+    let res = unsafe { __ic_custom_fd_seek(dir_fd, 0, wasi::WHENCE_END.raw() as i32, &mut r) };
+    assert_eq!(res, badf, "fd_seek WHENCE_END error");
+
+    let res = unsafe { __ic_custom_fd_tell(dir_fd, &mut r) };
+    assert_eq!(res, badf, "fd_tell error");
+    let res = __ic_custom_fd_advise(dir_fd, 0, 0, wasi::ADVICE_DONTNEED.raw() as i32);
+    assert_eq!(res, badf, "fd_advise error");
+
+    let res = __ic_custom_fd_allocate(dir_fd, 0, 0);
+    assert_eq!(res, badf, "fd_allocate error");
+
+    let res = __ic_custom_fd_datasync(dir_fd);
+    assert_eq!(res, badf, "fd_datasync error");
+
+    let res = __ic_custom_fd_sync(dir_fd);
+    assert_eq!(res, badf, "fd_sync error");
+
+    let res = __ic_custom_fd_fdstat_set_flags(dir_fd, wasi::FDFLAGS_NONBLOCK as i32);
+    assert_eq!(res, badf, "fd_fdstat_set_flags error");
+
+    let res = __ic_custom_fd_filestat_set_size(dir_fd, 0);
+    assert_eq!(res, badf, "fd_filestat_set_size error");
+}
+
+#[test]
+fn test_closing_root_fd_fails() {
+    init(&[], &[]);
+
+    let root_fd = 3;
+
+    // Try to close a preopened directory handle.
+    __ic_custom_fd_close(root_fd);
+
+    // check that root_fd is still open
+    let mut stat: wasi::Fdstat = wasi::Fdstat {
+        fs_filetype: wasi::FILETYPE_UNKNOWN,
+        fs_flags: 0,
+        fs_rights_base: wasi::RIGHTS_FD_READ,
+        fs_rights_inheriting: wasi::RIGHTS_FD_READ,
+    };
+
+    // Ensure that dir_fd is still open.
+    let ret = unsafe { __ic_custom_fd_fdstat_get(root_fd, (&mut stat) as *mut wasi::Fdstat) };
+
+    assert_eq!(ret, 0, "expected success from fdstate_get(root_fd)");
+
+    assert_eq!(
+        stat.fs_filetype,
+        wasi::FILETYPE_DIRECTORY,
+        "expected root to be a directory",
+    );
 }
 
 #[test]
@@ -650,7 +766,7 @@ fn test_writing_and_reading_file_stats() {
     let text_to_write1 = String::from("This is a sample text.");
     let text_to_write2 = String::from("1234567890");
 
-    let src = vec![
+    let src = [
         wasi::Ciovec {
             buf: text_to_write1.as_ptr(),
             buf_len: text_to_write1.len(),
@@ -733,7 +849,7 @@ fn test_forward_to_debug_is_called() {
     let text_to_write1 = String::from("This is a sample text.");
     let text_to_write2 = String::from("1234567890");
 
-    let src = vec![
+    let src = [
         wasi::Ciovec {
             buf: text_to_write1.as_ptr(),
             buf_len: text_to_write1.len(),
@@ -932,7 +1048,9 @@ fn test_datasync() {
     let file_fd = create_test_file(3, "file.txt") as i32;
 
     assert!(__ic_custom_fd_datasync(file_fd) == 0);
-    assert!(__ic_custom_fd_datasync(7) == wasi::ERRNO_BADF.raw() as i32);
+
+    let res = __ic_custom_fd_datasync(7);
+    assert!(res == wasi::ERRNO_BADF.raw() as i32);
 }
 
 #[test]
@@ -972,77 +1090,6 @@ fn test_rename_unlink() {
     assert!(persons.contains(&String::from("file1_renamed.txt")));
     assert!(persons.contains(&String::from("file2.txt")));
 }
-
-/*
-#[cfg(test)]
-mod panic_tests {
-    use std::panic::catch_unwind;
-    use std::ptr::{null, null_mut};
-
-    use crate::wasi;
-    use crate::*;
-
-
-    #[test]
-    #[should_panic]
-    fn test_proc_exit() {
-        __ic_custom_proc_exit(5);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_path_readlink() {
-        __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_path_symlink() {
-        __ic_custom_path_symlink(0, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_poll_oneoff() {
-        __ic_custom_poll_oneoff(
-            null::<wasi::Subscription>(),
-            null_mut::<wasi::Event>(),
-            0,
-            0,
-        );
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_proc_raise() {
-        __ic_custom_proc_raise(0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_sock_accept() {
-        __ic_custom_sock_accept(0, 0, 0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_sock_recv() {
-        __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_sock_send() {
-        __ic_custom_sock_send(0, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_unimplemented_sock_shutdown() {
-        __ic_custom_sock_shutdown(0, 0);
-    }
-}
- */
 
 #[test]
 fn test_fd_stat_get_fd_stat_set_flags() {

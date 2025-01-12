@@ -440,7 +440,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let now = ic_time();
 
-        let r = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags, now);
+        let r = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, now);
 
         match r {
             Ok(r) => {
@@ -537,14 +537,15 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
-    debug_instructions!("__ic_custom_fd_sync", "fd={fd:?}");
+    debug_instructions!("__ic_custom_fd_sync", "fd={fd}");
 
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
-    prevent_elimination(&[fd]);
-
-    let result = wasi::ERRNO_SUCCESS.raw() as i32;
+    let result = FS.with(|fs| match fs.borrow_mut().flush(fd as Fd) {
+        Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+        Err(er) => into_errno(er),
+    });
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_sync", result, start);
@@ -564,7 +565,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) 
 
     // standard streams not supported
     if fd < 3 {
-        return wasi::ERRNO_INVAL.raw() as i32;
+        return wasi::ERRNO_BADF.raw() as i32;
     }
 
     let result = FS.with(|fs| {
@@ -663,7 +664,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
         let fs = fs.borrow();
 
         if fd as Fd == fs.root_fd() {
-            let max_len = std::cmp::max(max_len as i32, fs.root_path().len() as i32) as usize;
+            let max_len = std::cmp::min(max_len as i32, fs.root_path().len() as i32) as usize;
 
             for i in 0..max_len {
                 unsafe {
@@ -707,27 +708,27 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
-    prevent_elimination(&[offset as i32, len as i32]);
-
-    if advice as u32 > 5 {
-        return wasi::ERRNO_INVAL.raw() as i32;
-    }
-
-    let mut is_badf = false;
-
-    FS.with(|fs| {
-        let fs = fs.borrow();
-
-        // check fd is real
-        if fs.metadata(fd as Fd).is_err() {
-            is_badf = true;
-        }
-    });
-
-    let result = if is_badf {
-        wasi::ERRNO_BADF.raw() as i32
+    let result = if advice > 5 {
+        wasi::ERRNO_INVAL.raw() as i32
     } else {
-        wasi::ERRNO_SUCCESS.raw() as i32
+        FS.with(|fs| {
+            let advice = stable_fs::fs::Advice::try_from(advice as u8);
+
+            match advice {
+                Ok(advice) => {
+                    match fs.borrow_mut().advice(
+                        fd as Fd,
+                        offset as FileSize,
+                        len as FileSize,
+                        advice,
+                    ) {
+                        Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+                        Err(er) => into_errno(er),
+                    }
+                }
+                Err(err) => into_errno(err),
+            }
+        })
     };
 
     #[cfg(feature = "report_wasi_calls")]
@@ -748,17 +749,14 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
-    prevent_elimination(&[offset as i32, len as i32]);
-
-    let mut result = wasi::ERRNO_SUCCESS.raw() as i32;
-
-    FS.with(|fs| {
-        let fs = fs.borrow();
-
-        // check fd is real, for now don't do any allocation
-        if fs.metadata(fd as Fd).is_err() {
-            result = wasi::ERRNO_BADF.raw() as i32;
-        };
+    let result = FS.with(|fs| {
+        match fs
+            .borrow_mut()
+            .allocate(fd as Fd, offset as FileSize, len as FileSize)
+        {
+            Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(er) => into_errno(er),
+        }
     });
 
     #[cfg(feature = "report_wasi_calls")]
@@ -776,17 +774,9 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
-    let mut result = wasi::ERRNO_SUCCESS.raw() as i32;
-
-    FS.with(|fs| {
-        let fs = fs.borrow();
-
-        // check if the file descriptor is correct
-        if fs.metadata(fd as Fd).is_err() {
-            result = wasi::ERRNO_BADF.raw() as i32;
-        };
-
-        // we don't do the synchronization for now
+    let result = FS.with(|fs| match fs.borrow_mut().flush(fd as Fd) {
+        Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+        Err(er) => into_errno(er),
     });
 
     #[cfg(feature = "report_wasi_calls")]
@@ -932,22 +922,12 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
-    prevent_elimination(&[size as i32]);
-
-    let result = FS.with(|fs| {
-        let fs = fs.borrow_mut();
-
-        let stat = fs.get_stat(fd as Fd);
-
-        match stat {
-            Ok((_ftype, _fdstat)) => {
-                // set_size is not supported yet
-
-                wasi::ERRNO_SUCCESS.raw() as i32
-            }
+    let result = FS.with(
+        |fs| match fs.borrow_mut().set_file_size(fd as u32, size as FileSize) {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(err) => wasi_helpers::into_errno(err),
-        }
-    });
+        },
+    );
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_filestat_set_size", result, start);
@@ -1271,13 +1251,8 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
 
         let now = ic_time();
 
-        let fd = fs.create_dir(parent_fd as Fd, dir_name, fd_stat, now);
-
-        match fd {
-            Ok(fd) => {
-                let _ = fs.close(fd);
-                wasi::ERRNO_SUCCESS.raw() as i32
-            }
+        match fs.mkdir(parent_fd as Fd, dir_name, fd_stat, now) {
+            Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(er) => into_errno(er),
         }
     });
@@ -1321,7 +1296,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
         let open_flags = OpenFlags::empty();
 
-        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
+        let fd = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
 
         // don't leave result undefined
         *result = wasi::Filestat {
@@ -1406,7 +1381,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 
         let open_flags = OpenFlags::empty();
 
-        let fd = fs.open_or_create(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
+        let fd = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
 
         match fd {
             Ok(fd) => {

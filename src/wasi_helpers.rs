@@ -20,25 +20,82 @@ pub const DIRENT_SIZE: usize = std::mem::size_of::<wasi::Dirent>();
 
 pub fn into_errno(error: Error) -> i32 {
     let errno = match error {
-        stable_fs::error::Error::NotFound => wasi::ERRNO_NOENT,
-        stable_fs::error::Error::InvalidOffset => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFileType => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFileName => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFileDescriptor => wasi::ERRNO_BADF,
-        stable_fs::error::Error::InvalidBufferLength => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidOpenFlags => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidFdFlags => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::FileAlreadyExists => wasi::ERRNO_EXIST,
-        stable_fs::error::Error::NameTooLong => wasi::ERRNO_NAMETOOLONG,
+        stable_fs::error::Error::ArgumentListTooLong => wasi::ERRNO_2BIG,
+        stable_fs::error::Error::PermissionDenied => wasi::ERRNO_ACCES,
+        stable_fs::error::Error::AddressInUse => wasi::ERRNO_ADDRINUSE,
+        stable_fs::error::Error::AddressNotAvailable => wasi::ERRNO_ADDRNOTAVAIL,
+        stable_fs::error::Error::AddressFamilyNotSupported => wasi::ERRNO_AFNOSUPPORT,
+        stable_fs::error::Error::ResourceUnavailableOrOperationWouldBlock => wasi::ERRNO_AGAIN,
+        stable_fs::error::Error::ConnectionAlreadyInProgress => wasi::ERRNO_ALREADY,
+        stable_fs::error::Error::BadFileDescriptor => wasi::ERRNO_BADF,
+        stable_fs::error::Error::BadMessage => wasi::ERRNO_BADMSG,
+        stable_fs::error::Error::DeviceOrResourceBusy => wasi::ERRNO_BUSY,
+        stable_fs::error::Error::OperationCanceled => wasi::ERRNO_CANCELED,
+        stable_fs::error::Error::NoChildProcesses => wasi::ERRNO_CHILD,
+        stable_fs::error::Error::ConnectionAborted => wasi::ERRNO_CONNABORTED,
+        stable_fs::error::Error::ConnectionRefused => wasi::ERRNO_CONNREFUSED,
+        stable_fs::error::Error::ConnectionReset => wasi::ERRNO_CONNRESET,
+        stable_fs::error::Error::ResourceDeadlockWouldOccur => wasi::ERRNO_DEADLK,
+        stable_fs::error::Error::DestinationAddressRequired => wasi::ERRNO_DESTADDRREQ,
+        stable_fs::error::Error::MathematicsArgumentOutOfDomainOfFunction => wasi::ERRNO_DOM,
+        stable_fs::error::Error::Reserved19 => wasi::ERRNO_DQUOT,
+        stable_fs::error::Error::FileExists => wasi::ERRNO_EXIST,
+        stable_fs::error::Error::BadAddress => wasi::ERRNO_FAULT,
+        stable_fs::error::Error::FileTooLarge => wasi::ERRNO_FBIG,
+        stable_fs::error::Error::HostIsUnreachable => wasi::ERRNO_HOSTUNREACH,
+        stable_fs::error::Error::IdentifierRemoved => wasi::ERRNO_IDRM,
+        stable_fs::error::Error::IllegalByteSequence => wasi::ERRNO_ILSEQ,
+        stable_fs::error::Error::OperationInProgress => wasi::ERRNO_INPROGRESS,
+        stable_fs::error::Error::InterruptedFunction => wasi::ERRNO_INTR,
+        stable_fs::error::Error::InvalidArgument => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::IOError => wasi::ERRNO_IO,
+        stable_fs::error::Error::SocketIsConnected => wasi::ERRNO_ISCONN,
+        stable_fs::error::Error::IsDirectory => wasi::ERRNO_ISDIR,
+        stable_fs::error::Error::TooManyLevelsOfSymbolicLinks => wasi::ERRNO_LOOP,
+        stable_fs::error::Error::FileDescriptorValueTooLarge => wasi::ERRNO_MFILE,
+        stable_fs::error::Error::TooManyLinks => wasi::ERRNO_MLINK,
+        stable_fs::error::Error::MessageTooLarge => wasi::ERRNO_MSGSIZE,
+        stable_fs::error::Error::Reserved36 => wasi::ERRNO_MULTIHOP,
+        stable_fs::error::Error::FilenameTooLong => wasi::ERRNO_NAMETOOLONG,
+        stable_fs::error::Error::NetworkIsDown => wasi::ERRNO_NETDOWN,
+        stable_fs::error::Error::ConnectionAbortedByNetwork => wasi::ERRNO_NETRESET,
+        stable_fs::error::Error::NetworkUnreachable => wasi::ERRNO_NETUNREACH,
+        stable_fs::error::Error::TooManyFilesOpenInSystem => wasi::ERRNO_NFILE,
+        stable_fs::error::Error::NoBufferSpaceAvailable => wasi::ERRNO_NOBUFS,
+        stable_fs::error::Error::NoSuchDevice => wasi::ERRNO_NODEV,
+        stable_fs::error::Error::NoSuchFileOrDirectory => wasi::ERRNO_NOENT,
+        stable_fs::error::Error::ExecutableFileFormatError => wasi::ERRNO_NOEXEC,
+        stable_fs::error::Error::NoLocksAvailable => wasi::ERRNO_NOLCK,
+        stable_fs::error::Error::Reserved47 => wasi::ERRNO_NOLINK,
+        stable_fs::error::Error::NotEnoughSpace => wasi::ERRNO_NOMEM,
+        stable_fs::error::Error::NoMessageOfTheDesiredType => wasi::ERRNO_NOMSG,
+        stable_fs::error::Error::ProtocolNotAvailable => wasi::ERRNO_NOPROTOOPT,
+        stable_fs::error::Error::NoSpaceLeftOnDevice => wasi::ERRNO_NOSPC,
+        stable_fs::error::Error::FunctionNotSupported => wasi::ERRNO_NOSYS,
+        stable_fs::error::Error::SocketNotConnected => wasi::ERRNO_NOTCONN,
+        stable_fs::error::Error::NotADirectoryOrSymbolicLink => wasi::ERRNO_NOTDIR,
         stable_fs::error::Error::DirectoryNotEmpty => wasi::ERRNO_NOTEMPTY,
-        stable_fs::error::Error::ExpectedToRemoveFile => wasi::ERRNO_ISDIR,
-        stable_fs::error::Error::ExpectedToRemoveDirectory => wasi::ERRNO_NOTDIR,
-        stable_fs::error::Error::CannotRemoveOpenedNode => wasi::ERRNO_BUSY,
-        stable_fs::error::Error::MemoryFileIsNotMounted => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::MemoryFileIsMountedAlready => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::CannotRemoveMountedMemoryFile => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::IncompatibleChunkSize => wasi::ERRNO_INVAL,
-        stable_fs::error::Error::InvalidMagicMarker => wasi::ERRNO_INVAL,
+        stable_fs::error::Error::StateNotRecoverable => wasi::ERRNO_NOTRECOVERABLE,
+        stable_fs::error::Error::NotASocket => wasi::ERRNO_NOTSOCK,
+        stable_fs::error::Error::NotSupportedOrOperationNotSupportedOnSocket => wasi::ERRNO_NOTSUP,
+        stable_fs::error::Error::InappropriateIOControlOperation => wasi::ERRNO_NOTTY,
+        stable_fs::error::Error::NoSuchDeviceOrAddress => wasi::ERRNO_NXIO,
+        stable_fs::error::Error::ValueTooLargeToBeStoredInDataType => wasi::ERRNO_OVERFLOW,
+        stable_fs::error::Error::PreviousOwnerDied => wasi::ERRNO_OWNERDEAD,
+        stable_fs::error::Error::OperationNotPermitted => wasi::ERRNO_PERM,
+        stable_fs::error::Error::BrokenPipe => wasi::ERRNO_PIPE,
+        stable_fs::error::Error::ProtocolError => wasi::ERRNO_PROTO,
+        stable_fs::error::Error::ProtocolNotSupported => wasi::ERRNO_PROTONOSUPPORT,
+        stable_fs::error::Error::ProtocolWrongTypeForSocket => wasi::ERRNO_PROTOTYPE,
+        stable_fs::error::Error::ResultTooLarge => wasi::ERRNO_RANGE,
+        stable_fs::error::Error::ReadOnlyFileSystem => wasi::ERRNO_ROFS,
+        stable_fs::error::Error::InvalidSeek => wasi::ERRNO_SPIPE,
+        stable_fs::error::Error::NoSuchProcess => wasi::ERRNO_SRCH,
+        stable_fs::error::Error::Reserved72 => wasi::ERRNO_STALE,
+        stable_fs::error::Error::ConnectionTimedOut => wasi::ERRNO_TIMEDOUT,
+        stable_fs::error::Error::TextFileBusy => wasi::ERRNO_TXTBSY,
+        stable_fs::error::Error::CrossDeviceLink => wasi::ERRNO_XDEV,
+        stable_fs::error::Error::ExtensionCapabilitiesInsufficient => wasi::ERRNO_NOTCAPABLE,
     };
 
     errno.raw() as i32
@@ -59,7 +116,7 @@ pub fn _into_stable_fs_filetype(
         wasi::FILETYPE_DIRECTORY => Ok(stable_fs::storage::types::FileType::Directory),
         wasi::FILETYPE_REGULAR_FILE => Ok(stable_fs::storage::types::FileType::RegularFile),
         wasi::FILETYPE_SYMBOLIC_LINK => Ok(stable_fs::storage::types::FileType::SymbolicLink),
-        _ => Err(stable_fs::error::Error::InvalidFileType),
+        _ => Err(stable_fs::error::Error::InvalidArgument),
     }
 }
 
@@ -194,7 +251,7 @@ mod tests {
     use crate::{wasi, wasi_helpers::put_single_entry, DIRENT_SIZE};
     use ic_stable_structures::DefaultMemoryImpl;
     use stable_fs::{
-        fs::{FdStat, FileSystem},
+        fs::{FdStat, FileSystem, OpenFlags},
         storage::{
             stable::StableStorage,
             types::{DirEntry, DirEntryIndex, FileName, Node},
@@ -263,16 +320,16 @@ mod tests {
         let dir_fd = fs.root_fd();
 
         let _fd1 = fs
-            .create_file(dir_fd, "test.txt", FdStat::default(), 0)
+            .open(dir_fd, "test.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
         let _fd2 = fs
-            .create_file(dir_fd, "test2.txt", FdStat::default(), 0)
+            .open(dir_fd, "test2.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
         let _fd3 = fs
-            .create_file(dir_fd, "test3.txt", FdStat::default(), 0)
+            .open(dir_fd, "test3.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
         let _fd4 = fs
-            .create_file(dir_fd, "test4.txt", FdStat::default(), 0)
+            .open(dir_fd, "test4.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
 
         let meta = fs.metadata(dir_fd);
@@ -304,16 +361,17 @@ mod tests {
         let dir_fd = fs.root_fd();
 
         let _fd1 = fs
-            .create_file(dir_fd, "test.txt", FdStat::default(), 0)
+            .open(dir_fd, "test.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
+
         let _fd2 = fs
-            .create_file(dir_fd, "test2.txt", FdStat::default(), 0)
+            .open(dir_fd, "test2.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
         let _fd3 = fs
-            .create_file(dir_fd, "test3.txt", FdStat::default(), 0)
+            .open(dir_fd, "test3.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
         let _fd4 = fs
-            .create_file(dir_fd, "test4.txt", FdStat::default(), 0)
+            .open(dir_fd, "test4.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
 
         let mut buf = [0u8; 200];

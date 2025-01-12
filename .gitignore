@@ -4,6 +4,11 @@ wasi2ic
 pocket-ic
 *.wasm
 **/*.rs.bk
+
+tests/test_programs
+
 tarpaulin-report.html
 /.vscode/
 lcov.info
+
+.codegpt

@@ -1,6 +1,15 @@
-use std::{cell::RefCell, env, fs::{self, File, OpenOptions}, io::{BufWriter, Read, Seek, Write}};
+use std::{
+    cell::RefCell,
+    env,
+    fs::{self, File, OpenOptions},
+    io::{BufWriter, Read, Seek, Write},
+};
 
-use ic_stable_structures::{memory_manager::{MemoryId, MemoryManager}, storable::Bound, DefaultMemoryImpl, StableBTreeMap};
+use ic_stable_structures::{
+    memory_manager::{MemoryId, MemoryManager},
+    storable::Bound,
+    DefaultMemoryImpl, StableBTreeMap,
+};
 
 use ic_stable_structures::memory_manager::VirtualMemory;
 
@@ -25,7 +34,6 @@ pub fn profiling_init() {
     ic_stable_structures::Memory::grow(&memory, 4096);
 }
 
-
 #[derive(Clone)]
 struct MyChunk(Vec<u8>);
 
@@ -40,7 +48,7 @@ impl ic_stable_structures::Storable for MyChunk {
 
     const BOUND: Bound = Bound::Bounded {
         max_size: 150_000_000,
-        is_fixed_size: false
+        is_fixed_size: false,
     };
 }
 
@@ -48,7 +56,6 @@ impl ic_stable_structures::Storable for MyChunk {
 struct MyChunk4k(Vec<u8>);
 
 impl ic_stable_structures::Storable for MyChunk4k {
-
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         self.0.to_bytes()
     }
@@ -59,14 +66,13 @@ impl ic_stable_structures::Storable for MyChunk4k {
 
     const BOUND: Bound = Bound::Bounded {
         max_size: 4096,
-        is_fixed_size: false
+        is_fixed_size: false,
     };
 }
 
-
 thread_local! {
     static LARGE_CHUNK: RefCell<Option<MyChunk>> = RefCell::new(None);
-    
+
     static MAP: RefCell<StableBTreeMap<u64, MyChunk, Memory>> = RefCell::new(
         StableBTreeMap::init(MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(110))))
     );
@@ -76,19 +82,19 @@ thread_local! {
     );
 }
 
-
 #[ic_cdk::update]
 pub fn append_chunk(text: String, times: usize) -> (u64, usize) {
+    let stime = ic_cdk::api::instruction_counter();
 
-    let stime = ic_cdk::api::instruction_counter();    
-    
     let res = LARGE_CHUNK.with(|chunk| {
         let mut chunk = chunk.borrow_mut();
 
         let total_len = text.len() * times;
 
         if chunk.is_none() {
-            *chunk = Some(MyChunk(Vec::with_capacity((text.len() + text.len() / 2) * times)) );
+            *chunk = Some(MyChunk(Vec::with_capacity(
+                (text.len() + text.len() / 2) * times,
+            )));
         }
 
         let chunk = chunk.as_mut().unwrap();
@@ -96,14 +102,14 @@ pub fn append_chunk(text: String, times: usize) -> (u64, usize) {
         let multiplier = 1024 * 4;
 
         let mut buf = String::with_capacity(text.len() * multiplier);
-        
+
         for _ in 0..multiplier {
             buf.push_str(&text);
         }
 
         let buf = buf.as_bytes();
 
-        let l = times/multiplier;
+        let l = times / multiplier;
         for _ in 0..l {
             chunk.0.extend_from_slice(buf);
         }
@@ -115,14 +121,13 @@ pub fn append_chunk(text: String, times: usize) -> (u64, usize) {
         chunk.0.len()
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     (etime - stime, res)
 }
 
 #[ic_cdk::update]
 pub fn clear_chunk() {
-
     LARGE_CHUNK.with(|chunk| {
         let mut chunk = chunk.borrow_mut();
 
@@ -143,7 +148,6 @@ pub fn clear_chunk() {
 
 #[ic_cdk::update]
 pub fn zero_chunk() {
-
     LARGE_CHUNK.with(|chunk| {
         let mut chunk = chunk.borrow_mut();
 
@@ -157,25 +161,24 @@ pub fn zero_chunk() {
         for i in 0..chunk.0.len() {
             chunk.0[i] = 0;
         }
-
     })
 }
 
 #[ic_cdk::update]
 pub fn read_chunk(offset: usize, size: usize) -> String {
-
     LARGE_CHUNK.with(|chunk| {
         let mut chunk = chunk.borrow_mut();
 
         let chunk = chunk.as_mut().unwrap();
 
-        std::str::from_utf8(&chunk.0[offset..offset+size]).unwrap().to_string()
+        std::str::from_utf8(&chunk.0[offset..offset + size])
+            .unwrap()
+            .to_string()
     })
 }
 
 #[ic_cdk::update]
 pub fn chunk_size() -> usize {
-
     LARGE_CHUNK.with(|chunk| {
         let mut chunk = chunk.borrow_mut();
 
@@ -187,12 +190,11 @@ pub fn chunk_size() -> usize {
 
 #[ic_cdk::update]
 pub fn store_chunk(filename: String) -> (u64, usize) {
-    let stime = ic_cdk::api::instruction_counter();    
+    let stime = ic_cdk::api::instruction_counter();
 
     let res = LARGE_CHUNK.with(|chunk| {
-
         let chunk = chunk.borrow_mut();
-        
+
         let chunk = &chunk.as_ref().unwrap().0;
 
         let mut f = File::create(filename).expect("Unable to create file");
@@ -206,27 +208,25 @@ pub fn store_chunk(filename: String) -> (u64, usize) {
         f.metadata().unwrap().len() as usize
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     (etime - stime, res)
 }
 
 #[ic_cdk::update]
 pub fn store_chunk_map(key: u64) -> (u64, usize) {
-    let stime = ic_cdk::api::instruction_counter();    
+    let stime = ic_cdk::api::instruction_counter();
 
     let res = LARGE_CHUNK.with(|chunk| {
-
         let mut chunk = chunk.borrow_mut();
 
         let chunk = chunk.take();
-        
+
         let chunk = chunk.unwrap();
 
         let len = chunk.0.len();
 
         MAP.with(|mp| {
-
             let mut mp = mp.borrow_mut();
 
             mp.insert(key, chunk);
@@ -235,21 +235,20 @@ pub fn store_chunk_map(key: u64) -> (u64, usize) {
         len
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     (etime - stime, res)
 }
 
 #[ic_cdk::update]
 pub fn store_chunk_map4k(key: u64) -> (u64, usize) {
-    let stime = ic_cdk::api::instruction_counter();    
+    let stime = ic_cdk::api::instruction_counter();
 
     let res = LARGE_CHUNK.with(|chunk| {
-
         let mut chunk = chunk.borrow_mut();
 
         let chunk = chunk.take();
-        
+
         let chunk = chunk.unwrap();
 
         let mut len = 0;
@@ -260,11 +259,10 @@ pub fn store_chunk_map4k(key: u64) -> (u64, usize) {
             let mut mp = mp.borrow_mut();
 
             loop {
+                let upper = std::cmp::min((&chunk.0).len(), ((idx + 1) * 4096) as usize);
+                let lower = std::cmp::min((&chunk.0).len(), (idx * 4096) as usize);
 
-                let upper = std::cmp::min((&chunk.0).len(), ((idx+1)*4096) as usize);
-                let lower = std::cmp::min((&chunk.0).len(), (idx*4096) as usize);
-
-                if lower==upper {
+                if lower == upper {
                     break;
                 }
 
@@ -275,46 +273,39 @@ pub fn store_chunk_map4k(key: u64) -> (u64, usize) {
 
                 len += vec.len();
 
-
                 if vec.len() > 0 {
-
-
-
                     mp.insert((key, idx as u64), MyChunk4k(vec));
                 } else {
                     break;
                 }
-    
+
                 idx += 1;
-            };
-
-
+            }
         });
 
         len
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     (etime - stime, res)
 }
 
 #[ic_cdk::update]
 pub fn load_chunk(filename: String) -> (u64, usize) {
-    let stime = ic_cdk::api::instruction_counter();    
+    let stime = ic_cdk::api::instruction_counter();
 
     let res = LARGE_CHUNK.with(|chunk| {
-
         let mut chunk = chunk.borrow_mut();
-        
+
         let chunk = chunk.as_mut().unwrap();
 
         let mut f = File::open(filename).expect("Unable to create file");
 
         let _size = f.metadata().unwrap().len() as usize;
 
-//        chunk.0.clear();
- //       chunk.0.reserve(size);
+        //        chunk.0.clear();
+        //       chunk.0.reserve(size);
 
         f.seek(std::io::SeekFrom::Start(0)).unwrap();
 
@@ -323,21 +314,19 @@ pub fn load_chunk(filename: String) -> (u64, usize) {
         size
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     (etime - stime, res)
 }
 
 #[ic_cdk::update]
 pub fn load_chunk_map(key: u64) -> (u64, usize) {
-    let stime = ic_cdk::api::instruction_counter();    
+    let stime = ic_cdk::api::instruction_counter();
 
     let res = LARGE_CHUNK.with(|chunk| {
-
         let mut chunk = chunk.borrow_mut();
-        
-        MAP.with(|mp| {
 
+        MAP.with(|mp| {
             let mp = mp.borrow_mut();
 
             let read = mp.get(&key).unwrap();
@@ -348,12 +337,10 @@ pub fn load_chunk_map(key: u64) -> (u64, usize) {
         (*chunk).as_ref().unwrap().0.len()
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     (etime - stime, res)
 }
-
-
 
 #[ic_cdk::init]
 fn init() {
@@ -361,9 +348,13 @@ fn init() {
 
     MEMORY_MANAGER.with(|m| {
         let m = m.borrow();
-        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID..WASI_MEMORY_ID+10);
+        ic_wasi_polyfill::init_with_memory_manager(
+            &[0u8; 32],
+            &[],
+            &m,
+            WASI_MEMORY_ID..WASI_MEMORY_ID + 10,
+        );
     });
-    
 }
 
 #[ic_cdk::post_upgrade]
@@ -372,10 +363,14 @@ fn post_upgrade() {
 
     MEMORY_MANAGER.with(|m| {
         let m = m.borrow();
-        ic_wasi_polyfill::init_with_memory_manager(&[0u8; 32], &[], &m, WASI_MEMORY_ID..WASI_MEMORY_ID+10);
+        ic_wasi_polyfill::init_with_memory_manager(
+            &[0u8; 32],
+            &[],
+            &m,
+            WASI_MEMORY_ID..WASI_MEMORY_ID + 10,
+        );
     });
 }
-
 
 #[ic_cdk::update]
 fn write_kb_text_buf(filename: String, kb_size: usize) -> u64 {
@@ -397,7 +392,7 @@ fn write_kb_text_buf(filename: String, kb_size: usize) -> u64 {
 
     f.flush().unwrap();
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
     etime - stime
 }
 
@@ -420,7 +415,7 @@ fn write_kb_text(filename: String, kb_size: usize) -> u64 {
 
     f.flush().unwrap();
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
     etime - stime
 }
 
@@ -444,10 +439,9 @@ fn write_mib_text(filename: String, mib_size: usize) -> u64 {
 
     f.flush().unwrap();
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
     etime - stime
 }
-
 
 #[ic_cdk::update]
 fn append_text(filename: String, text: String, times: usize) -> u64 {
@@ -459,9 +453,9 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
         .append(true)
         .open(filename)
         .unwrap();
-    
+
     let mut f = BufWriter::new(file);
-    
+
     f.seek(std::io::SeekFrom::End(0)).unwrap();
 
     for _ in 0..times {
@@ -469,7 +463,6 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
     }
 
     f.flush().unwrap();
-    
 
     let etime = ic_cdk::api::instruction_counter();
     etime - stime
@@ -477,11 +470,7 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
 
 #[ic_cdk::query]
 fn read_text(filename: String, offset: i64, size: usize) -> String {
-
-    let mut f = OpenOptions::new()
-        .write(false)
-        .open(filename)
-        .unwrap();
+    let mut f = OpenOptions::new().write(false).open(filename).unwrap();
 
     f.seek(std::io::SeekFrom::Start(offset as u64)).unwrap();
 
@@ -494,7 +483,6 @@ fn read_text(filename: String, offset: i64, size: usize) -> String {
 
 #[ic_cdk::query]
 fn file_size(filename: String) -> usize {
-
     let f = File::open(filename).unwrap();
 
     let pos = f.metadata().unwrap().len();
@@ -507,7 +495,7 @@ fn file_size(filename: String) -> usize {
 fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
     use stable_fs::fs::{FdStat, OpenFlags, SrcBuf, Whence};
 
-    let stime = ic_cdk::api::instruction_counter();    
+    let stime = ic_cdk::api::instruction_counter();
 
     ic_wasi_polyfill::FS.with(|fs| {
 
@@ -524,11 +512,11 @@ fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
                 len: text.len(),
             },
         ];
-    
+
         let fd = fs
-            .open_or_create(dir, filename.as_str(), FdStat::default(), OpenFlags::CREATE, 0)
+            .open(dir, filename.as_str(), FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
-        
+
         let _ = fs.seek(fd, 0, Whence::END);
 
         let times = 1024 * kb_size / text.len();
@@ -536,12 +524,12 @@ fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
         for _ in 0..times {
             fs.write_vec(fd, write_content.as_ref()).unwrap();
         }
-    
+
         let _ = fs.close(fd);
 
     });
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     etime - stime
 }
@@ -564,7 +552,6 @@ fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
     res
 }
 
-
 // delete file
 #[ic_cdk::query]
 fn delete_file(filename: String) {
@@ -577,10 +564,13 @@ fn delete_folder(path: String) {
     fs::remove_dir_all(path).unwrap();
 }
 
-
 #[ic_cdk::query]
 fn current_dir() -> String {
-    let res = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+    let res = env::current_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap();
 
     res
 }
@@ -592,7 +582,6 @@ fn set_current_dir(path: String) {
 
 #[ic_cdk::query]
 fn list_files(path: String) -> Vec<String> {
-
     let mut res = vec![];
     let entries = fs::read_dir(path).unwrap();
 
@@ -608,7 +597,6 @@ fn list_files(path: String) -> Vec<String> {
 }
 
 fn list_all_files_recursive(path: &String, files: &mut Vec<String>) {
-    
     let entries = fs::read_dir(&path).unwrap();
 
     for entry in entries {
@@ -622,7 +610,6 @@ fn list_all_files_recursive(path: &String, files: &mut Vec<String>) {
         if entry.metadata().unwrap().is_dir() {
             list_all_files_recursive(&folder_name, files);
         }
-
     }
 }
 
@@ -638,9 +625,8 @@ fn list_all_files(path: String) -> Vec<String> {
 
 #[ic_cdk::update]
 fn create_depth_folders(path: String, count: usize) -> String {
-
     let mut dir_name = "d0".to_string();
-    
+
     for num in 1..count {
         dir_name = format!("{}/d{}", dir_name, num);
     }
@@ -654,9 +640,8 @@ fn create_depth_folders(path: String, count: usize) -> String {
 
 #[ic_cdk::update]
 fn delete_depth_folders(path: String, count: usize) -> String {
-
     let mut dir_name = "d0".to_string();
-    
+
     for num in 1..count {
         dir_name = format!("{}/d{}", dir_name, num);
     }
@@ -673,28 +658,28 @@ fn create_files(path: String, count: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     for num in 0..count {
-
         let filename = format!("{}/{}.txt", path, num);
         let mut file = File::create(&filename).unwrap();
 
         // 64 byte block + file name
-        let text = format!("0123456789012345678901234567890123456789012345678901234567890123:{}", filename);
+        let text = format!(
+            "0123456789012345678901234567890123456789012345678901234567890123:{}",
+            filename
+        );
 
         file.write_all(text.as_bytes()).unwrap();
         file.flush().unwrap();
     }
 
-    let etime = ic_cdk::api::instruction_counter();    
+    let etime = ic_cdk::api::instruction_counter();
 
     etime - stime
 }
 
-
 #[ic_cdk::update]
 fn check_new_dir_is_writable(dirname: String) -> String {
-
     std::fs::create_dir(&dirname).unwrap();
-    
+
     let md = fs::metadata(&dirname).unwrap();
 
     let permissions = md.permissions();
@@ -706,11 +691,9 @@ fn check_new_dir_is_writable(dirname: String) -> String {
         "Is writable".to_string()
     }
 }
-
 
 #[ic_cdk::update]
 fn check_dir_is_writable(dirname: String) -> String {
-
     let md = fs::metadata(&dirname).unwrap();
 
     let permissions = md.permissions();
@@ -723,12 +706,10 @@ fn check_dir_is_writable(dirname: String) -> String {
     }
 }
 
-
 #[ic_cdk::update]
 fn check_new_file_is_writable(file: String) -> String {
-
     std::fs::File::create(&file).unwrap();
-    
+
     let md = fs::metadata(&file).unwrap();
 
     let permissions = md.permissions();
