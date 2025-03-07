@@ -13,6 +13,7 @@ use stable_fs::storage::dummy::DummyStorage;
 
 #[cfg(target_arch = "wasm32")]
 mod wasi;
+
 #[cfg(not(all(target_arch = "wasm32")))]
 mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
@@ -121,7 +122,7 @@ macro_rules! debug_instructions {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_write(
-    fd: i32,
+    fd: Fd,
     iovs: *const wasi::Ciovec,
     len: i32,
     res: *mut wasi::Size,
@@ -174,8 +175,8 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_read(
-    fd: i32,
-    iovs: *const wasi::Ciovec,
+    fd: Fd,
+    iovs: *const wasi::Iovec,
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
@@ -229,7 +230,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_pwrite(
-    fd: i32,
+    fd: Fd,
     iovs: *const wasi::Ciovec,
     len: i32,
     offset: i64,
@@ -286,8 +287,8 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_pread(
-    fd: i32,
-    iovs: *const wasi::Ciovec,
+    fd: Fd,
+    iovs: *const wasi::Iovec,
     len: i32,
     offset: i64,
     res: *mut wasi::Size,
@@ -346,7 +347,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_seek(
-    fd: i32,
+    fd: Fd,
     delta: i64,
     whence: i32,
     res: *mut wasi::Filesize,
@@ -400,7 +401,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_open(
-    parent_fd: i32,
+    parent_fd: Fd,
     dirflags: i32,
     path: *const u8,
     path_len: i32,
@@ -410,7 +411,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fs_rights_inheriting: i64,
 
     fdflags: i32,
-    res: *mut i32,
+    res: *mut Fd,
 ) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
@@ -444,7 +445,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         match r {
             Ok(r) => {
-                *res = r as i32;
+                *res = r as Fd;
                 wasi::ERRNO_SUCCESS.raw() as i32
             }
             Err(er) => {
@@ -465,7 +466,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_close", "fd={fd:?}");
 
@@ -490,7 +491,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi::Filestat) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: Fd, ret_val: *mut wasi::Filestat) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_filestat_get", "fd={fd:?}");
 
@@ -499,7 +500,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi
 
     let result = FS.with(|fs| {
         let fs = fs.borrow();
-        let res = fs.metadata(fd as u32);
+        let res = fs.metadata(fd);
 
         match res {
             Ok(metadata) => {
@@ -535,7 +536,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: i32, ret_val: *mut wasi
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_sync", "fd={fd}");
 
@@ -556,7 +557,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_fd_tell(fd: i32, res: *mut wasi::Filesize) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_tell", "fd={fd}");
 
@@ -698,7 +699,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i32) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_fd_advise",
@@ -739,7 +740,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: i32, offset: i64, len: i64, advice: 
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32 {
+pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_fd_allocate",
@@ -767,7 +768,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: i32, offset: i64, len: i64) -> i32
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_datasync", "fd={fd:?}");
 
@@ -788,7 +789,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: i32) -> i32 {
 #[no_mangle]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut wasi::Fdstat) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi::Fdstat) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_fdstat_get", "fd={fd:?}");
 
@@ -830,7 +831,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: i32, ret_fdstat: *mut was
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: i32, new_flags: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_fd_fdstat_set_flags",
@@ -912,7 +913,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 }
 
 #[no_mangle]
-pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
+pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_fd_filestat_set_size",
@@ -923,7 +924,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
     let start = ic_instruction_counter();
 
     let result = FS.with(
-        |fs| match fs.borrow_mut().set_file_size(fd as u32, size as FileSize) {
+        |fs| match fs.borrow_mut().set_file_size(fd, size as FileSize) {
             Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(err) => wasi_helpers::into_errno(err),
         },
@@ -937,7 +938,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: i32, size: i64) -> i32 {
 
 #[no_mangle]
 pub extern "C" fn __ic_custom_fd_filestat_set_times(
-    fd: i32,
+    fd: Fd,
     atim: i64,
     mtim: i64,
     fst_flags: i32,
@@ -958,7 +959,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
         let mut atim = atim as u64;
         let mut mtim = mtim as u64;
 
-        let meta = fs.metadata(fd as u32);
+        let meta = fs.metadata(fd);
 
         match meta {
             Ok(_) => {
@@ -995,7 +996,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_readdir(
-    fd: i32,
+    fd: Fd,
     bytes: *mut u8,
     bytes_len: i32,
     cookie: i64,
@@ -1033,7 +1034,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_renumber(fd_from: i32, fd_to: i32) -> i32 {
+pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_renumber", "fd_from={fd_from} fd_to={fd_to}");
 
@@ -1226,7 +1227,7 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_create_directory(
-    parent_fd: i32,
+    parent_fd: Fd,
     path: *const u8,
     path_len: i32,
 ) -> i32 {
@@ -1251,7 +1252,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
 
         let now = ic_time();
 
-        match fs.mkdir(parent_fd as Fd, dir_name, fd_stat, now) {
+        match fs.mkdir(parent_fd, dir_name, fd_stat, now) {
             Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(er) => into_errno(er),
         }
@@ -1435,11 +1436,11 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_link(
-    old_fd: i32,
+    old_fd: Fd,
     sym_flags: i32,
     old_path: *const u8,
     old_path_len: i32,
-    new_fd: i32,
+    new_fd: Fd,
     new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
@@ -1484,16 +1485,16 @@ pub extern "C" fn __ic_custom_path_readlink(
     path_len: i32,
     buf: i32,
     buf_len: i32,
-    rp0: i32,
+    rp0: *mut usize,
 ) -> i32 {
-    prevent_elimination(&[fd, path as i32, path_len, buf, buf_len, rp0]);
+    prevent_elimination(&[fd, path as i32, path_len, buf, buf_len, rp0 as i32]);
     unimplemented!("WASI path_readlink is not implemented");
 }
 
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_remove_directory(
-    parent_fd: i32,
+    parent_fd: Fd,
     path: *const u8,
     path_len: i32,
 ) -> i32 {
@@ -1574,13 +1575,19 @@ pub extern "C" fn __ic_custom_path_rename(
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_path_symlink(
-    old_path: i32,
+    old_path: *const u8,
     old_path_len: i32,
     fd: i32,
-    new_path: i32,
+    new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
-    prevent_elimination(&[old_path, old_path_len, fd, new_path, new_path_len]);
+    prevent_elimination(&[
+        old_path as i32,
+        old_path_len,
+        fd,
+        new_path as i32,
+        new_path_len,
+    ]);
     unimplemented!("WASI path_symlink is not implemented");
 }
 
@@ -1628,9 +1635,9 @@ pub extern "C" fn __ic_custom_poll_oneoff(
     in_: *const wasi::Subscription,
     out: *mut wasi::Event,
     nsubscriptions: i32,
-    neventsp: i32,
+    neventsp: *mut wasi::Size,
 ) -> i32 {
-    prevent_elimination(&[in_ as i32, out as i32, nsubscriptions, neventsp]);
+    prevent_elimination(&[in_ as i32, out as i32, nsubscriptions, neventsp as i32]);
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_poll_oneoff");
@@ -1657,8 +1664,8 @@ pub extern "C" fn __ic_custom_sched_yield() -> i32 {
 #[no_mangle]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2]);
+pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) -> i32 {
+    prevent_elimination(&[arg0, arg1, arg2 as i32]);
     unimplemented!("WASI sock_accept is not supported");
 }
 
@@ -1667,13 +1674,13 @@ pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: i32) -> i3
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_recv(
     arg0: i32,
-    arg1: i32,
+    arg1: *const wasi::Iovec,
     arg2: i32,
     arg3: i32,
-    arg4: i32,
-    arg5: i32,
+    arg4: *mut usize,
+    arg5: *mut u16,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4, arg5]);
+    prevent_elimination(&[arg0, arg1 as i32, arg2, arg3, arg4 as i32, arg5 as i32]);
     unimplemented!("WASI sock_recv is not supported");
 }
 
@@ -1682,12 +1689,12 @@ pub extern "C" fn __ic_custom_sock_recv(
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_send(
     arg0: i32,
-    arg1: i32,
+    arg1: *const wasi::Ciovec,
     arg2: i32,
     arg3: i32,
-    arg4: i32,
+    arg4: *mut wasi::Size,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2, arg3, arg4]);
+    prevent_elimination(&[arg0, arg1 as i32, arg2, arg3, arg4 as i32]);
     unimplemented!("WASI sock_send is not supported");
 }
 
@@ -1759,13 +1766,13 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
             unsafe {
                 use std::ptr::{null, null_mut};
                 __ic_custom_fd_write(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
-                __ic_custom_fd_read(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_read(0, null::<wasi::Iovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_close(0);
 
                 __ic_custom_fd_prestat_get(0, null_mut::<wasi::Prestat>());
                 __ic_custom_fd_prestat_dir_name(0, null_mut::<u8>(), 0);
 
-                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<i32>());
+                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<u32>());
                 __ic_custom_random_get(null_mut::<u8>(), 0);
 
                 __ic_custom_environ_get(null_mut::<*mut u8>(), null_mut::<u8>());
@@ -1785,7 +1792,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_fd_filestat_get(0, null_mut::<wasi::Filestat>());
                 __ic_custom_fd_filestat_set_size(0, 0);
                 __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
-                __ic_custom_fd_pread(0, null::<wasi::Ciovec>(), 0, 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_pread(0, null::<wasi::Iovec>(), 0, 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_pwrite(0, null::<wasi::Ciovec>(), 0, 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_readdir(0, null_mut::<u8>(), 0, 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_renumber(0, 0);
@@ -1798,13 +1805,13 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_path_link(0, 0, null::<u8>(), 0, 0, null::<u8>(), 0);
 
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
-                __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
+                __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, null_mut());
 
                 __ic_custom_path_remove_directory(0, null::<u8>(), 0);
                 __ic_custom_path_rename(0, null::<u8>(), 0, 0, null::<u8>(), 0);
 
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
-                __ic_custom_path_symlink(0, 0, 0, 0, 0);
+                __ic_custom_path_symlink(null::<u8>(), 0, 0, null::<u8>(), 0);
 
                 __ic_custom_path_unlink_file(0, null::<u8>(), 0);
 
@@ -1813,7 +1820,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                     null::<wasi::Subscription>(),
                     null_mut::<wasi::Event>(),
                     0,
-                    0,
+                    null_mut(),
                 );
 
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
@@ -1822,11 +1829,11 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_sched_yield();
 
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
-                __ic_custom_sock_accept(0, 0, 0);
+                __ic_custom_sock_accept(0, 0, null_mut());
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
-                __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
+                __ic_custom_sock_recv(0, null(), 0, 0, null_mut(), null_mut());
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
-                __ic_custom_sock_send(0, 0, 0, 0, 0);
+                __ic_custom_sock_send(0, null(), 0, 0, null_mut());
                 #[cfg(not(feature = "skip_unimplemented_functions"))]
                 __ic_custom_sock_shutdown(0, 0);
 
@@ -1951,7 +1958,4 @@ pub fn store_memory_file(file_name: &str) -> i32 {
 }
 
 #[cfg(test)]
-mod lib_test;
-
-#[cfg(test)]
-mod integration_tests;
+mod test;

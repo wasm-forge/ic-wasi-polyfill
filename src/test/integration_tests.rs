@@ -3,9 +3,9 @@ use pocket_ic::PocketIc;
 use std::{cell::RefCell, fs};
 
 const BACKEND_WASM: &str =
-    "tests/canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
+    "test/canisters/canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
 const BACKEND_WASM_UPGRADED: &str =
-    "tests/canister_upgraded/target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
+    "test/canisters/canister_upgraded/target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
 
 thread_local!(
     static ACTIVE_CANISTER: RefCell<Option<Principal>> = const { RefCell::new(None) };
@@ -65,61 +65,61 @@ fn upgrade_canister(pic: &PocketIc) {
 mod fns {
 
     use candid::{decode_one, encode_one, Principal};
-    use pocket_ic::{PocketIc, WasmResult};
+    use pocket_ic::PocketIc;
 
     use super::active_canister;
 
     pub(crate) fn greet(pic: &PocketIc, arg: &str) -> String {
-        let Ok(WasmResult::Reply(response)) = pic.query_call(
-            active_canister(),
-            Principal::anonymous(),
-            "greet",
-            encode_one(arg).unwrap(),
-        ) else {
-            panic!("Expected reply");
-        };
+        let response = pic
+            .query_call(
+                active_canister(),
+                Principal::anonymous(),
+                "greet",
+                encode_one(arg).unwrap(),
+            )
+            .unwrap();
 
         let result: String = decode_one(&response).unwrap();
         result
     }
 
     pub(crate) fn check_new_dir_is_writable(pic: &PocketIc, dirname: &str) -> String {
-        let Ok(WasmResult::Reply(response)) = pic.update_call(
-            active_canister(),
-            Principal::anonymous(),
-            "check_new_dir_is_writable",
-            encode_one(dirname).unwrap(),
-        ) else {
-            panic!("Expected reply");
-        };
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "check_new_dir_is_writable",
+                encode_one(dirname).unwrap(),
+            )
+            .unwrap();
 
         let result: String = decode_one(&response).unwrap();
         result
     }
 
     pub(crate) fn check_dir_is_writable(pic: &PocketIc, dirname: &str) -> String {
-        let Ok(WasmResult::Reply(response)) = pic.update_call(
-            active_canister(),
-            Principal::anonymous(),
-            "check_dir_is_writable",
-            encode_one(dirname).unwrap(),
-        ) else {
-            panic!("Expected reply");
-        };
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "check_dir_is_writable",
+                encode_one(dirname).unwrap(),
+            )
+            .unwrap();
 
         let result: String = decode_one(&response).unwrap();
         result
     }
 
     pub(crate) fn check_new_file_is_writable(pic: &PocketIc, dirname: &str) -> String {
-        let Ok(WasmResult::Reply(response)) = pic.update_call(
-            active_canister(),
-            Principal::anonymous(),
-            "check_new_file_is_writable",
-            encode_one(dirname).unwrap(),
-        ) else {
-            panic!("Expected reply");
-        };
+        let response = pic
+            .update_call(
+                active_canister(),
+                Principal::anonymous(),
+                "check_new_file_is_writable",
+                encode_one(dirname).unwrap(),
+            )
+            .unwrap();
 
         let result: String = decode_one(&response).unwrap();
         result
@@ -145,35 +145,10 @@ mod fns {
             )
             .unwrap();
 
-        if let WasmResult::Reply(response) = response {
-            let result: String = decode_one(&response).unwrap();
+        let result: String = decode_one(&response).unwrap();
 
-            result
-        } else {
-            panic!("unintended call failure!");
-        }
+        result
     }
-
-    /*
-    pub(crate) fn file_size(pic: &PocketIc, filename: &str) -> usize {
-        let response = pic
-            .query_call(
-                active_canister(),
-                Principal::anonymous(),
-                "file_size",
-                candid::encode_one(filename).unwrap(),
-            )
-            .unwrap();
-
-        if let WasmResult::Reply(response) = response {
-            let result: usize = decode_one(&response).unwrap();
-
-            return result;
-        } else {
-            panic!("unintended call failure!");
-        }
-    }
-    */
 
     pub(crate) fn create_files(pic: &PocketIc, path: &str, count: u64) {
         pic.update_call(
@@ -195,13 +170,9 @@ mod fns {
             )
             .unwrap();
 
-        if let WasmResult::Reply(response) = response {
-            let result: Vec<String> = decode_one(&response).unwrap();
+        let result: Vec<String> = decode_one(&response).unwrap();
 
-            result
-        } else {
-            panic!("unintended call failure!");
-        }
+        result
     }
 
     pub(crate) fn append_chunk(pic: &PocketIc, text: &str, times: usize) -> (u64, usize) {
@@ -214,79 +185,11 @@ mod fns {
             )
             .unwrap();
 
-        if let WasmResult::Reply(response) = response {
-            let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
+        let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
 
-            (time, size)
-        } else {
-            panic!("unintended call failure!");
-        }
+        (time, size)
     }
 
-    /*
-        pub(crate) fn read_chunk(pic: &PocketIc, offset: usize, size: usize) -> String {
-            let response = pic
-                .query_call(
-                    active_canister(),
-                    Principal::anonymous(),
-                    "read_chunk",
-                    candid::encode_args((offset, size)).unwrap(),
-                )
-                .unwrap();
-
-            if let WasmResult::Reply(response) = response {
-
-                let result: String = decode_one(&response).unwrap();
-
-                return result;
-
-            } else {
-                panic!("unintended call failure!");
-            }
-        }
-
-        pub(crate) fn store_chunk(pic: &PocketIc, filename: &str) -> (u64, usize) {
-            let response = pic
-                .update_call(
-                    active_canister(),
-                    Principal::anonymous(),
-                    "store_chunk",
-                    candid::encode_one(filename.to_string()).unwrap(),
-                )
-                .unwrap();
-
-            if let WasmResult::Reply(response) = response {
-
-                let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
-
-                return (time, size);
-            } else {
-                panic!("unintended call failure!");
-            }
-        }
-
-        //pub fn store_chunk_map(key: u64) -> (u64, usize)
-        pub(crate) fn store_chunk_map(pic: &PocketIc, key: u64) -> (u64, usize) {
-            let response = pic
-                .update_call(
-                    active_canister(),
-                    Principal::anonymous(),
-                    "store_chunk_map",
-                    candid::encode_one(key).unwrap(),
-                )
-                .unwrap();
-
-            if let WasmResult::Reply(response) = response {
-
-                let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
-
-                return (time, size);
-
-            } else {
-                panic!("unintended call failure!");
-            }
-        }
-    */
     //pub fn store_chunk_map(key: u64) -> (u64, usize)
     pub(crate) fn store_chunk_map4k(pic: &PocketIc, key: u64) -> (u64, usize) {
         let response = pic
@@ -298,13 +201,9 @@ mod fns {
             )
             .unwrap();
 
-        if let WasmResult::Reply(response) = response {
-            let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
+        let (time, size): (u64, usize) = candid::decode_args(&response).unwrap();
 
-            (time, size)
-        } else {
-            panic!("unintended call failure!");
-        }
+        (time, size)
     }
 }
 

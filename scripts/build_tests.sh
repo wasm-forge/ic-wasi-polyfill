@@ -2,7 +2,7 @@
 set -e
 
 
-cd tests/fs_tests
+cd test/canisters/fs_tests
 
 cargo build --release --target wasm32-wasip1
 

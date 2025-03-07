@@ -5,7 +5,7 @@ pocket-ic
 *.wasm
 **/*.rs.bk
 
-tests/test_programs
+test/test_programs
 
 tarpaulin-report.html
 /.vscode/

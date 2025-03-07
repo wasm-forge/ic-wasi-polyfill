@@ -1,5 +1,5 @@
 [package]
-name = "canister_initial_backend"
+name = "canister_upgraded_backend"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,6 +10,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 candid = "0.10"
-ic-cdk = "0.16"
-ic-stable-structures = "0.6.5"
-ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill", features = ["report_wasi_calls"]}
+ic-cdk = "0.17"
+ic-stable-structures = "0.6.7"
+ic-wasi-polyfill = {path="../../../../../../ic-wasi-polyfill"}

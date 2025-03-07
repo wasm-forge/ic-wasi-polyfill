@@ -122,7 +122,7 @@ pub fn _into_stable_fs_filetype(
 
 pub fn fd_readdir(
     fs: &FileSystem,
-    fd: i32,
+    fd: Fd,
     cookie: i64,
     bytes: *mut u8,
     bytes_len: i32,
@@ -382,7 +382,7 @@ mod tests {
 
         let result = fd_readdir(
             &fs,
-            fs.root_fd() as i32,
+            fs.root_fd(),
             2,
             p,
             buf.len() as i32,
