@@ -180,7 +180,7 @@ fn test_file_truncation() {
             filename.as_ptr(),
             filename.len() as i32,
             (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC) as i32,
-            (wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ) as i64,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut (file_fd as u32)) as *mut u32,
@@ -266,7 +266,7 @@ fn test_create_dirs_and_file_in_it() {
             new_folder_name1.as_ptr(),
             new_folder_name1.len() as i32,
             2,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut parent_folder_fd) as *mut Fd,
@@ -286,7 +286,7 @@ fn test_create_dirs_and_file_in_it() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             1 + 4 + 8,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut new_file_fd) as *mut Fd,
@@ -348,9 +348,11 @@ fn test_create_dirs_and_file_in_it() {
         }
     }
 
-    assert!(folders.len() == 2);
-    assert!(folders[0] == "test_folder1");
-    assert!(folders[1] == "test_folder3");
+    assert!(folders.len() == 4);
+    assert!(folders[0] == ".");
+    assert!(folders[1] == "..");
+    assert!(folders[2] == "test_folder1");
+    assert!(folders[3] == "test_folder3");
 }
 
 #[test]
@@ -372,7 +374,7 @@ fn test_writing_and_reading() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             0,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut file_fd) as *mut Fd,
@@ -427,7 +429,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             1 + 4 + 8,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut file_fd) as *mut Fd,
@@ -471,7 +473,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             0,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut file_fd) as *mut Fd,
@@ -527,7 +529,7 @@ fn test_writing_and_reading_file_stats() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             1 + 4 + 8,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut file_fd) as *mut Fd,
@@ -699,7 +701,7 @@ fn test_link_seek_tell() {
             link_file_name.as_ptr(),
             link_file_name.len() as i32,
             0,
-            0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
             (&mut link_file_fd) as *mut Fd,
@@ -853,13 +855,15 @@ fn test_rename_unlink() {
     let res = __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32);
     assert!(res == 0);
 
-    // list files
-    let persons = read_directory(3);
+    // list files, include . and ..
+    let files = read_directory(3);
 
-    assert_eq!(persons.len(), 2);
+    assert_eq!(files.len(), 4);
 
-    assert!(persons.contains(&String::from("file1_renamed.txt")));
-    assert!(persons.contains(&String::from("file2.txt")));
+    assert!(files.contains(&String::from(".")));
+    assert!(files.contains(&String::from("..")));
+    assert!(files.contains(&String::from("file1_renamed.txt")));
+    assert!(files.contains(&String::from("file2.txt")));
 }
 
 #[test]

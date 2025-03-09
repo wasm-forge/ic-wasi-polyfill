@@ -407,8 +407,8 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     path_len: i32,
 
     oflags: i32,
-    fs_rights_base: i64,
-    fs_rights_inheriting: i64,
+    fs_rights_base: wasi::Rights,
+    fs_rights_inheriting: wasi::Rights,
 
     fdflags: i32,
     res: *mut Fd,
@@ -433,8 +433,8 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let fd_stat = FdStat {
             flags: FdFlags::from_bits_truncate(fdflags as u16),
-            rights_base: fs_rights_base as u64,
-            rights_inheriting: fs_rights_inheriting as u64,
+            rights_base: fs_rights_base,
+            rights_inheriting: fs_rights_inheriting,
         };
 
         let open_flags = OpenFlags::from_bits_truncate(oflags as u16);

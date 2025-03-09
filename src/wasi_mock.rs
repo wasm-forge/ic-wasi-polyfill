@@ -1840,8 +1840,8 @@ pub unsafe fn path_open(
         path.as_ptr(),
         path.len() as i32,
         oflags as i32,
-        fs_rights_base as i64,
-        fs_rights_inheriting as i64,
+        fs_rights_base,
+        fs_rights_inheriting,
         fdflags as i32,
         rp0.as_mut_ptr(),
     );
@@ -2360,8 +2360,8 @@ pub mod wasi_snapshot_preview1 {
         arg2: *const u8,
         arg3: i32,
         arg4: i32,
-        arg5: i64,
-        arg6: i64,
+        arg5: u64,
+        arg6: u64,
         arg7: i32,
         arg8: *mut u32,
     ) -> i32 {
