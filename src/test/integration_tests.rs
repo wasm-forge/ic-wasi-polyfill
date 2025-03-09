@@ -296,7 +296,8 @@ fn list_folders_after_upgrade() {
 fn create_1000_files() {
     let pic = setup_initial_canister();
 
-    let file_count = 20;
+    // TODO: create more files
+    let file_count = 250;
     let path1 = "files1";
     let path2 = "files2//";
     let path3 = "files3";
@@ -329,7 +330,7 @@ fn long_paths_and_file_names() {
 
     let file_count = 20;
 
-    // wasi max path length limit is 512 bytes, have to reduce test limits accordingly
+    // Wasi max path length limit is 512 bytes, have to reduce test limits accordingly
     let long_name = "1234567890ABCD7890ABCDEFABCDEF1234567890ABCDE";
     let long_name2 = "1234567890ABCFABCDEF12345678904567890ABCDEFä";
     let long_name3 = "1234567890ABC34567890ABCDEF💖567890ABCDEFA💖";
