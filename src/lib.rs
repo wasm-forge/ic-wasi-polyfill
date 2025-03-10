@@ -1377,8 +1377,15 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
         let fd_stat = FdStat::default();
 
         let fst_flags = fst_flags as wasi::Fstflags;
-        let mut atim = atim as u64;
-        let mut mtim = mtim as u64;
+
+        let atim = atim as u64;
+        let mtim = mtim as u64;
+
+        if ((fst_flags & wasi::FSTFLAGS_ATIM_NOW) > 0 && (fst_flags & wasi::FSTFLAGS_ATIM) > 0)
+            || ((fst_flags & wasi::FSTFLAGS_MTIM_NOW) > 0 && (fst_flags & wasi::FSTFLAGS_MTIM) > 0)
+        {
+            return into_errno(stable_fs::error::Error::InvalidArgument);
+        }
 
         let open_flags = OpenFlags::empty();
 
@@ -1393,11 +1400,11 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
                         let now = ic_time();
 
                         if fst_flags & wasi::FSTFLAGS_ATIM_NOW > 0 {
-                            atim = now;
+                            metadata.times.accessed = now;
                         }
 
                         if fst_flags & wasi::FSTFLAGS_MTIM_NOW > 0 {
-                            mtim = now;
+                            metadata.times.modified = now;
                         }
 
                         if fst_flags & wasi::FSTFLAGS_ATIM > 0 {

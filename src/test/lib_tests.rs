@@ -1160,3 +1160,125 @@ fn test_fd_fdstat_set_flags() {
         wasi::path_unlink_file(dir_fd, FILE_NAME).expect("unlinking file");
     }
 }
+
+#[test]
+fn test_overwrite_preopen() {
+    init(&[], &[]);
+
+    let root_fd = 3;
+
+    unsafe {
+        let file_fd = create_test_file(3, "test/file.txt");
+        wasi::fd_close(file_fd).unwrap();
+
+        let dir_fd = wasi::path_open(root_fd, 0, "test", wasi::OFLAGS_DIRECTORY, 0, 0, 0).unwrap();
+
+        let pre_fd: wasi::Fd = (libc::STDERR_FILENO + 1) as wasi::Fd;
+
+        assert!(dir_fd > pre_fd, "dir_fd number");
+
+        let old_dir_filestat = wasi::fd_filestat_get(dir_fd).expect("failed fd_filestat_get");
+
+        // Try to renumber over a preopened directory handle.
+        wasi::fd_renumber(dir_fd, pre_fd).expect("renumbering over a preopened file descriptor");
+
+        // Ensure that pre_fd is still open.
+        let new_dir_filestat = wasi::fd_filestat_get(pre_fd).expect("failed fd_filestat_get");
+
+        // Ensure that we renumbered.
+        assert_eq!(old_dir_filestat.dev, new_dir_filestat.dev);
+        assert_eq!(old_dir_filestat.ino, new_dir_filestat.ino);
+
+        // Ensure that dir_fd is closed.
+        assert_eq!(
+            wasi::fd_fdstat_get(dir_fd).expect_err("failed fd_fdstat_get"),
+            wasi::ERRNO_BADF
+        );
+    }
+}
+
+#[test]
+fn test_renumber() {
+    init(&[], &[]);
+
+    let root_fd = 3;
+
+    unsafe {
+        let file_fd = create_test_file(3, "test/file.txt");
+        wasi::fd_close(file_fd).unwrap();
+
+        let dir_fd = wasi::path_open(root_fd, 0, "test", wasi::OFLAGS_DIRECTORY, 0, 0, 0).unwrap();
+
+        let pre_fd: wasi::Fd = (libc::STDERR_FILENO + 1) as wasi::Fd;
+
+        assert!(dir_fd > pre_fd, "dir_fd number");
+
+        // Create a file in the scratch directory.
+        let fd_from = wasi::path_open(
+            dir_fd,
+            0,
+            "file1",
+            wasi::OFLAGS_CREAT,
+            wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE,
+            0,
+            0,
+        )
+        .expect("opening a file");
+
+        assert!(
+            fd_from > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        // Get fd_from fdstat attributes
+        let fdstat_from =
+            wasi::fd_fdstat_get(fd_from).expect("calling fd_fdstat on the open file descriptor");
+
+        // Create another file in the scratch directory.
+        let fd_to = wasi::path_open(
+            dir_fd,
+            0,
+            "file2",
+            wasi::OFLAGS_CREAT,
+            wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE,
+            0,
+            0,
+        )
+        .expect("opening a file");
+        assert!(
+            fd_to > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        // Renumber fd of file1 into fd of file2
+        wasi::fd_renumber(fd_from, fd_to).expect("renumbering two descriptors");
+
+        // Ensure that fd_from is closed
+        assert_eq!(
+            wasi::fd_close(fd_from).expect_err("closing already closed file descriptor"),
+            wasi::ERRNO_BADF
+        );
+
+        // Ensure that fd_to is still open.
+        let fdstat_to =
+            wasi::fd_fdstat_get(fd_to).expect("calling fd_fdstat on the open file descriptor");
+        assert_eq!(
+            fdstat_from.fs_filetype, fdstat_to.fs_filetype,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+        assert_eq!(
+            fdstat_from.fs_flags, fdstat_to.fs_flags,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+        assert_eq!(
+            fdstat_from.fs_rights_base, fdstat_to.fs_rights_base,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+        assert_eq!(
+            fdstat_from.fs_rights_inheriting, fdstat_to.fs_rights_inheriting,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+
+        wasi::fd_close(fd_to).expect("closing a file");
+    }
+}
