@@ -1,4 +1,4 @@
-use crate::test::common::{create_test_file, create_test_file_with_content, read_directory};
+use crate::test::common::*;
 use crate::wasi;
 use crate::*;
 
@@ -1017,4 +1017,146 @@ fn test_with_custom_memory() {
     init_with_memory(&[], &[], memory2.clone());
 
     //
+}
+
+#[test]
+fn test_fd_fdstat_set_flags() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        const FILE_NAME: &str = "file";
+        let data = &[0u8; 100];
+
+        let file_fd = wasi::path_open(
+            dir_fd,
+            0,
+            FILE_NAME,
+            wasi::OFLAGS_CREAT,
+            wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE,
+            0,
+            wasi::FDFLAGS_APPEND,
+        )
+        .expect("opening a file");
+
+        // Write some data and then verify the written data
+        assert_eq!(
+            wasi::fd_write(
+                file_fd,
+                &[wasi::Ciovec {
+                    buf: data.as_ptr(),
+                    buf_len: data.len(),
+                }],
+            )
+            .expect("writing to a file"),
+            data.len(),
+            "should write {} bytes",
+            data.len(),
+        );
+
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        let buffer = &mut [0u8; 100];
+
+        assert_eq!(
+            wasi::fd_read(
+                file_fd,
+                &[wasi::Iovec {
+                    buf: buffer.as_mut_ptr(),
+                    buf_len: buffer.len(),
+                }]
+            )
+            .expect("reading file"),
+            buffer.len(),
+            "should read {} bytes",
+            buffer.len()
+        );
+
+        assert_eq!(&data[..], &buffer[..]);
+
+        let data = &[1u8; 100];
+
+        // Seek back to the start to ensure we're in append-only mode
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        assert_eq!(
+            wasi::fd_write(
+                file_fd,
+                &[wasi::Ciovec {
+                    buf: data.as_ptr(),
+                    buf_len: data.len(),
+                }],
+            )
+            .expect("writing to a file"),
+            data.len(),
+            "should write {} bytes",
+            data.len(),
+        );
+
+        wasi::fd_seek(file_fd, 100, wasi::WHENCE_SET).expect("seeking file");
+
+        assert_eq!(
+            wasi::fd_read(
+                file_fd,
+                &[wasi::Iovec {
+                    buf: buffer.as_mut_ptr(),
+                    buf_len: buffer.len(),
+                }]
+            )
+            .expect("reading file"),
+            buffer.len(),
+            "should read {} bytes",
+            buffer.len()
+        );
+
+        assert_eq!(&data[..], &buffer[..]);
+
+        wasi::fd_fdstat_set_flags(file_fd, 0).expect("disabling flags");
+
+        // Overwrite some existing data to ensure the append mode is now off
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        let data = &[2u8; 100];
+
+        assert_eq!(
+            wasi::fd_write(
+                file_fd,
+                &[wasi::Ciovec {
+                    buf: data.as_ptr(),
+                    buf_len: data.len(),
+                }],
+            )
+            .expect("writing to a file"),
+            data.len(),
+            "should write {} bytes",
+            data.len(),
+        );
+
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        assert_eq!(
+            wasi::fd_read(
+                file_fd,
+                &[wasi::Iovec {
+                    buf: buffer.as_mut_ptr(),
+                    buf_len: buffer.len(),
+                }]
+            )
+            .expect("reading file"),
+            buffer.len(),
+            "should read {} bytes",
+            buffer.len()
+        );
+
+        assert_eq!(&data[..], &buffer[..]);
+
+        wasi::fd_close(file_fd).expect("close file");
+
+        let stat = wasi::path_filestat_get(dir_fd, 0, FILE_NAME).expect("stat path");
+
+        assert_eq!(stat.size, 200, "expected a file size of 200");
+
+        wasi::path_unlink_file(dir_fd, FILE_NAME).expect("unlinking file");
+    }
 }
