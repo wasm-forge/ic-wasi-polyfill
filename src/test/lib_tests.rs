@@ -986,6 +986,8 @@ fn test_fd_renumber_over_opened_file() {
 
 use ic_stable_structures::VectorMemory;
 
+use super::common::libc::STDIN_FILENO;
+
 // create new vector memory
 pub fn new_vector_memory() -> VectorMemory {
     use std::{cell::RefCell, rc::Rc};
@@ -1281,4 +1283,82 @@ fn test_renumber() {
 
         wasi::fd_close(fd_to).expect("closing a file");
     }
+}
+
+#[test]
+fn test_remove_directory() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        // Create a directory in the scratch directory.
+        wasi::path_create_directory(dir_fd, "dir").expect("creating a directory");
+
+        // Test that removing it succeeds.
+        wasi::path_remove_directory(dir_fd, "dir")
+            .expect("remove_directory on a directory should succeed");
+
+        // There isn't consistient behavior across operating systems of whether removing with a
+        // directory where the path has a trailing slash succeeds or fails, so we won't test
+        // that behavior.
+
+        // Create a temporary file.
+        create_empty_test_file(dir_fd, "file");
+
+        // Test that removing it with no trailing slash fails.
+        assert_eq!(
+            wasi::path_remove_directory(dir_fd, "file")
+                .expect_err("remove_directory without a trailing slash on a file should fail"),
+            wasi::ERRNO_NOTDIR
+        );
+
+        // Test that removing it with a trailing slash fails.
+        assert_eq!(
+            wasi::path_remove_directory(dir_fd, "file/")
+                .expect_err("remove_directory with a trailing slash on a file should fail"),
+            wasi::ERRNO_NOTDIR
+        );
+
+        wasi::path_unlink_file(dir_fd, "file").expect("removing a file");
+    }
+}
+
+#[test]
+fn test_remove_nonempty_directory() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        // Create a directory in the scratch directory.
+        wasi::path_create_directory(dir_fd, "dir").expect("creating a directory");
+
+        // Create a directory in the directory we just created.
+        wasi::path_create_directory(dir_fd, "dir/nested").expect("creating a subdirectory");
+
+        // Test that attempting to unlink the first directory returns the expected error code.
+        assert_eq!(
+            wasi::path_remove_directory(dir_fd, "dir")
+                .expect_err("remove_directory on a directory should return ENOTEMPTY"),
+            wasi::ERRNO_NOTEMPTY
+        );
+
+        // Removing the directories.
+        wasi::path_remove_directory(dir_fd, "dir/nested")
+            .expect("remove_directory on a nested directory should succeed");
+        wasi::path_remove_directory(dir_fd, "dir").expect("removing a directory");
+    }
+}
+
+#[test]
+fn unicode_write() {
+    let text = "مرحبا بكم\n";
+
+    let ciovecs = [wasi::Ciovec {
+        buf: text.as_bytes().as_ptr(),
+        buf_len: text.len(),
+    }];
+    let written = unsafe { wasi::fd_write(libc::STDOUT_FILENO, &ciovecs) }.expect("write succeeds");
+    assert_eq!(written, text.len(), "full contents should be written");
 }

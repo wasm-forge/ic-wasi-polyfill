@@ -6,4 +6,5 @@ mod fd_tests;
 mod file_read_write_seek_tell;
 mod integration_tests;
 mod lib_tests;
+mod path_open_tests;
 mod path_tests;

@@ -1,5 +1,5 @@
-use crate::test::common::{create_test_file, libc};
-use crate::wasi_mock::{Clockid, CLOCKID_MONOTONIC};
+use crate::test::common::{create_empty_test_file, create_test_file, libc};
+use crate::wasi_mock::CLOCKID_MONOTONIC;
 use crate::{init, wasi};
 
 #[test]
@@ -43,7 +43,7 @@ fn test_interesting_paths() {
         );
         wasi::fd_close(file_fd).expect("closing a file");
 
-        // TODO: trailing slashes enforce expect directory
+        // TODO: trailing slashes enforce the new dir entry type to be a directory
         /*
         // Now open it with a trailing slash.
         assert_eq!(
@@ -224,5 +224,171 @@ fn test_path_filestat() {
 
         wasi::fd_close(file_fd).expect("closing a file");
         wasi::path_unlink_file(dir_fd, "file").expect("removing a file");
+    }
+}
+
+#[test]
+fn test_path_rename_trailing_slashes() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        // Test renaming a directory with a trailing slash in the name.
+        wasi::path_create_directory(dir_fd, "source").expect("creating a directory");
+        wasi::path_rename(dir_fd, "source/", dir_fd, "target")
+            .expect("renaming a directory with a trailing slash in the source name");
+        wasi::path_rename(dir_fd, "target", dir_fd, "source/")
+            .expect("renaming a directory with a trailing slash in the destination name");
+        wasi::path_rename(dir_fd, "source/", dir_fd, "target/").expect(
+            "renaming a directory with a trailing slash in the source and destination names",
+        );
+        wasi::path_rename(dir_fd, "target", dir_fd, "source")
+            .expect("renaming a directory with no trailing slashes at all should work");
+        wasi::path_remove_directory(dir_fd, "source").expect("removing the directory");
+    }
+}
+
+#[test]
+fn test_path_rename() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        // First, try renaming a dir to nonexistent path
+        // Create source directory
+        wasi::path_create_directory(dir_fd, "source").expect("creating a directory");
+
+        // Try renaming the directory
+        wasi::path_rename(dir_fd, "source", dir_fd, "target").expect("renaming a directory");
+
+        // Check that source directory doesn't exist anymore
+        assert_eq!(
+            wasi::path_open(dir_fd, 0, "source", wasi::OFLAGS_DIRECTORY, 0, 0, 0)
+                .expect_err("opening a nonexistent path as a directory should fail"),
+            wasi::ERRNO_NOENT
+        );
+
+        // Check that target directory exists
+        let mut fd = wasi::path_open(dir_fd, 0, "target", wasi::OFLAGS_DIRECTORY, 0, 0, 0)
+            .expect("opening renamed path as a directory");
+        assert!(
+            fd > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        wasi::fd_close(fd).expect("closing a file");
+        wasi::path_remove_directory(dir_fd, "target").expect("removing a directory");
+
+        // Now, try renaming renaming a dir to existing empty dir
+        wasi::path_create_directory(dir_fd, "source").expect("creating a directory");
+        wasi::path_create_directory(dir_fd, "target").expect("creating a directory");
+        wasi::path_rename(dir_fd, "source", dir_fd, "target").expect("renaming a directory");
+
+        // Check that source directory doesn't exist anymore
+        assert_eq!(
+            wasi::path_open(dir_fd, 0, "source", wasi::OFLAGS_DIRECTORY, 0, 0, 0)
+                .expect_err("opening a nonexistent path as a directory"),
+            wasi::ERRNO_NOENT
+        );
+
+        // Check that target directory exists
+        fd = wasi::path_open(dir_fd, 0, "target", wasi::OFLAGS_DIRECTORY, 0, 0, 0)
+            .expect("opening renamed path as a directory");
+        assert!(
+            fd > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        wasi::fd_close(fd).expect("closing a file");
+        wasi::path_remove_directory(dir_fd, "target").expect("removing a directory");
+
+        wasi::path_create_directory(dir_fd, "source").expect("creating a directory");
+        wasi::path_create_directory(dir_fd, "target").expect("creating a directory");
+
+        wasi::path_remove_directory(dir_fd, "target").expect("removing a directory");
+        wasi::path_remove_directory(dir_fd, "source").expect("removing a directory");
+
+        // Now, try renaming a dir to existing non-empty dir
+        wasi::path_create_directory(dir_fd, "source").expect("creating a directory");
+        wasi::path_create_directory(dir_fd, "target").expect("creating a directory");
+
+        create_empty_test_file(dir_fd, "target/file");
+
+        assert_eq!(
+            wasi::path_rename(dir_fd, "source", dir_fd, "target")
+                .expect_err("renaming directory to a nonempty directory"),
+            wasi::ERRNO_NOTEMPTY
+        );
+
+        assert_eq!(
+            wasi::path_rename(dir_fd, "source", dir_fd, "target/file")
+                .expect_err("renaming a directory to a file"),
+            wasi::ERRNO_NOTDIR
+        );
+
+        wasi::path_unlink_file(dir_fd, "target/file").expect("removing a file");
+        wasi::path_remove_directory(dir_fd, "source").expect("removing a directory");
+
+        wasi::path_remove_directory(dir_fd, "target").expect("removing a directory");
+
+        // Now, try renaming a file to a nonexistent path
+        create_empty_test_file(dir_fd, "source");
+        wasi::path_rename(dir_fd, "source", dir_fd, "target").expect("renaming a file");
+
+        // Check that source file doesn't exist anymore
+        assert_eq!(
+            wasi::path_open(dir_fd, 0, "source", 0, 0, 0, 0)
+                .expect_err("opening a nonexistent path should fail"),
+            wasi::ERRNO_NOENT
+        );
+
+        // Check that target file exists
+        fd = wasi::path_open(dir_fd, 0, "target", 0, 0, 0, 0).expect("opening renamed path");
+        assert!(
+            fd > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        wasi::fd_close(fd).expect("closing a file");
+        wasi::path_unlink_file(dir_fd, "target").expect("removing a file");
+
+        // Now, try renaming file to an existing file
+        create_empty_test_file(dir_fd, "source");
+        create_empty_test_file(dir_fd, "target");
+
+        wasi::path_rename(dir_fd, "source", dir_fd, "target")
+            .expect("renaming file to another existing file");
+
+        // Check that source file doesn't exist anymore
+        assert_eq!(
+            wasi::path_open(dir_fd, 0, "source", 0, 0, 0, 0)
+                .expect_err("opening a nonexistent path"),
+            wasi::ERRNO_NOENT
+        );
+
+        // Check that target file exists
+        fd = wasi::path_open(dir_fd, 0, "target", 0, 0, 0, 0).expect("opening renamed path");
+        assert!(
+            fd > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        wasi::fd_close(fd).expect("closing a file");
+        wasi::path_unlink_file(dir_fd, "target").expect("removing a file");
+
+        // Try renaming to an (empty) directory instead
+        create_empty_test_file(dir_fd, "source");
+        wasi::path_create_directory(dir_fd, "target").expect("creating a directory");
+
+        assert_eq!(
+            wasi::path_rename(dir_fd, "source", dir_fd, "target")
+                .expect_err("renaming a file to existing directory should fail"),
+            wasi::ERRNO_ACCES,
+        );
+
+        wasi::path_remove_directory(dir_fd, "target").expect("removing a directory");
+        wasi::path_unlink_file(dir_fd, "source").expect("removing a file");
     }
 }

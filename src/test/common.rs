@@ -63,6 +63,11 @@ pub fn create_test_file(parent_fd: Fd, file_name: &str) -> Fd {
     )
 }
 
+pub fn create_empty_test_file(parent_fd: Fd, file_name: &str) {
+    let fd = create_test_file_with_content(parent_fd, file_name, vec![]);
+    assert_eq!(__ic_custom_fd_close(fd), 0);
+}
+
 pub fn read_directory(root_fd: Fd) -> Vec<String> {
     let len = 1000;
     let mut bytes: Vec<u8> = Vec::with_capacity(len);
