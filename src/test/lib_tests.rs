@@ -986,8 +986,6 @@ fn test_fd_renumber_over_opened_file() {
 
 use ic_stable_structures::VectorMemory;
 
-use super::common::libc::STDIN_FILENO;
-
 // create new vector memory
 pub fn new_vector_memory() -> VectorMemory {
     use std::{cell::RefCell, rc::Rc};
