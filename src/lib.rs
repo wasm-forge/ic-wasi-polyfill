@@ -58,7 +58,7 @@ fn ic_print(value: &str) {
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
+pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 { unsafe {
     let iovs = std::slice::from_raw_parts(iovs, len as usize);
 
     let mut written = 0;
@@ -73,7 +73,7 @@ pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wa
     *res = written;
 
     wasi::ERRNO_SUCCESS.raw() as i32
-}
+}}
 
 thread_local! {
     static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
@@ -90,14 +90,14 @@ macro_rules! debug_instructions {
     ($fn_name:literal) => {
         ic_print(&format!("\t{}", $fn_name))
     };
-    ($fn_name:literal, $params:expr) => {
+    ($fn_name:literal, $params:expr_2021) => {
         ic_print(&format!(
             "\t{}\tparameters:\t{}\t",
             $fn_name,
             format!($params)
         ))
     };
-    ($fn_name:literal, $sresult:expr, $stime:expr) => {
+    ($fn_name:literal, $sresult:expr_2021, $stime:expr_2021) => {
         let etime = ic_instruction_counter();
 
         ic_print(&format!(
@@ -106,7 +106,7 @@ macro_rules! debug_instructions {
             etime - ($stime)
         ))
     };
-    ($fn_name:literal, $sresult:expr, $stime:expr, $out_params:expr) => {
+    ($fn_name:literal, $sresult:expr_2021, $stime:expr_2021, $out_params:expr_2021) => {
         let etime = ic_instruction_counter();
 
         ic_print(&format!(
@@ -118,7 +118,7 @@ macro_rules! debug_instructions {
     };
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_write(
@@ -126,7 +126,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     iovs: *const wasi::Ciovec,
     len: i32,
     res: *mut wasi::Size,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_write");
     let src_io_vec: *const SrcBuf = iovs as *const SrcBuf;
@@ -169,9 +169,9 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_read(
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     iovs: *const wasi::Iovec,
     len: i32,
     res: *mut wasi::Size,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_read");
 
@@ -224,9 +224,9 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_pwrite(
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     len: i32,
     offset: i64,
     res: *mut wasi::Size,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_pwrite");
 
@@ -281,9 +281,9 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_pread(
@@ -292,7 +292,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     len: i32,
     offset: i64,
     res: *mut wasi::Size,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
@@ -341,9 +341,9 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_seek(
@@ -397,7 +397,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_open(
@@ -412,7 +412,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
     fdflags: i32,
     res: *mut Fd,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
@@ -462,9 +462,9 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -488,7 +488,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: Fd, ret_val: *mut wasi::Filestat) -> i32 {
@@ -534,7 +534,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: Fd, ret_val: *mut wasi:
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -554,7 +554,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -> i32 {
@@ -596,7 +596,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi::Prestat) -> i32 {
@@ -642,7 +642,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi:
     ret
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
@@ -697,7 +697,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i32) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -738,7 +738,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -766,7 +766,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -786,7 +786,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi::Fdstat) -> i32 {
@@ -829,7 +829,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -871,7 +871,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     fd: i32,
@@ -912,7 +912,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -936,7 +936,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn __ic_custom_fd_filestat_set_times(
     fd: Fd,
     atim: i64,
@@ -993,7 +993,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_readdir(
     fd: Fd,
@@ -1032,7 +1032,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -1058,10 +1058,10 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
+pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_random_get");
 
@@ -1082,15 +1082,15 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_environ_get(
     environment: *mut *mut u8,
     environment_buffer: *mut u8,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_environ_get");
 
@@ -1116,15 +1116,15 @@ pub unsafe extern "C" fn __ic_custom_environ_get(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     entry_count: *mut wasi::Size,
     buffer_size: *mut wasi::Size,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_environ_sizes_get");
 
@@ -1152,14 +1152,14 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     }
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn __ic_custom_proc_exit(code: i32) -> ! {
     panic!("WASI proc_exit called with code: {code}");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_args_get(arg_entries: *mut *mut u8, arg_buffer: *mut u8) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
@@ -1170,25 +1170,25 @@ pub extern "C" fn __ic_custom_args_get(arg_entries: *mut *mut u8, arg_buffer: *m
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_arg_sizes_get -> 0");
 
     *len1 = 0;
     *len2 = 0;
     0
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) -> i32 {
+pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) -> i32 { unsafe {
     prevent_elimination(&[id]);
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1196,16 +1196,16 @@ pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) ->
 
     *result = 1_000_000_000; // 1 second.
     wasi::ERRNO_SUCCESS.raw() as i32
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_clock_time_get(
     id: i32,
     precision: i64,
     time: *mut u64,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_clock_time_get");
 
@@ -1221,9 +1221,9 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     debug_instructions!("__ic_custom_clock_time_get", result, start);
 
     result
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_create_directory(
@@ -1264,7 +1264,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_filestat_get(
@@ -1273,7 +1273,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     path: *const u8,
     path_len: i32,
     result: *mut wasi::Filestat,
-) -> i32 {
+) -> i32 { unsafe {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_filestat_get");
 
@@ -1344,9 +1344,9 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     }
 
     r
-}
+}}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_filestat_set_times(
     parent_fd: i32,
@@ -1440,7 +1440,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_link(
     old_fd: Fd,
@@ -1483,7 +1483,7 @@ pub extern "C" fn __ic_custom_path_link(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_path_readlink(
@@ -1498,7 +1498,7 @@ pub extern "C" fn __ic_custom_path_readlink(
     unimplemented!("WASI path_readlink is not implemented");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_remove_directory(
     parent_fd: Fd,
@@ -1534,7 +1534,7 @@ pub extern "C" fn __ic_custom_path_remove_directory(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_rename(
     old_fd: i32,
@@ -1578,7 +1578,7 @@ pub extern "C" fn __ic_custom_path_rename(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_path_symlink(
@@ -1598,7 +1598,7 @@ pub extern "C" fn __ic_custom_path_symlink(
     unimplemented!("WASI path_symlink is not implemented");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_path_unlink_file(
     parent_fd: i32,
@@ -1635,7 +1635,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
     result
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_poll_oneoff(
@@ -1653,7 +1653,7 @@ pub extern "C" fn __ic_custom_poll_oneoff(
     wasi::ERRNO_IO.raw() as i32
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_proc_raise(sig: i32) -> i32 {
@@ -1661,14 +1661,14 @@ pub extern "C" fn __ic_custom_proc_raise(sig: i32) -> i32 {
     unimplemented!("WASI proc_raise is not implemented");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_sched_yield() -> i32 {
     // No-op.
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) -> i32 {
@@ -1676,7 +1676,7 @@ pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) 
     unimplemented!("WASI sock_accept is not supported");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_recv(
@@ -1691,7 +1691,7 @@ pub extern "C" fn __ic_custom_sock_recv(
     unimplemented!("WASI sock_recv is not supported");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_send(
@@ -1705,7 +1705,7 @@ pub extern "C" fn __ic_custom_sock_send(
     unimplemented!("WASI sock_send is not supported");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 pub extern "C" fn __ic_custom_sock_shutdown(arg0: i32, arg1: i32) -> i32 {
@@ -1725,14 +1725,14 @@ fn prevent_elimination(args: &[i32]) {
     });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn init_seed(seed: &[u8]) {
     unsafe {
         raw_init_seed(seed.as_ptr(), seed.len());
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
     if seed.is_null() || len == 0 {
@@ -1750,9 +1750,9 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
     });
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
+pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) { unsafe {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
@@ -1848,7 +1848,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
             }
         }
     })
-}
+}}
 
 // the init function ensures the module is not thrown away by the linker
 // seed       -  The seed of the random numbers, up to 32 byte array can be used.

@@ -1,6 +1,6 @@
 use crate::{init, test::common::libc, wasi};
 
-unsafe fn test_fd_filestat_set_size_rw(dir_fd: wasi::Fd) {
+unsafe fn test_fd_filestat_set_size_rw(dir_fd: wasi::Fd) { unsafe {
     // Create a file in the scratch directory, opened read/write
     let file_fd = wasi::path_open(
         dir_fd,
@@ -30,9 +30,9 @@ unsafe fn test_fd_filestat_set_size_rw(dir_fd: wasi::Fd) {
 
     wasi::fd_close(file_fd).expect("failed to close fd");
     wasi::path_unlink_file(dir_fd, "file").expect("failed to remove file");
-}
+}}
 
-unsafe fn test_fd_filestat_set_size_ro(dir_fd: wasi::Fd) {
+unsafe fn test_fd_filestat_set_size_ro(dir_fd: wasi::Fd) { unsafe {
     // Create a file in the scratch directory. Creating a file implies opening it for writing, so
     // we have to close and re-open read-only to observe read-only behavior.
     let file_fd = wasi::path_open(dir_fd, 0, "file", wasi::OFLAGS_CREAT, 0, 0, 0)
@@ -59,9 +59,9 @@ unsafe fn test_fd_filestat_set_size_ro(dir_fd: wasi::Fd) {
 
     wasi::fd_close(file_fd).expect("failed to close fd");
     wasi::path_unlink_file(dir_fd, "file").expect("failed to remove file");
-}
+}}
 
-unsafe fn test_fd_filestat_set_times(dir_fd: wasi::Fd, rights: wasi::Rights) {
+unsafe fn test_fd_filestat_set_times(dir_fd: wasi::Fd, rights: wasi::Rights) { unsafe {
     let resolution = wasi::clock_res_get(wasi::CLOCKID_MONOTONIC).unwrap();
 
     // Create a file in the scratch directory. OFLAGS_CREAT implies opening for writing, so we will
@@ -98,7 +98,7 @@ unsafe fn test_fd_filestat_set_times(dir_fd: wasi::Fd, rights: wasi::Rights) {
 
     wasi::fd_close(file_fd).expect("failed to close fd");
     wasi::path_unlink_file(dir_fd, "file").expect("failed to remove file");
-}
+}}
 
 #[test]
 fn fd_filestat_test_tests() {

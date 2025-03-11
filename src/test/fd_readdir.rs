@@ -54,7 +54,7 @@ impl Iterator for ReadDir<'_> {
 }
 
 /// Return the entries plus a bool indicating EOF.
-unsafe fn exec_fd_readdir(fd: wasi::Fd, cookie: wasi::Dircookie) -> (Vec<DirEntry>, bool) {
+unsafe fn exec_fd_readdir(fd: wasi::Fd, cookie: wasi::Dircookie) -> (Vec<DirEntry>, bool) { unsafe {
     let mut buf: [u8; BUF_LEN] = [0; BUF_LEN];
     let bufused =
         wasi::fd_readdir(fd, buf.as_mut_ptr(), BUF_LEN, cookie).expect("failed fd_readdir");
@@ -64,9 +64,9 @@ unsafe fn exec_fd_readdir(fd: wasi::Fd, cookie: wasi::Dircookie) -> (Vec<DirEntr
     let dirs: Vec<_> = ReadDir::from_slice(sl).collect();
     let eof = bufused < BUF_LEN;
     (dirs, eof)
-}
+}}
 
-unsafe fn assert_empty_dir(dir_fd: wasi::Fd) {
+unsafe fn assert_empty_dir(dir_fd: wasi::Fd) { unsafe {
     let stat = wasi::fd_filestat_get(dir_fd).expect("failed filestat");
 
     let (mut dirs, eof) = exec_fd_readdir(dir_fd, 0);
@@ -92,7 +92,7 @@ unsafe fn assert_empty_dir(dir_fd: wasi::Fd) {
         dirs.next().is_none(),
         "the directory should be seen as empty"
     );
-}
+}}
 
 #[test]
 fn test_fd_readdir() {

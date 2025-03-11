@@ -24,7 +24,7 @@ impl Environment {
     //               It must have enough memory to fit in all the pointers.
     //
     // buffer    -   The buffer containing all the pairs. The buffer must have enough memory to fit in all the (name,value) pairs.
-    pub unsafe fn environ_get(&self, entries: *mut *mut u8, buffer: *mut u8) -> wasi::Errno {
+    pub unsafe fn environ_get(&self, entries: *mut *mut u8, buffer: *mut u8) -> wasi::Errno { unsafe {
         let entries = std::slice::from_raw_parts_mut(entries, self.data_values.len());
         let buffer = std::slice::from_raw_parts_mut(buffer, self.data_size);
 
@@ -44,7 +44,7 @@ impl Environment {
         }
 
         wasi::ERRNO_SUCCESS
-    }
+    }}
 
     #[cfg(feature = "report_wasi_calls")]
     pub fn get_data_values(&self) -> Vec<String> {
