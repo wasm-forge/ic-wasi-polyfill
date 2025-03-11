@@ -585,7 +585,19 @@ impl Filetype {
         }
     }
     pub fn message(&self) -> &'static str {
-        match self.0 {0 => "The type of the file descriptor or file is unknown or is different from any of the other types specified.",1 => "The file descriptor or file refers to a block device inode.",2 => "The file descriptor or file refers to a character device inode.",3 => "The file descriptor or file refers to a directory inode.",4 => "The file descriptor or file refers to a regular file inode.",5 => "The file descriptor or file refers to a datagram socket.",6 => "The file descriptor or file refers to a byte-stream socket.",7 => "The file refers to a symbolic link inode.",_ => unsafe { core::hint::unreachable_unchecked() },}
+        match self.0 {
+            0 => {
+                "The type of the file descriptor or file is unknown or is different from any of the other types specified."
+            }
+            1 => "The file descriptor or file refers to a block device inode.",
+            2 => "The file descriptor or file refers to a character device inode.",
+            3 => "The file descriptor or file refers to a directory inode.",
+            4 => "The file descriptor or file refers to a regular file inode.",
+            5 => "The file descriptor or file refers to a datagram socket.",
+            6 => "The file descriptor or file refers to a byte-stream socket.",
+            7 => "The file refers to a symbolic link inode.",
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        }
     }
 }
 impl fmt::Debug for Filetype {
@@ -642,7 +654,23 @@ impl Advice {
         }
     }
     pub fn message(&self) -> &'static str {
-        match self.0 {0 => "The application has no advice to give on its behavior with respect to the specified data.",1 => "The application expects to access the specified data sequentially from lower offsets to higher offsets.",2 => "The application expects to access the specified data in a random order.",3 => "The application expects to access the specified data in the near future.",4 => "The application expects that it will not access the specified data in the near future.",5 => "The application expects to access the specified data once and then not reuse it thereafter.",_ => unsafe { core::hint::unreachable_unchecked() },}
+        match self.0 {
+            0 => {
+                "The application has no advice to give on its behavior with respect to the specified data."
+            }
+            1 => {
+                "The application expects to access the specified data sequentially from lower offsets to higher offsets."
+            }
+            2 => "The application expects to access the specified data in a random order.",
+            3 => "The application expects to access the specified data in the near future.",
+            4 => {
+                "The application expects that it will not access the specified data in the near future."
+            }
+            5 => {
+                "The application expects to access the specified data once and then not reuse it thereafter."
+            }
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        }
     }
 }
 impl fmt::Debug for Advice {
@@ -1220,18 +1248,20 @@ pub unsafe fn args_get(argv: *mut *mut u8, argv_buf: *mut u8) -> Result<(), Errn
 ///
 /// Returns the number of arguments and the size of the argument string
 /// data, or an error.
-pub unsafe fn args_sizes_get() -> Result<(Size, Size), Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let mut rp1 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::args_sizes_get(rp0.as_mut_ptr(), rp1.as_mut_ptr());
-    match ret {
-        0 => Ok((
-            core::ptr::read(rp0.as_mut_ptr() as *const Size),
-            core::ptr::read(rp1.as_mut_ptr() as *const Size),
-        )),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn args_sizes_get() -> Result<(Size, Size), Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let mut rp1 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::args_sizes_get(rp0.as_mut_ptr(), rp1.as_mut_ptr());
+        match ret {
+            0 => Ok((
+                core::ptr::read(rp0.as_mut_ptr() as *const Size),
+                core::ptr::read(rp1.as_mut_ptr() as *const Size),
+            )),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Read environment variable data.
 /// The sizes of the buffers should match that returned by `environ_sizes_get`.
@@ -1250,18 +1280,20 @@ pub unsafe fn environ_get(environ: *mut *mut u8, environ_buf: *mut u8) -> Result
 ///
 /// Returns the number of environment variable arguments and the size of the
 /// environment variable data.
-pub unsafe fn environ_sizes_get() -> Result<(Size, Size), Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let mut rp1 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::environ_sizes_get(rp0.as_mut_ptr(), rp1.as_mut_ptr());
-    match ret {
-        0 => Ok((
-            core::ptr::read(rp0.as_mut_ptr() as *const Size),
-            core::ptr::read(rp1.as_mut_ptr() as *const Size),
-        )),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn environ_sizes_get() -> Result<(Size, Size), Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let mut rp1 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::environ_sizes_get(rp0.as_mut_ptr(), rp1.as_mut_ptr());
+        match ret {
+            0 => Ok((
+                core::ptr::read(rp0.as_mut_ptr() as *const Size),
+                core::ptr::read(rp1.as_mut_ptr() as *const Size),
+            )),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Return the resolution of a clock.
 /// Implementations are required to provide a non-zero value for supported clocks. For unsupported clocks,
@@ -1275,14 +1307,16 @@ pub unsafe fn environ_sizes_get() -> Result<(Size, Size), Errno> { unsafe {
 /// ## Return
 ///
 /// The resolution of the clock, or an error if one happened.
-pub unsafe fn clock_res_get(id: Clockid) -> Result<Timestamp, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Timestamp>::uninit();
-    let ret = wasi_snapshot_preview1::clock_res_get(id.0 as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Timestamp)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn clock_res_get(id: Clockid) -> Result<Timestamp, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Timestamp>::uninit();
+        let ret = wasi_snapshot_preview1::clock_res_get(id.0 as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Timestamp)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Return the time value of a clock.
 /// Note: This is similar to `clock_gettime` in POSIX.
@@ -1295,15 +1329,17 @@ pub unsafe fn clock_res_get(id: Clockid) -> Result<Timestamp, Errno> { unsafe {
 /// ## Return
 ///
 /// The time value of the clock.
-pub unsafe fn clock_time_get(id: Clockid, precision: Timestamp) -> Result<Timestamp, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Timestamp>::uninit();
-    let ret =
-        wasi_snapshot_preview1::clock_time_get(id.0 as i32, precision as i64, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Timestamp)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn clock_time_get(id: Clockid, precision: Timestamp) -> Result<Timestamp, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Timestamp>::uninit();
+        let ret =
+            wasi_snapshot_preview1::clock_time_get(id.0 as i32, precision as i64, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Timestamp)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Provide file advisory information on a file descriptor.
 /// Note: This is similar to `posix_fadvise` in POSIX.
@@ -1368,14 +1404,16 @@ pub unsafe fn fd_datasync(fd: Fd) -> Result<(), Errno> {
 /// ## Return
 ///
 /// The buffer where the file descriptor's attributes are stored.
-pub unsafe fn fd_fdstat_get(fd: Fd) -> Result<Fdstat, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Fdstat>::uninit();
-    let ret = wasi_snapshot_preview1::fd_fdstat_get(fd as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Fdstat)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_fdstat_get(fd: Fd) -> Result<Fdstat, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Fdstat>::uninit();
+        let ret = wasi_snapshot_preview1::fd_fdstat_get(fd as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Fdstat)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Adjust the flags associated with a file descriptor.
 /// Note: This is similar to `fcntl(fd, F_SETFL, flags)` in POSIX.
@@ -1418,14 +1456,16 @@ pub unsafe fn fd_fdstat_set_rights(
 /// ## Return
 ///
 /// The buffer where the file's attributes are stored.
-pub unsafe fn fd_filestat_get(fd: Fd) -> Result<Filestat, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Filestat>::uninit();
-    let ret = wasi_snapshot_preview1::fd_filestat_get(fd as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filestat)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_filestat_get(fd: Fd) -> Result<Filestat, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Filestat>::uninit();
+        let ret = wasi_snapshot_preview1::fd_filestat_get(fd as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filestat)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Adjust the size of an open file. If this increases the file's size, the extra bytes are filled with zeros.
 /// Note: This is similar to `ftruncate` in POSIX.
@@ -1478,34 +1518,38 @@ pub unsafe fn fd_filestat_set_times(
 /// ## Return
 ///
 /// The number of bytes read.
-pub unsafe fn fd_pread(fd: Fd, iovs: IovecArray<'_>, offset: Filesize) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::fd_pread(
-        fd as i32,
-        iovs.as_ptr(),
-        iovs.len() as i32,
-        offset as i64,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_pread(fd: Fd, iovs: IovecArray<'_>, offset: Filesize) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::fd_pread(
+            fd as i32,
+            iovs.as_ptr(),
+            iovs.len() as i32,
+            offset as i64,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Return a description of the given preopened file descriptor.
 ///
 /// ## Return
 ///
 /// The buffer where the description is stored.
-pub unsafe fn fd_prestat_get(fd: Fd) -> Result<Prestat, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Prestat>::uninit();
-    let ret = wasi_snapshot_preview1::fd_prestat_get(fd as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Prestat)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_prestat_get(fd: Fd) -> Result<Prestat, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Prestat>::uninit();
+        let ret = wasi_snapshot_preview1::fd_prestat_get(fd as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Prestat)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Return a description of the given preopened file descriptor.
 ///
@@ -1531,20 +1575,22 @@ pub unsafe fn fd_prestat_dir_name(fd: Fd, path: *mut u8, path_len: Size) -> Resu
 /// ## Return
 ///
 /// The number of bytes written.
-pub unsafe fn fd_pwrite(fd: Fd, iovs: CiovecArray<'_>, offset: Filesize) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::fd_pwrite(
-        fd as i32,
-        iovs.as_ptr(),
-        iovs.len() as i32,
-        offset as i64,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_pwrite(fd: Fd, iovs: CiovecArray<'_>, offset: Filesize) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::fd_pwrite(
+            fd as i32,
+            iovs.as_ptr(),
+            iovs.len() as i32,
+            offset as i64,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Read from a file descriptor.
 /// Note: This is similar to `readv` in POSIX.
@@ -1556,19 +1602,21 @@ pub unsafe fn fd_pwrite(fd: Fd, iovs: CiovecArray<'_>, offset: Filesize) -> Resu
 /// ## Return
 ///
 /// The number of bytes read.
-pub unsafe fn fd_read(fd: Fd, iovs: IovecArray<'_>) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::fd_read(
-        fd as i32,
-        iovs.as_ptr(),
-        iovs.len() as i32,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_read(fd: Fd, iovs: IovecArray<'_>) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::fd_read(
+            fd as i32,
+            iovs.as_ptr(),
+            iovs.len() as i32,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Read directory entries from a directory.
 /// When successful, the contents of the output buffer consist of a sequence of
@@ -1593,20 +1641,22 @@ pub unsafe fn fd_readdir(
     buf: *mut u8,
     buf_len: Size,
     cookie: Dircookie,
-) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::fd_readdir(
-        fd as i32,
-        buf,
-        buf_len as i32,
-        cookie as i64,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::fd_readdir(
+            fd as i32,
+            buf,
+            buf_len as i32,
+            cookie as i64,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Atomically replace a file descriptor by renumbering another file descriptor.
 /// Due to the strong focus on thread safety, this environment does not provide
@@ -1640,14 +1690,17 @@ pub unsafe fn fd_renumber(fd: Fd, to: Fd) -> Result<(), Errno> {
 /// ## Return
 ///
 /// The new offset of the file descriptor, relative to the start of the file.
-pub unsafe fn fd_seek(fd: Fd, offset: Filedelta, whence: Whence) -> Result<Filesize, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Filesize>::uninit();
-    let ret = wasi_snapshot_preview1::fd_seek(fd as i32, offset, whence.0 as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filesize)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_seek(fd: Fd, offset: Filedelta, whence: Whence) -> Result<Filesize, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Filesize>::uninit();
+        let ret =
+            wasi_snapshot_preview1::fd_seek(fd as i32, offset, whence.0 as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filesize)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Synchronize the data and metadata of a file to disk.
 /// Note: This is similar to `fsync` in POSIX.
@@ -1665,14 +1718,16 @@ pub unsafe fn fd_sync(fd: Fd) -> Result<(), Errno> {
 /// ## Return
 ///
 /// The current offset of the file descriptor, relative to the start of the file.
-pub unsafe fn fd_tell(fd: Fd) -> Result<Filesize, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Filesize>::uninit();
-    let ret = wasi_snapshot_preview1::fd_tell(fd as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filesize)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_tell(fd: Fd) -> Result<Filesize, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Filesize>::uninit();
+        let ret = wasi_snapshot_preview1::fd_tell(fd as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filesize)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Write to a file descriptor.
 /// Note: This is similar to `writev` in POSIX.
@@ -1680,19 +1735,21 @@ pub unsafe fn fd_tell(fd: Fd) -> Result<Filesize, Errno> { unsafe {
 /// ## Parameters
 ///
 /// * `iovs` - List of scatter/gather vectors from which to retrieve data.
-pub unsafe fn fd_write(fd: Fd, iovs: CiovecArray<'_>) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::fd_write(
-        fd as i32,
-        iovs.as_ptr(),
-        iovs.len() as i32,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn fd_write(fd: Fd, iovs: CiovecArray<'_>) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::fd_write(
+            fd as i32,
+            iovs.as_ptr(),
+            iovs.len() as i32,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Create a directory.
 /// Note: This is similar to `mkdirat` in POSIX.
@@ -1720,20 +1777,22 @@ pub unsafe fn path_create_directory(fd: Fd, path: &str) -> Result<(), Errno> {
 /// ## Return
 ///
 /// The buffer where the file's attributes are stored.
-pub unsafe fn path_filestat_get(fd: Fd, flags: Lookupflags, path: &str) -> Result<Filestat, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Filestat>::uninit();
-    let ret = wasi_snapshot_preview1::path_filestat_get(
-        fd as i32,
-        flags as i32,
-        path.as_ptr(),
-        path.len() as i32,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filestat)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn path_filestat_get(fd: Fd, flags: Lookupflags, path: &str) -> Result<Filestat, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Filestat>::uninit();
+        let ret = wasi_snapshot_preview1::path_filestat_get(
+            fd as i32,
+            flags as i32,
+            path.as_ptr(),
+            path.len() as i32,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Filestat)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Adjust the timestamps of a file or directory.
 /// Note: This is similar to `utimensat` in POSIX.
@@ -1832,24 +1891,26 @@ pub unsafe fn path_open(
     fs_rights_base: Rights,
     fs_rights_inheriting: Rights,
     fdflags: Fdflags,
-) -> Result<Fd, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Fd>::uninit();
-    let ret = wasi_snapshot_preview1::path_open(
-        fd as i32,
-        dirflags as i32,
-        path.as_ptr(),
-        path.len() as i32,
-        oflags as i32,
-        fs_rights_base,
-        fs_rights_inheriting,
-        fdflags as i32,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Fd)),
-        _ => Err(Errno(ret as u16)),
+) -> Result<Fd, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Fd>::uninit();
+        let ret = wasi_snapshot_preview1::path_open(
+            fd as i32,
+            dirflags as i32,
+            path.as_ptr(),
+            path.len() as i32,
+            oflags as i32,
+            fs_rights_base,
+            fs_rights_inheriting,
+            fdflags as i32,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Fd)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Read the contents of a symbolic link.
 /// Note: This is similar to `readlinkat` in POSIX.
@@ -1867,21 +1928,23 @@ pub unsafe fn path_readlink(
     path: &str,
     buf: *mut u8,
     buf_len: Size,
-) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::path_readlink(
-        fd as i32,
-        path.as_ptr(),
-        path.len() as i32,
-        buf as i32,
-        buf_len as i32,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::path_readlink(
+            fd as i32,
+            path.as_ptr(),
+            path.len() as i32,
+            buf as i32,
+            buf_len as i32,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Remove a directory.
 /// Return `errno::notempty` if the directory is not empty.
@@ -1973,15 +2036,17 @@ pub unsafe fn poll_oneoff(
     in_: *const Subscription,
     out: *mut Event,
     nsubscriptions: Size,
-) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret =
-        wasi_snapshot_preview1::poll_oneoff(in_, out, nsubscriptions as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret =
+            wasi_snapshot_preview1::poll_oneoff(in_, out, nsubscriptions as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Terminate the process normally. An exit code of 0 indicates successful
 /// termination of the program. The meanings of other values is dependent on
@@ -2047,14 +2112,16 @@ pub unsafe fn random_get(buf: *mut u8, buf_len: Size) -> Result<(), Errno> {
 /// ## Return
 ///
 /// New socket connection
-pub unsafe fn sock_accept(fd: Fd, flags: Fdflags) -> Result<Fd, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Fd>::uninit();
-    let ret = wasi_snapshot_preview1::sock_accept(fd as i32, flags as i32, rp0.as_mut_ptr());
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Fd)),
-        _ => Err(Errno(ret as u16)),
+pub unsafe fn sock_accept(fd: Fd, flags: Fdflags) -> Result<Fd, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Fd>::uninit();
+        let ret = wasi_snapshot_preview1::sock_accept(fd as i32, flags as i32, rp0.as_mut_ptr());
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Fd)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Receive a message from a socket.
 /// Note: This is similar to `recv` in POSIX, though it also supports reading
@@ -2072,25 +2139,27 @@ pub unsafe fn sock_recv(
     fd: Fd,
     ri_data: IovecArray<'_>,
     ri_flags: Riflags,
-) -> Result<(Size, Roflags), Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let mut rp1 = MaybeUninit::<Roflags>::uninit();
-    let ret = wasi_snapshot_preview1::sock_recv(
-        fd as i32,
-        ri_data.as_ptr(),
-        ri_data.len() as i32,
-        ri_flags as i32,
-        rp0.as_mut_ptr(),
-        rp1.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok((
-            core::ptr::read(rp0.as_mut_ptr() as *const Size),
-            core::ptr::read(rp1.as_mut_ptr() as *const Roflags),
-        )),
-        _ => Err(Errno(ret as u16)),
+) -> Result<(Size, Roflags), Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let mut rp1 = MaybeUninit::<Roflags>::uninit();
+        let ret = wasi_snapshot_preview1::sock_recv(
+            fd as i32,
+            ri_data.as_ptr(),
+            ri_data.len() as i32,
+            ri_flags as i32,
+            rp0.as_mut_ptr(),
+            rp1.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok((
+                core::ptr::read(rp0.as_mut_ptr() as *const Size),
+                core::ptr::read(rp1.as_mut_ptr() as *const Roflags),
+            )),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Send a message on a socket.
 /// Note: This is similar to `send` in POSIX, though it also supports writing
@@ -2108,20 +2177,22 @@ pub unsafe fn sock_send(
     fd: Fd,
     si_data: CiovecArray<'_>,
     si_flags: Siflags,
-) -> Result<Size, Errno> { unsafe {
-    let mut rp0 = MaybeUninit::<Size>::uninit();
-    let ret = wasi_snapshot_preview1::sock_send(
-        fd as i32,
-        si_data.as_ptr(),
-        si_data.len() as i32,
-        si_flags as i32,
-        rp0.as_mut_ptr(),
-    );
-    match ret {
-        0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
-        _ => Err(Errno(ret as u16)),
+) -> Result<Size, Errno> {
+    unsafe {
+        let mut rp0 = MaybeUninit::<Size>::uninit();
+        let ret = wasi_snapshot_preview1::sock_send(
+            fd as i32,
+            si_data.as_ptr(),
+            si_data.len() as i32,
+            si_flags as i32,
+            rp0.as_mut_ptr(),
+        );
+        match ret {
+            0 => Ok(core::ptr::read(rp0.as_mut_ptr() as *const Size)),
+            _ => Err(Errno(ret as u16)),
+        }
     }
-}}
+}
 
 /// Shut down socket send and receive channels.
 /// Note: This is similar to `shutdown` in POSIX.

@@ -24,27 +24,29 @@ impl Environment {
     //               It must have enough memory to fit in all the pointers.
     //
     // buffer    -   The buffer containing all the pairs. The buffer must have enough memory to fit in all the (name,value) pairs.
-    pub unsafe fn environ_get(&self, entries: *mut *mut u8, buffer: *mut u8) -> wasi::Errno { unsafe {
-        let entries = std::slice::from_raw_parts_mut(entries, self.data_values.len());
-        let buffer = std::slice::from_raw_parts_mut(buffer, self.data_size);
+    pub unsafe fn environ_get(&self, entries: *mut *mut u8, buffer: *mut u8) -> wasi::Errno {
+        unsafe {
+            let entries = std::slice::from_raw_parts_mut(entries, self.data_values.len());
+            let buffer = std::slice::from_raw_parts_mut(buffer, self.data_size);
 
-        let mut cursor = 0;
+            let mut cursor = 0;
 
-        for (index, elem) in self.data_values.iter().enumerate() {
-            let bytes = elem.as_bytes();
-            let len = bytes.len();
+            for (index, elem) in self.data_values.iter().enumerate() {
+                let bytes = elem.as_bytes();
+                let len = bytes.len();
 
-            buffer[cursor..(cursor + len)].copy_from_slice(bytes);
+                buffer[cursor..(cursor + len)].copy_from_slice(bytes);
 
-            let pointer = buffer[cursor..(cursor + len)].as_mut_ptr();
+                let pointer = buffer[cursor..(cursor + len)].as_mut_ptr();
 
-            entries[index] = pointer;
+                entries[index] = pointer;
 
-            cursor += len;
+                cursor += len;
+            }
+
+            wasi::ERRNO_SUCCESS
         }
-
-        wasi::ERRNO_SUCCESS
-    }}
+    }
 
     #[cfg(feature = "report_wasi_calls")]
     pub fn get_data_values(&self) -> Vec<String> {

@@ -54,45 +54,49 @@ impl Iterator for ReadDir<'_> {
 }
 
 /// Return the entries plus a bool indicating EOF.
-unsafe fn exec_fd_readdir(fd: wasi::Fd, cookie: wasi::Dircookie) -> (Vec<DirEntry>, bool) { unsafe {
-    let mut buf: [u8; BUF_LEN] = [0; BUF_LEN];
-    let bufused =
-        wasi::fd_readdir(fd, buf.as_mut_ptr(), BUF_LEN, cookie).expect("failed fd_readdir");
-    assert!(bufused <= BUF_LEN);
+unsafe fn exec_fd_readdir(fd: wasi::Fd, cookie: wasi::Dircookie) -> (Vec<DirEntry>, bool) {
+    unsafe {
+        let mut buf: [u8; BUF_LEN] = [0; BUF_LEN];
+        let bufused =
+            wasi::fd_readdir(fd, buf.as_mut_ptr(), BUF_LEN, cookie).expect("failed fd_readdir");
+        assert!(bufused <= BUF_LEN);
 
-    let sl = slice::from_raw_parts(buf.as_ptr(), bufused);
-    let dirs: Vec<_> = ReadDir::from_slice(sl).collect();
-    let eof = bufused < BUF_LEN;
-    (dirs, eof)
-}}
+        let sl = slice::from_raw_parts(buf.as_ptr(), bufused);
+        let dirs: Vec<_> = ReadDir::from_slice(sl).collect();
+        let eof = bufused < BUF_LEN;
+        (dirs, eof)
+    }
+}
 
-unsafe fn assert_empty_dir(dir_fd: wasi::Fd) { unsafe {
-    let stat = wasi::fd_filestat_get(dir_fd).expect("failed filestat");
+unsafe fn assert_empty_dir(dir_fd: wasi::Fd) {
+    unsafe {
+        let stat = wasi::fd_filestat_get(dir_fd).expect("failed filestat");
 
-    let (mut dirs, eof) = exec_fd_readdir(dir_fd, 0);
-    assert!(eof, "expected to read the entire directory");
-    dirs.sort_by_key(|d| d.name.clone());
-    assert_eq!(dirs.len(), 2, "expected two entries in an empty directory");
-    let mut dirs = dirs.into_iter();
+        let (mut dirs, eof) = exec_fd_readdir(dir_fd, 0);
+        assert!(eof, "expected to read the entire directory");
+        dirs.sort_by_key(|d| d.name.clone());
+        assert_eq!(dirs.len(), 2, "expected two entries in an empty directory");
+        let mut dirs = dirs.into_iter();
 
-    // the first entry should be `.`
-    let dir = dirs.next().expect("first entry is None");
-    assert_eq!(dir.name, ".", "first name");
-    assert_eq!(dir.dirent.d_type, wasi::FILETYPE_DIRECTORY, "first type");
-    assert_eq!(dir.dirent.d_namlen, 1);
-    assert_eq!(dir.dirent.d_ino, stat.ino);
+        // the first entry should be `.`
+        let dir = dirs.next().expect("first entry is None");
+        assert_eq!(dir.name, ".", "first name");
+        assert_eq!(dir.dirent.d_type, wasi::FILETYPE_DIRECTORY, "first type");
+        assert_eq!(dir.dirent.d_namlen, 1);
+        assert_eq!(dir.dirent.d_ino, stat.ino);
 
-    // the second entry should be `..`
-    let dir = dirs.next().expect("second entry is None");
-    assert_eq!(dir.name, "..", "second name");
-    assert_eq!(dir.dirent.d_type, wasi::FILETYPE_DIRECTORY, "second type");
-    assert_eq!(dir.dirent.d_namlen, 2);
+        // the second entry should be `..`
+        let dir = dirs.next().expect("second entry is None");
+        assert_eq!(dir.name, "..", "second name");
+        assert_eq!(dir.dirent.d_type, wasi::FILETYPE_DIRECTORY, "second type");
+        assert_eq!(dir.dirent.d_namlen, 2);
 
-    assert!(
-        dirs.next().is_none(),
-        "the directory should be seen as empty"
-    );
-}}
+        assert!(
+            dirs.next().is_none(),
+            "the directory should be seen as empty"
+        );
+    }
+}
 
 #[test]
 fn test_fd_readdir() {

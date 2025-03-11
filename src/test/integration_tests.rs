@@ -2,10 +2,8 @@ use candid::Principal;
 use pocket_ic::PocketIc;
 use std::{cell::RefCell, fs};
 
-const BACKEND_WASM: &str =
-    "test/canisters/canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
-const BACKEND_WASM_UPGRADED: &str =
-    "test/canisters/canister_upgraded/target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
+const BACKEND_WASM: &str = "test/canisters/canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
+const BACKEND_WASM_UPGRADED: &str = "test/canisters/canister_upgraded/target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
 
 thread_local!(
     static ACTIVE_CANISTER: RefCell<Option<Principal>> = const { RefCell::new(None) };
@@ -64,7 +62,7 @@ fn upgrade_canister(pic: &PocketIc) {
 
 mod fns {
 
-    use candid::{decode_one, encode_one, Principal};
+    use candid::{Principal, decode_one, encode_one};
     use pocket_ic::PocketIc;
 
     use super::active_canister;
