@@ -1,7 +1,7 @@
 use stable_fs::{
     error::Error,
     fs::{Fd, FileSystem},
-    storage::types::DirEntryIndex,
+    storage::types::{DUMMY_DOT_DOT_ENTRY_INDEX, DUMMY_DOT_ENTRY_INDEX, DirEntry, DirEntryIndex},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -122,51 +122,35 @@ pub fn _into_stable_fs_filetype(
 
 pub fn fd_readdir(
     fs: &FileSystem,
-    fd: i32,
+    fd: Fd,
     cookie: i64,
     bytes: *mut u8,
     bytes_len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    if cookie == -1 {
-        unsafe {
-            *res = 0;
-        }
-        return wasi::ERRNO_SUCCESS.raw() as i32;
-    }
-
     let fd = fd as Fd;
     let bytes_len = bytes_len as usize;
     let mut result = 0usize;
 
     let buf = unsafe { std::slice::from_raw_parts_mut(bytes, bytes_len) };
 
-    let meta = fs.metadata(fd);
+    let entry_index = if cookie == 0 {
+        None
+    } else {
+        Some(cookie as DirEntryIndex)
+    };
 
-    match meta {
-        Ok(meta) => {
-            let mut entry_index = if cookie == 0 {
-                meta.first_dir_entry
-            } else {
-                Some(cookie as DirEntryIndex)
-            };
+    match fs.get_direntries(fd, entry_index) {
+        Ok(vec) => {
+            for (idx, entry) in vec {
+                let put_result = put_single_entry(fs, idx, entry, &mut buf[result..]);
 
-            while let Some(index) = entry_index {
-                let entry = fs.get_direntry(fd, index);
-                if let Err(err) = entry {
-                    return into_errno(err);
-                }
-                let entry = entry.unwrap();
-
-                let put_result = put_single_entry(fs, fd, index, &mut buf[result..]);
                 if let Err(err) = put_result {
                     return into_errno(err);
                 }
                 let put_result = put_result.unwrap();
 
                 result += put_result;
-
-                entry_index = entry.next_entry;
 
                 if result == bytes_len {
                     break;
@@ -176,32 +160,41 @@ pub fn fd_readdir(
             unsafe {
                 *res = std::cmp::min(result, bytes_len);
             }
-
-            wasi::ERRNO_SUCCESS.raw() as i32
         }
-        Err(err) => into_errno(err),
+        Err(err) => return into_errno(err),
     }
+
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 pub fn put_single_entry(
     fs: &FileSystem,
-    fd: Fd,
     index: DirEntryIndex,
+    dir_entry: DirEntry,
     buf: &mut [u8],
 ) -> Result<usize, Error> {
-    let direntry = fs.get_direntry(fd, index)?;
-    let file_type = fs.metadata_from_node(direntry.node)?.file_type;
+    // we assume the next index can always be current index + 1, hence no need to rely on .._next index field
+    // appart from the dummy "DOT" entries
+    let mut next_index = index + 1;
+    if index == DUMMY_DOT_DOT_ENTRY_INDEX {
+        next_index = 1; // the first non-zero index in the folder
+    }
+    if index == DUMMY_DOT_ENTRY_INDEX {
+        next_index = DUMMY_DOT_DOT_ENTRY_INDEX;
+    }
 
-    let d_next = direntry.next_entry.map(|x| x as u64).unwrap_or(u64::MAX);
+    // TODO: store file type directly inside DirEntry
+    let file_type = fs.metadata_from_node(dir_entry.node)?.file_type;
 
     let wasi_dirent = wasi::Dirent {
-        d_next,
-        d_ino: (index as u64),
-        d_namlen: (direntry.name.length as wasi::Dirnamlen),
+        d_next: next_index as u64,
+        d_ino: dir_entry.node,
+        d_namlen: (dir_entry.name.length as wasi::Dirnamlen),
         d_type: into_wasi_filetype(file_type),
     };
 
-    let result = fill_buffer(wasi_dirent, buf, &direntry.name);
+    let result = fill_buffer(wasi_dirent, buf, &dir_entry.name);
+
     Ok(result)
 }
 
@@ -219,6 +212,11 @@ fn fill_buffer(
 
     let result = usize::min(s.len(), buf.len());
     buf[0..result].copy_from_slice(&s[0..result]);
+
+    // pre-fill 0 to avoid random data in buf
+    if buf.len() >= DIRENT_SIZE {
+        buf[DIRENT_SIZE - 3..DIRENT_SIZE].copy_from_slice(&[0, 0, 0]);
+    }
 
     let buf_len = buf.len();
     let buf = &mut buf[result..buf_len];
@@ -248,12 +246,13 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
 
 #[cfg(test)]
 mod tests {
-    use crate::{wasi, wasi_helpers::put_single_entry, DIRENT_SIZE};
+    use crate::{DIRENT_SIZE, wasi, wasi_helpers::put_single_entry};
     use ic_stable_structures::DefaultMemoryImpl;
     use stable_fs::{
         fs::{FdStat, FileSystem, OpenFlags},
         storage::{
             stable::StableStorage,
+            transient::TransientStorage,
             types::{DirEntry, DirEntryIndex, FileName, Node},
         },
     };
@@ -262,6 +261,10 @@ mod tests {
 
     fn test_fs() -> FileSystem {
         FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
+    }
+
+    fn transient_fs() -> FileSystem {
+        FileSystem::new(Box::new(TransientStorage::new())).unwrap()
     }
 
     #[test]
@@ -337,18 +340,15 @@ mod tests {
         let first_entry = meta.unwrap().first_dir_entry.unwrap();
 
         let expected = [
-            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 243, 245, 246, 116, 101,
-            115, 116, 46, 116, 120, 116,
+            2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115,
+            116, 46, 116, 120, 116,
         ];
 
         let mut buf = [0u8; 100];
 
-        let len = put_single_entry(&fs, dir_fd, first_entry as DirEntryIndex, &mut buf).unwrap();
+        let dir_entry = fs.get_direntry(dir_fd, first_entry).unwrap();
 
-        // stabilize test, the three bytes can take random value here...
-        buf[DIRENT_SIZE - 3] = 243;
-        buf[DIRENT_SIZE - 2] = 245;
-        buf[DIRENT_SIZE - 1] = 246;
+        let len = put_single_entry(&fs, first_entry as DirEntryIndex, dir_entry, &mut buf).unwrap();
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());
@@ -356,40 +356,60 @@ mod tests {
 
     #[test]
     fn test_fd_readdir() {
-        let mut fs = test_fs();
+        for mut fs in [test_fs(), transient_fs()] {
+            let dir_fd = fs.root_fd();
 
-        let dir_fd = fs.root_fd();
+            let _fd1 = fs
+                .open(dir_fd, "test.txt", FdStat::default(), OpenFlags::CREATE, 0)
+                .unwrap();
 
-        let _fd1 = fs
-            .open(dir_fd, "test.txt", FdStat::default(), OpenFlags::CREATE, 0)
-            .unwrap();
+            let _fd2 = fs
+                .open(dir_fd, "test2.txt", FdStat::default(), OpenFlags::CREATE, 0)
+                .unwrap();
+            let _fd3 = fs
+                .open(dir_fd, "test3.txt", FdStat::default(), OpenFlags::CREATE, 0)
+                .unwrap();
+            let _fd4 = fs
+                .open(dir_fd, "test4.txt", FdStat::default(), OpenFlags::CREATE, 0)
+                .unwrap();
 
-        let _fd2 = fs
-            .open(dir_fd, "test2.txt", FdStat::default(), OpenFlags::CREATE, 0)
-            .unwrap();
-        let _fd3 = fs
-            .open(dir_fd, "test3.txt", FdStat::default(), OpenFlags::CREATE, 0)
-            .unwrap();
-        let _fd4 = fs
-            .open(dir_fd, "test4.txt", FdStat::default(), OpenFlags::CREATE, 0)
-            .unwrap();
+            let mut buf = [0u8; 200];
 
-        let mut buf = [0u8; 200];
+            let p = &mut buf as *mut u8;
 
-        let p = &mut buf as *mut u8;
+            let mut bytes_used: wasi::Size = 0usize;
 
-        let mut bytes_used: wasi::Size = 0usize;
+            // read folder with special files
+            let result = fd_readdir(
+                &fs,
+                fs.root_fd(),
+                0,
+                p,
+                buf.len() as i32,
+                &mut bytes_used as *mut wasi::Size,
+            );
 
-        let result = fd_readdir(
-            &fs,
-            fs.root_fd() as i32,
-            2,
-            p,
-            buf.len() as i32,
-            &mut bytes_used as *mut wasi::Size,
-        );
+            assert_eq!(result, 0);
 
-        assert_eq!(result, 0);
-        assert_eq!(bytes_used, 99);
+            // 6 file entries + 1 + 2 + corresponding file sizes
+            let expected_bytes = DIRENT_SIZE * 6 + 1 + 2 + 8 + 9 + 9 + 9;
+            assert_eq!(bytes_used, expected_bytes);
+
+            // read files starting with test2.txt (it has entry index 2)
+            let result = fd_readdir(
+                &fs,
+                fs.root_fd(),
+                2,
+                p,
+                buf.len() as i32,
+                &mut bytes_used as *mut wasi::Size,
+            );
+
+            assert_eq!(result, 0);
+
+            // 3 file entries + corresponding file sizes
+            let expected_bytes = (DIRENT_SIZE + 9) * 3;
+            assert_eq!(bytes_used, expected_bytes);
+        }
     }
 }

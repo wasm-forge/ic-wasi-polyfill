@@ -20,7 +20,7 @@ type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
-    format!("Hello, {}!", name)
+    format!("Greetings, {}!", name)
 }
 
 thread_local! {
@@ -456,8 +456,6 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
 
     let mut f = BufWriter::new(file);
 
-    f.seek(std::io::SeekFrom::End(0)).unwrap();
-
     for _ in 0..times {
         f.write_all(text.as_bytes()).expect("Unable to write data");
     }
@@ -470,7 +468,11 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
 
 #[ic_cdk::query]
 fn read_text(filename: String, offset: i64, size: usize) -> String {
-    let mut f = OpenOptions::new().write(false).open(filename).unwrap();
+    let mut f = OpenOptions::new()
+        .read(true)
+        .write(false)
+        .open(filename)
+        .unwrap();
 
     f.seek(std::io::SeekFrom::Start(offset as u64)).unwrap();
 

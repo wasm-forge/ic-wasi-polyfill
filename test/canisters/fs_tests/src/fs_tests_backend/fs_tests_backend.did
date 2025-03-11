@@ -1,0 +1,7 @@
+service : {
+
+    "read_file": (text) -> (text);
+
+    "write_file": (text, text) -> ();
+
+}

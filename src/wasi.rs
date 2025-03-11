@@ -588,7 +588,19 @@ impl Filetype {
         }
     }
     pub fn message(&self) -> &'static str {
-        match self.0 {0 => "The type of the file descriptor or file is unknown or is different from any of the other types specified.",1 => "The file descriptor or file refers to a block device inode.",2 => "The file descriptor or file refers to a character device inode.",3 => "The file descriptor or file refers to a directory inode.",4 => "The file descriptor or file refers to a regular file inode.",5 => "The file descriptor or file refers to a datagram socket.",6 => "The file descriptor or file refers to a byte-stream socket.",7 => "The file refers to a symbolic link inode.",_ => unsafe { core::hint::unreachable_unchecked() },}
+        match self.0 {
+            0 => {
+                "The type of the file descriptor or file is unknown or is different from any of the other types specified."
+            }
+            1 => "The file descriptor or file refers to a block device inode.",
+            2 => "The file descriptor or file refers to a character device inode.",
+            3 => "The file descriptor or file refers to a directory inode.",
+            4 => "The file descriptor or file refers to a regular file inode.",
+            5 => "The file descriptor or file refers to a datagram socket.",
+            6 => "The file descriptor or file refers to a byte-stream socket.",
+            7 => "The file refers to a symbolic link inode.",
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        }
     }
 }
 impl fmt::Debug for Filetype {
@@ -645,7 +657,23 @@ impl Advice {
         }
     }
     pub fn message(&self) -> &'static str {
-        match self.0 {0 => "The application has no advice to give on its behavior with respect to the specified data.",1 => "The application expects to access the specified data sequentially from lower offsets to higher offsets.",2 => "The application expects to access the specified data in a random order.",3 => "The application expects to access the specified data in the near future.",4 => "The application expects that it will not access the specified data in the near future.",5 => "The application expects to access the specified data once and then not reuse it thereafter.",_ => unsafe { core::hint::unreachable_unchecked() },}
+        match self.0 {
+            0 => {
+                "The application has no advice to give on its behavior with respect to the specified data."
+            }
+            1 => {
+                "The application expects to access the specified data sequentially from lower offsets to higher offsets."
+            }
+            2 => "The application expects to access the specified data in a random order.",
+            3 => "The application expects to access the specified data in the near future.",
+            4 => {
+                "The application expects that it will not access the specified data in the near future."
+            }
+            5 => {
+                "The application expects to access the specified data once and then not reuse it thereafter."
+            }
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        }
     }
 }
 impl fmt::Debug for Advice {
@@ -2174,7 +2202,7 @@ pub unsafe fn sock_shutdown(fd: Fd, how: Sdflags) -> Result<(), Errno> {
 
 pub mod wasi_snapshot_preview1 {
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
-    extern "C" {
+    unsafe extern "C" {
         /// Read command-line argument data.
         /// The size of the array should match that returned by `args_sizes_get`.
         /// Each argument is expected to be `\0` terminated.
@@ -2331,7 +2359,7 @@ pub mod wasi_snapshot_preview1 {
         /// Rename a file or directory.
         /// Note: This is similar to `renameat` in POSIX.
         pub fn path_rename(arg0: i32, arg1: i32, arg2: i32, arg3: i32, arg4: i32, arg5: i32)
-            -> i32;
+        -> i32;
         /// Create a symbolic link.
         /// Note: This is similar to `symlinkat` in POSIX.
         pub fn path_symlink(arg0: i32, arg1: i32, arg2: i32, arg3: i32, arg4: i32) -> i32;

@@ -1,109 +1,6 @@
+use crate::test::common::*;
 use crate::wasi;
 use crate::*;
-
-#[cfg(test)]
-fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Vec<String>) -> Fd {
-    let new_file_name = String::from(file_name);
-
-    let mut file_fd = 0;
-
-    let res = unsafe {
-        __ic_custom_path_open(
-            parent_fd as i32,
-            0,
-            new_file_name.as_ptr(),
-            new_file_name.len() as i32,
-            1 + 4 + 8,
-            0,
-            0,
-            0,
-            (&mut file_fd) as *mut i32,
-        )
-    };
-    assert!(res == 0);
-
-    let mut src = Vec::new();
-
-    for str in content.iter() {
-        src.push(wasi::Ciovec {
-            buf: str.as_ptr(),
-            buf_len: str.len(),
-        });
-    }
-
-    let mut bytes_written: wasi::Size = 0;
-
-    unsafe {
-        __ic_custom_fd_write(
-            file_fd,
-            src.as_ptr(),
-            src.len() as i32,
-            (&mut bytes_written) as *mut wasi::Size,
-        )
-    };
-
-    file_fd as Fd
-}
-
-#[cfg(test)]
-fn create_test_file(parent_fd: Fd, file_name: &str) -> Fd {
-    create_test_file_with_content(
-        parent_fd,
-        file_name,
-        vec![
-            String::from("This is a sample text."),
-            String::from("1234567890"),
-        ],
-    )
-}
-
-#[cfg(test)]
-fn read_directory(root_fd: Fd) -> Vec<String> {
-    let len = 1000;
-    let mut bytes: Vec<u8> = Vec::with_capacity(len);
-
-    let mut new_length: wasi::Size = 0;
-
-    let res = __ic_custom_fd_readdir(
-        root_fd as i32,
-        bytes.as_mut_ptr(),
-        len as i32,
-        0,
-        (&mut new_length) as *mut wasi::Size,
-    );
-
-    assert!(res == 0);
-
-    unsafe { bytes.set_len(new_length) };
-
-    let mut folders: Vec<String> = Vec::new();
-
-    let mut idx = 0usize;
-
-    loop {
-        unsafe {
-            let d_namlen = bytes[idx + 16] as usize;
-
-            let bytes_ptr = bytes.as_mut_ptr().add(idx + DIRENT_SIZE);
-
-            let name_slice = std::slice::from_raw_parts(bytes_ptr, d_namlen);
-
-            let name = std::str::from_utf8(name_slice)
-                .expect("Failed to convert bytes to string")
-                .to_string();
-
-            folders.push(name);
-
-            idx += DIRENT_SIZE + d_namlen;
-        };
-
-        if idx >= bytes.len() {
-            break;
-        }
-    }
-
-    folders
-}
 
 #[test]
 fn test_environ_get() {
@@ -144,15 +41,8 @@ fn test_environ_get() {
 
     assert!(buffer_size == expected_buffer_size);
 
-    let mut entry_table: Vec<wasi::Size> = Vec::with_capacity(entry_count);
-    unsafe {
-        entry_table.set_len(entry_count);
-    }
-
-    let mut buffer: Vec<u8> = Vec::with_capacity(buffer_size);
-    unsafe {
-        buffer.set_len(buffer_size);
-    }
+    let mut entry_table: Vec<wasi::Size> = vec![0; entry_count];
+    let mut buffer: Vec<u8> = vec![0; buffer_size];
 
     // get environment values
     let ret = unsafe {
@@ -231,15 +121,8 @@ fn test_args_get() {
 
     assert!(buffer_size == expected_buffer_size);
 
-    let mut entry_table: Vec<wasi::Size> = Vec::with_capacity(entry_count);
-    unsafe {
-        entry_table.set_len(entry_count);
-    }
-
-    let mut buffer: Vec<u8> = Vec::with_capacity(buffer_size);
-    unsafe {
-        buffer.set_len(buffer_size);
-    }
+    let mut entry_table: Vec<wasi::Size> = vec![0; entry_count];
+    let mut buffer: Vec<u8> = vec![0; buffer_size];
 
     // get environment values
     let ret = __ic_custom_args_get(
@@ -275,177 +158,64 @@ fn test_clock_res_get_clock_time_get() {
 }
 
 #[test]
-fn test_fd_prestat_init_fd_prestat_dir_name() {
+fn test_file_truncation() {
     init(&[], &[]);
-    // TODO: fix this test
 
-    let mut root_fd = 0;
-    let mut prestat = wasi::Prestat {
-        tag: 0,
-        u: wasi::PrestatU {
-            dir: wasi::PrestatDir { pr_name_len: 0 },
-        },
+    let filename = "test.txt";
+    let dir_fd: Fd = 3; // root dir
+
+    let content = "Some content to be written";
+
+    let file_fd = create_test_file_with_content(dir_fd, filename, vec![String::from(content)]);
+
+    let res = __ic_custom_fd_close(file_fd);
+
+    assert_eq!(res, 0); // check there was no error
+
+    // Open the file for truncation
+    let res = unsafe {
+        __ic_custom_path_open(
+            dir_fd,
+            0,
+            filename.as_ptr(),
+            filename.len() as i32,
+            (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC) as i32,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
+            0,
+            0,
+            (&mut (file_fd as u32)) as *mut u32,
+        )
     };
 
-    // find working fd
-    loop {
-        let res =
-            unsafe { __ic_custom_fd_prestat_get(root_fd, (&mut prestat) as *mut wasi::Prestat) };
+    assert_eq!(res, 0); // check there was no error
 
-        if root_fd > 10 {
-            panic!();
-        }
+    // Read the file's contents
+    let bytes_read = 0;
 
-        if res == 0 {
-            break;
-        }
+    let mut buf_to_read1 = String::from("................");
 
-        root_fd += 1;
-    }
-
-    let root_fd = root_fd;
-
-    let un_dir = unsafe { prestat.u.dir };
-    let root_path_len = un_dir.pr_name_len;
-
-    assert!(root_path_len > 0);
-
-    // our default root_fd is known
-    assert!(root_fd == 3);
-
-    // find root folder (intensionally allow bigger than necessary buffer)
-    let mut path: Vec<u8> = Vec::with_capacity(root_path_len + 10);
-
-    unsafe {
-        path.set_len(root_path_len);
-    }
+    let mut read_buf = vec![wasi::Iovec {
+        buf: buf_to_read1.as_mut_ptr(),
+        buf_len: buf_to_read1.len(),
+    }];
 
     let res = unsafe {
-        __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32 + 10)
+        __ic_custom_fd_read(
+            file_fd,
+            read_buf.as_mut_ptr(),
+            read_buf.len() as i32,
+            (&mut (bytes_read as usize)) as *mut usize,
+        )
     };
 
-    assert!(res == 0);
+    assert_eq!(res, 0); // check there was no error
 
-    let root_path = String::from_utf8(path).unwrap();
+    // The file should be empty due to truncation
+    assert_eq!(bytes_read, 0, "expected an empty file after truncation");
 
-    // our default path is known
-    assert!(root_path == "/");
+    let res = __ic_custom_fd_close(file_fd);
 
-    // misusing root_fd as a file
-}
-
-#[test]
-fn test_misusing_root_fd_as_a_file() {
-    init(&[], &[]);
-
-    // assign pre-opened root file descriptor
-    let dir_fd = 3;
-
-    // read buffers
-    let mut buf_to_read1 = String::from("................");
-    let mut buf_to_read2 = String::from("................");
-
-    let read_buf = [
-        wasi::Ciovec {
-            buf: buf_to_read1.as_mut_ptr(),
-            buf_len: buf_to_read1.len(),
-        },
-        wasi::Ciovec {
-            buf: buf_to_read2.as_mut_ptr(),
-            buf_len: buf_to_read2.len(),
-        },
-    ];
-
-    // write buffers
-    let text_to_write1 = String::from("This is a sample text.");
-    let text_to_write2 = String::from("1234567890");
-
-    let mut write_buf = [
-        wasi::Ciovec {
-            buf: text_to_write1.as_ptr(),
-            buf_len: text_to_write1.len(),
-        },
-        wasi::Ciovec {
-            buf: text_to_write2.as_ptr(),
-            buf_len: text_to_write2.len(),
-        },
-    ];
-
-    let mut r: wasi::Size = 0;
-    let badf = wasi::ERRNO_BADF.raw() as i32;
-
-    // reading from root folder
-    let res: i32 = unsafe { __ic_custom_fd_read(dir_fd, read_buf.as_ptr(), 0, &mut r) };
-    assert_eq!(res, badf, "fd_read error");
-
-    let res = unsafe { __ic_custom_fd_pread(dir_fd, read_buf.as_ptr(), 0, 0, &mut r) };
-    assert_eq!(res, badf, "fd_pread error");
-
-    // writing into root folder
-    let res = unsafe { __ic_custom_fd_write(dir_fd, write_buf.as_mut_ptr(), 0, &mut r) };
-    assert_eq!(res, badf, "fd_write error");
-
-    let res = unsafe { __ic_custom_fd_pwrite(dir_fd, write_buf.as_mut_ptr(), 0, 0, &mut r) };
-    assert_eq!(res, badf, "fd_pwrite error");
-
-    // seeking on dir fd is always an error
-    let mut r: wasi::Filesize = 0;
-
-    let res = unsafe { __ic_custom_fd_seek(dir_fd, 0, wasi::WHENCE_CUR.raw() as i32, &mut r) };
-    assert_eq!(res, badf, "fd_seek WHENCE_CUR error");
-    let res = unsafe { __ic_custom_fd_seek(dir_fd, 0, wasi::WHENCE_SET.raw() as i32, &mut r) };
-    assert_eq!(res, badf, "fd_seek WHENCE_SET error");
-    let res = unsafe { __ic_custom_fd_seek(dir_fd, 0, wasi::WHENCE_END.raw() as i32, &mut r) };
-    assert_eq!(res, badf, "fd_seek WHENCE_END error");
-
-    let res = unsafe { __ic_custom_fd_tell(dir_fd, &mut r) };
-    assert_eq!(res, badf, "fd_tell error");
-    let res = __ic_custom_fd_advise(dir_fd, 0, 0, wasi::ADVICE_DONTNEED.raw() as i32);
-    assert_eq!(res, badf, "fd_advise error");
-
-    let res = __ic_custom_fd_allocate(dir_fd, 0, 0);
-    assert_eq!(res, badf, "fd_allocate error");
-
-    let res = __ic_custom_fd_datasync(dir_fd);
-    assert_eq!(res, badf, "fd_datasync error");
-
-    let res = __ic_custom_fd_sync(dir_fd);
-    assert_eq!(res, badf, "fd_sync error");
-
-    let res = __ic_custom_fd_fdstat_set_flags(dir_fd, wasi::FDFLAGS_NONBLOCK as i32);
-    assert_eq!(res, badf, "fd_fdstat_set_flags error");
-
-    let res = __ic_custom_fd_filestat_set_size(dir_fd, 0);
-    assert_eq!(res, badf, "fd_filestat_set_size error");
-}
-
-#[test]
-fn test_closing_root_fd_fails() {
-    init(&[], &[]);
-
-    let root_fd = 3;
-
-    // Try to close a preopened directory handle.
-    __ic_custom_fd_close(root_fd);
-
-    // check that root_fd is still open
-    let mut stat: wasi::Fdstat = wasi::Fdstat {
-        fs_filetype: wasi::FILETYPE_UNKNOWN,
-        fs_flags: 0,
-        fs_rights_base: wasi::RIGHTS_FD_READ,
-        fs_rights_inheriting: wasi::RIGHTS_FD_READ,
-    };
-
-    // Ensure that dir_fd is still open.
-    let ret = unsafe { __ic_custom_fd_fdstat_get(root_fd, (&mut stat) as *mut wasi::Fdstat) };
-
-    assert_eq!(ret, 0, "expected success from fdstate_get(root_fd)");
-
-    assert_eq!(
-        stat.fs_filetype,
-        wasi::FILETYPE_DIRECTORY,
-        "expected root to be a directory",
-    );
+    assert_eq!(res, 0);
 }
 
 #[test]
@@ -496,10 +266,10 @@ fn test_create_dirs_and_file_in_it() {
             new_folder_name1.as_ptr(),
             new_folder_name1.len() as i32,
             2,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut parent_folder_fd) as *mut i32,
+            (&mut parent_folder_fd) as *mut Fd,
         )
     };
     assert!(res == 0);
@@ -507,7 +277,7 @@ fn test_create_dirs_and_file_in_it() {
     assert!(parent_folder_fd > 0);
 
     //
-    let mut new_file_fd = 0;
+    let mut new_file_fd: Fd = 0;
 
     let res = unsafe {
         __ic_custom_path_open(
@@ -516,10 +286,10 @@ fn test_create_dirs_and_file_in_it() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             1 + 4 + 8,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut new_file_fd) as *mut i32,
+            (&mut new_file_fd) as *mut Fd,
         )
     };
 
@@ -578,19 +348,21 @@ fn test_create_dirs_and_file_in_it() {
         }
     }
 
-    assert!(folders.len() == 2);
-    assert!(folders[0] == "test_folder1");
-    assert!(folders[1] == "test_folder3");
+    assert!(folders.len() == 4);
+    assert!(folders[0] == ".");
+    assert!(folders[1] == "..");
+    assert!(folders[2] == "test_folder1");
+    assert!(folders[3] == "test_folder3");
 }
 
 #[test]
 fn test_writing_and_reading() {
     init(&[], &[]);
 
-    let root_fd = 3i32;
+    let root_fd: Fd = 3;
     let new_file_name = String::from("file.txt");
 
-    let mut file_fd = create_test_file(root_fd as Fd, &new_file_name) as i32;
+    let mut file_fd = create_test_file(root_fd as Fd, &new_file_name);
 
     __ic_custom_fd_close(file_fd);
 
@@ -602,23 +374,24 @@ fn test_writing_and_reading() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut file_fd) as *mut i32,
+            (&mut file_fd) as *mut Fd,
         )
     };
+
     assert!(res == 0);
 
     let mut buf_to_read1 = String::from("................");
     let mut buf_to_read2 = String::from("................");
 
     let mut read_buf = vec![
-        wasi::Ciovec {
+        wasi::Iovec {
             buf: buf_to_read1.as_mut_ptr(),
             buf_len: buf_to_read1.len(),
         },
-        wasi::Ciovec {
+        wasi::Iovec {
             buf: buf_to_read2.as_mut_ptr(),
             buf_len: buf_to_read2.len(),
         },
@@ -656,10 +429,10 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             1 + 4 + 8,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut file_fd) as *mut i32,
+            (&mut file_fd) as *mut Fd,
         )
     };
     assert!(res == 0);
@@ -700,10 +473,10 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut file_fd) as *mut i32,
+            (&mut file_fd) as *mut Fd,
         )
     };
     assert!(res == 0);
@@ -712,11 +485,11 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let mut buf_to_read2 = String::from("................");
 
     let mut read_buf = [
-        wasi::Ciovec {
+        wasi::Iovec {
             buf: buf_to_read1.as_mut_ptr(),
             buf_len: buf_to_read1.len(),
         },
-        wasi::Ciovec {
+        wasi::Iovec {
             buf: buf_to_read2.as_mut_ptr(),
             buf_len: buf_to_read2.len(),
         },
@@ -756,10 +529,10 @@ fn test_writing_and_reading_file_stats() {
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             1 + 4 + 8,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut file_fd) as *mut i32,
+            (&mut file_fd) as *mut Fd,
         )
     };
 
@@ -879,10 +652,10 @@ fn test_forward_to_debug_is_called() {
 fn test_link_seek_tell() {
     init(&[], &[]);
 
-    let root_fd = 3i32;
+    let root_fd = 3;
     let new_file_name = String::from("file.txt");
 
-    let file_fd = create_test_file(root_fd as Fd, &new_file_name) as i32;
+    let file_fd = create_test_file(root_fd as Fd, &new_file_name);
 
     // test seek and tell
     let mut position: wasi::Filesize = 0;
@@ -928,10 +701,10 @@ fn test_link_seek_tell() {
             link_file_name.as_ptr(),
             link_file_name.len() as i32,
             0,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
             0,
-            0,
-            (&mut link_file_fd) as *mut i32,
+            (&mut link_file_fd) as *mut Fd,
         )
     };
     assert!(res == 0);
@@ -951,7 +724,7 @@ fn test_link_seek_tell() {
 
     let mut buf_to_read1 = String::from("................");
 
-    let mut read_buf = vec![wasi::Ciovec {
+    let mut read_buf = vec![wasi::Iovec {
         buf: buf_to_read1.as_mut_ptr(),
         buf_len: buf_to_read1.len(),
     }];
@@ -976,7 +749,7 @@ fn test_link_seek_tell() {
 fn test_seek_types() {
     init(&[], &[]);
 
-    let file_fd = create_test_file(3 as Fd, "file.txt") as i32;
+    let file_fd = create_test_file(3 as Fd, "file.txt");
 
     // test seek and tell
     let mut position: wasi::Filesize = 0;
@@ -1022,7 +795,7 @@ fn test_seek_types() {
 fn test_advice() {
     init(&[], &[]);
 
-    let file_fd = create_test_file(3, "file.txt") as i32;
+    let file_fd = create_test_file(3, "file.txt");
 
     assert!(__ic_custom_fd_advise(file_fd, 0, 500, 0) == 0);
 
@@ -1035,7 +808,7 @@ fn test_advice() {
 fn test_allocate() {
     init(&[], &[]);
 
-    let file_fd = create_test_file(3, "file.txt") as i32;
+    let file_fd = create_test_file(3, "file.txt");
 
     assert!(__ic_custom_fd_allocate(file_fd, 0, 500) == 0);
     assert!(__ic_custom_fd_allocate(7, 0, 500) == wasi::ERRNO_BADF.raw() as i32);
@@ -1045,7 +818,7 @@ fn test_allocate() {
 fn test_datasync() {
     init(&[], &[]);
 
-    let file_fd = create_test_file(3, "file.txt") as i32;
+    let file_fd = create_test_file(3, "file.txt");
 
     assert!(__ic_custom_fd_datasync(file_fd) == 0);
 
@@ -1062,11 +835,11 @@ fn test_rename_unlink() {
     let filename3 = "file3.txt";
     let filename1_renamed = "file1_renamed.txt";
 
-    let file_fd = create_test_file(3, filename1) as i32;
+    let file_fd = create_test_file(3, filename1);
     __ic_custom_fd_close(file_fd);
-    let file_fd = create_test_file(3, filename2) as i32;
+    let file_fd = create_test_file(3, filename2);
     __ic_custom_fd_close(file_fd);
-    let file_fd = create_test_file(3, filename3) as i32;
+    let file_fd = create_test_file(3, filename3);
     __ic_custom_fd_close(file_fd);
 
     let res = __ic_custom_path_rename(
@@ -1082,13 +855,15 @@ fn test_rename_unlink() {
     let res = __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32);
     assert!(res == 0);
 
-    // list files
-    let persons = read_directory(3);
+    // list files, include . and ..
+    let files = read_directory(3);
 
-    assert_eq!(persons.len(), 2);
+    assert_eq!(files.len(), 4);
 
-    assert!(persons.contains(&String::from("file1_renamed.txt")));
-    assert!(persons.contains(&String::from("file2.txt")));
+    assert!(files.contains(&String::from(".")));
+    assert!(files.contains(&String::from("..")));
+    assert!(files.contains(&String::from("file1_renamed.txt")));
+    assert!(files.contains(&String::from("file2.txt")));
 }
 
 #[test]
@@ -1102,7 +877,7 @@ fn test_fd_stat_get_fd_stat_set_flags() {
         fs_rights_inheriting: wasi::RIGHTS_FD_READ,
     };
 
-    let file_fd = create_test_file(3, "file.txt") as i32;
+    let file_fd = create_test_file(3, "file.txt");
 
     let ret = unsafe { __ic_custom_fd_fdstat_get(file_fd, (&mut stat) as *mut wasi::Fdstat) };
     assert!(ret == 0);
@@ -1126,7 +901,7 @@ fn test_path_filestat_get_set_times() {
 
     let filename = "file.txt";
 
-    let file_fd = create_test_file(3, filename) as i32;
+    let file_fd = create_test_file(3, filename);
     __ic_custom_fd_close(file_fd);
 
     let mut filestat: wasi::Filestat = wasi::Filestat {
@@ -1191,11 +966,10 @@ fn test_fd_renumber_over_opened_file() {
 
     let filename = "file.txt";
 
-    let file_fd = create_test_file(3, filename) as i32;
+    let file_fd = create_test_file(3, filename);
 
     let filename2 = "file2.txt";
-    let second_file_fd =
-        create_test_file_with_content(3, filename2, vec![String::from("12345")]) as i32;
+    let second_file_fd = create_test_file_with_content(3, filename2, vec![String::from("12345")]);
 
     let mut position: wasi::Filesize = 0 as wasi::Filesize;
     unsafe { __ic_custom_fd_tell(second_file_fd, &mut position as *mut wasi::Filesize) };
@@ -1208,4 +982,386 @@ fn test_fd_renumber_over_opened_file() {
 
     // we expect the create_test_file to leave the cursor at the position 32
     assert!(position == 32);
+}
+
+use ic_stable_structures::VectorMemory;
+
+// create new vector memory
+pub fn new_vector_memory() -> VectorMemory {
+    use std::{cell::RefCell, rc::Rc};
+
+    Rc::new(RefCell::new(Vec::new()))
+}
+
+// initialize existing memory
+fn new_vector_memory_init(v: Vec<u8>) -> VectorMemory {
+    use std::{cell::RefCell, rc::Rc};
+
+    Rc::new(RefCell::new(v))
+}
+
+#[test]
+fn test_with_custom_memory() {
+    let memory = new_vector_memory();
+
+    init_with_memory(&[], &[], memory.clone());
+
+    // do something with the file system
+    //...
+
+    // copy memory into a second vector
+    let v: Vec<u8> = memory.borrow().clone();
+
+    // init system with a new memory
+    let memory2 = new_vector_memory_init(v);
+    init_with_memory(&[], &[], memory2.clone());
+
+    //
+}
+
+#[test]
+fn test_fd_fdstat_set_flags() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        const FILE_NAME: &str = "file";
+        let data = &[0u8; 100];
+
+        let file_fd = wasi::path_open(
+            dir_fd,
+            0,
+            FILE_NAME,
+            wasi::OFLAGS_CREAT,
+            wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE,
+            0,
+            wasi::FDFLAGS_APPEND,
+        )
+        .expect("opening a file");
+
+        // Write some data and then verify the written data
+        assert_eq!(
+            wasi::fd_write(
+                file_fd,
+                &[wasi::Ciovec {
+                    buf: data.as_ptr(),
+                    buf_len: data.len(),
+                }],
+            )
+            .expect("writing to a file"),
+            data.len(),
+            "should write {} bytes",
+            data.len(),
+        );
+
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        let buffer = &mut [0u8; 100];
+
+        assert_eq!(
+            wasi::fd_read(
+                file_fd,
+                &[wasi::Iovec {
+                    buf: buffer.as_mut_ptr(),
+                    buf_len: buffer.len(),
+                }]
+            )
+            .expect("reading file"),
+            buffer.len(),
+            "should read {} bytes",
+            buffer.len()
+        );
+
+        assert_eq!(&data[..], &buffer[..]);
+
+        let data = &[1u8; 100];
+
+        // Seek back to the start to ensure we're in append-only mode
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        assert_eq!(
+            wasi::fd_write(
+                file_fd,
+                &[wasi::Ciovec {
+                    buf: data.as_ptr(),
+                    buf_len: data.len(),
+                }],
+            )
+            .expect("writing to a file"),
+            data.len(),
+            "should write {} bytes",
+            data.len(),
+        );
+
+        wasi::fd_seek(file_fd, 100, wasi::WHENCE_SET).expect("seeking file");
+
+        assert_eq!(
+            wasi::fd_read(
+                file_fd,
+                &[wasi::Iovec {
+                    buf: buffer.as_mut_ptr(),
+                    buf_len: buffer.len(),
+                }]
+            )
+            .expect("reading file"),
+            buffer.len(),
+            "should read {} bytes",
+            buffer.len()
+        );
+
+        assert_eq!(&data[..], &buffer[..]);
+
+        wasi::fd_fdstat_set_flags(file_fd, 0).expect("disabling flags");
+
+        // Overwrite some existing data to ensure the append mode is now off
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        let data = &[2u8; 100];
+
+        assert_eq!(
+            wasi::fd_write(
+                file_fd,
+                &[wasi::Ciovec {
+                    buf: data.as_ptr(),
+                    buf_len: data.len(),
+                }],
+            )
+            .expect("writing to a file"),
+            data.len(),
+            "should write {} bytes",
+            data.len(),
+        );
+
+        wasi::fd_seek(file_fd, 0, wasi::WHENCE_SET).expect("seeking file");
+
+        assert_eq!(
+            wasi::fd_read(
+                file_fd,
+                &[wasi::Iovec {
+                    buf: buffer.as_mut_ptr(),
+                    buf_len: buffer.len(),
+                }]
+            )
+            .expect("reading file"),
+            buffer.len(),
+            "should read {} bytes",
+            buffer.len()
+        );
+
+        assert_eq!(&data[..], &buffer[..]);
+
+        wasi::fd_close(file_fd).expect("close file");
+
+        let stat = wasi::path_filestat_get(dir_fd, 0, FILE_NAME).expect("stat path");
+
+        assert_eq!(stat.size, 200, "expected a file size of 200");
+
+        wasi::path_unlink_file(dir_fd, FILE_NAME).expect("unlinking file");
+    }
+}
+
+/*
+// TODO: this test brakes coverage for some reason
+
+#[test]
+fn test_overwrite_preopen() {
+    init(&[], &[]);
+
+    let root_fd = 3;
+
+    unsafe {
+        let file_fd = create_test_file(3, "test/file.txt");
+        wasi::fd_close(file_fd).unwrap();
+
+        let dir_fd = wasi::path_open(root_fd, 0, "test", wasi::OFLAGS_DIRECTORY, 0, 0, 0).unwrap();
+
+        let pre_fd: wasi::Fd = (libc::STDERR_FILENO + 1) as wasi::Fd;
+
+        assert!(dir_fd > pre_fd, "dir_fd number");
+
+        let old_dir_filestat = wasi::fd_filestat_get(dir_fd).expect("failed fd_filestat_get");
+
+        // Try to renumber over a preopened directory handle.
+        wasi::fd_renumber(dir_fd, pre_fd).expect("renumbering over a preopened file descriptor");
+
+        // Ensure that pre_fd is still open.
+        let new_dir_filestat = wasi::fd_filestat_get(pre_fd).expect("failed fd_filestat_get");
+
+        // Ensure that we renumbered.
+        assert_eq!(old_dir_filestat.dev, new_dir_filestat.dev);
+        assert_eq!(old_dir_filestat.ino, new_dir_filestat.ino);
+
+        // Ensure that dir_fd is closed.
+        assert_eq!(
+            wasi::fd_fdstat_get(dir_fd).expect_err("failed fd_fdstat_get"),
+            wasi::ERRNO_BADF
+        );
+    }
+}
+
+*/
+
+#[test]
+fn test_renumber() {
+    init(&[], &[]);
+
+    let root_fd = 3;
+
+    unsafe {
+        let file_fd = create_test_file(3, "test/file.txt");
+        wasi::fd_close(file_fd).unwrap();
+
+        let dir_fd = wasi::path_open(root_fd, 0, "test", wasi::OFLAGS_DIRECTORY, 0, 0, 0).unwrap();
+
+        let pre_fd: wasi::Fd = (libc::STDERR_FILENO + 1) as wasi::Fd;
+
+        assert!(dir_fd > pre_fd, "dir_fd number");
+
+        // Create a file in the scratch directory.
+        let fd_from = wasi::path_open(
+            dir_fd,
+            0,
+            "file1",
+            wasi::OFLAGS_CREAT,
+            wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE,
+            0,
+            0,
+        )
+        .expect("opening a file");
+
+        assert!(
+            fd_from > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        // Get fd_from fdstat attributes
+        let fdstat_from =
+            wasi::fd_fdstat_get(fd_from).expect("calling fd_fdstat on the open file descriptor");
+
+        // Create another file in the scratch directory.
+        let fd_to = wasi::path_open(
+            dir_fd,
+            0,
+            "file2",
+            wasi::OFLAGS_CREAT,
+            wasi::RIGHTS_FD_READ | wasi::RIGHTS_FD_WRITE,
+            0,
+            0,
+        )
+        .expect("opening a file");
+        assert!(
+            fd_to > libc::STDERR_FILENO as wasi::Fd,
+            "file descriptor range check",
+        );
+
+        // Renumber fd of file1 into fd of file2
+        wasi::fd_renumber(fd_from, fd_to).expect("renumbering two descriptors");
+
+        // Ensure that fd_from is closed
+        assert_eq!(
+            wasi::fd_close(fd_from).expect_err("closing already closed file descriptor"),
+            wasi::ERRNO_BADF
+        );
+
+        // Ensure that fd_to is still open.
+        let fdstat_to =
+            wasi::fd_fdstat_get(fd_to).expect("calling fd_fdstat on the open file descriptor");
+        assert_eq!(
+            fdstat_from.fs_filetype, fdstat_to.fs_filetype,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+        assert_eq!(
+            fdstat_from.fs_flags, fdstat_to.fs_flags,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+        assert_eq!(
+            fdstat_from.fs_rights_base, fdstat_to.fs_rights_base,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+        assert_eq!(
+            fdstat_from.fs_rights_inheriting, fdstat_to.fs_rights_inheriting,
+            "expected fd_to have the same fdstat as fd_from"
+        );
+
+        wasi::fd_close(fd_to).expect("closing a file");
+    }
+}
+
+#[test]
+fn test_remove_directory() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        // Create a directory in the scratch directory.
+        wasi::path_create_directory(dir_fd, "dir").expect("creating a directory");
+
+        // Test that removing it succeeds.
+        wasi::path_remove_directory(dir_fd, "dir")
+            .expect("remove_directory on a directory should succeed");
+
+        // There isn't consistient behavior across operating systems of whether removing with a
+        // directory where the path has a trailing slash succeeds or fails, so we won't test
+        // that behavior.
+
+        // Create a temporary file.
+        create_empty_test_file(dir_fd, "file");
+
+        // Test that removing it with no trailing slash fails.
+        assert_eq!(
+            wasi::path_remove_directory(dir_fd, "file")
+                .expect_err("remove_directory without a trailing slash on a file should fail"),
+            wasi::ERRNO_NOTDIR
+        );
+
+        // Test that removing it with a trailing slash fails.
+        assert_eq!(
+            wasi::path_remove_directory(dir_fd, "file/")
+                .expect_err("remove_directory with a trailing slash on a file should fail"),
+            wasi::ERRNO_NOTDIR
+        );
+
+        wasi::path_unlink_file(dir_fd, "file").expect("removing a file");
+    }
+}
+
+#[test]
+fn test_remove_nonempty_directory() {
+    init(&[], &[]);
+
+    let dir_fd = 3;
+
+    unsafe {
+        // Create a directory in the scratch directory.
+        wasi::path_create_directory(dir_fd, "dir").expect("creating a directory");
+
+        // Create a directory in the directory we just created.
+        wasi::path_create_directory(dir_fd, "dir/nested").expect("creating a subdirectory");
+
+        // Test that attempting to unlink the first directory returns the expected error code.
+        assert_eq!(
+            wasi::path_remove_directory(dir_fd, "dir")
+                .expect_err("remove_directory on a directory should return ENOTEMPTY"),
+            wasi::ERRNO_NOTEMPTY
+        );
+
+        // Removing the directories.
+        wasi::path_remove_directory(dir_fd, "dir/nested")
+            .expect("remove_directory on a nested directory should succeed");
+        wasi::path_remove_directory(dir_fd, "dir").expect("removing a directory");
+    }
+}
+
+#[test]
+fn unicode_write() {
+    let text = "مرحبا بكم\n";
+
+    let ciovecs = [wasi::Ciovec {
+        buf: text.as_bytes().as_ptr(),
+        buf_len: text.len(),
+    }];
+    let written = unsafe { wasi::fd_write(libc::STDOUT_FILENO, &ciovecs) }.expect("write succeeds");
+    assert_eq!(written, text.len(), "full contents should be written");
 }

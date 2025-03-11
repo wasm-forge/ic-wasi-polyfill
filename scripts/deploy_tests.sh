@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd tests/canister_initial
+cd test/canister_initial
 
 dfx canister create canister_initial_backend
 
