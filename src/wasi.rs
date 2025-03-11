@@ -2202,7 +2202,7 @@ pub unsafe fn sock_shutdown(fd: Fd, how: Sdflags) -> Result<(), Errno> {
 
 pub mod wasi_snapshot_preview1 {
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
-    extern "C" {
+    unsafe extern "C" {
         /// Read command-line argument data.
         /// The size of the array should match that returned by `args_sizes_get`.
         /// Each argument is expected to be `\0` terminated.
