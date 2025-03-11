@@ -167,7 +167,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
 
         #[cfg(feature = "report_wasi_calls")]
         {
-            let r = format!("res={}", unsafe { *res });
+            let r = format!("res={}", *res);
             debug_instructions!("__ic_custom_fd_write", result, start, "{r}");
         }
 
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
 
         #[cfg(feature = "report_wasi_calls")]
         {
-            let r = format!("res={}", unsafe { *res });
+            let r = format!("res={}", *res);
             debug_instructions!("__ic_custom_fd_read", result, start, "{r}");
         }
 
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
 
         #[cfg(feature = "report_wasi_calls")]
         {
-            let r = format!("res={}", unsafe { *res });
+            let r = format!("res={}", *res);
             debug_instructions!("__ic_custom_fd_pwrite", result, start, "{r}");
         }
 
@@ -343,7 +343,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 
         #[cfg(feature = "report_wasi_calls")]
         {
-            let r = format!("res={}", unsafe { *res });
+            let r = format!("res={}", *res);
             debug_instructions!("__ic_custom_fd_pread", result, start, "{r}");
         }
 
@@ -1362,7 +1362,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
         #[cfg(feature = "report_wasi_calls")]
         {
-            let t = format!("res={:?}", unsafe { *result });
+            let t = format!("res={:?}", *result);
             debug_instructions!("__ic_custom_path_filestat_get", r, start, "{t}");
         }
 
