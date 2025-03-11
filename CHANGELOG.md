@@ -2,7 +2,13 @@
 
 ## [v0.8.0]
 
-- 
+- pocket-ic 7.0/8.0
+- update to rust edition 2024
+- update dependencies
+- update documentation 
+- additional tests for wasi compliance
+- refactor test structure, 
+- wasi_mock updated to be used with wasmtime tests
 
 ## [v0.7.0]
 
