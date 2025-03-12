@@ -59,22 +59,20 @@ fn ic_print(value: &str) {
 
 #[allow(clippy::missing_safety_doc)]
 pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wasi::Size) -> i32 {
-    unsafe {
-        let iovs = std::slice::from_raw_parts(iovs, len as usize);
+    let iovs = unsafe { std::slice::from_raw_parts(iovs, len as usize) };
 
-        let mut written = 0;
+    let mut written = 0;
 
-        for iov in iovs {
-            let buf = std::slice::from_raw_parts(iov.buf, iov.buf_len);
-            let str = std::str::from_utf8(buf).unwrap_or("");
-            ic_print(str);
-            written += iov.buf_len;
-        }
-
-        *res = written;
-
-        wasi::ERRNO_SUCCESS.raw() as i32
+    for iov in iovs {
+        let buf = unsafe { std::slice::from_raw_parts(iov.buf, iov.buf_len) };
+        let str = std::str::from_utf8(buf).unwrap_or("");
+        ic_print(str);
+        written += iov.buf_len;
     }
+
+    unsafe { *res = written };
+
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 thread_local! {
@@ -92,14 +90,14 @@ macro_rules! debug_instructions {
     ($fn_name:literal) => {
         ic_print(&format!("\t{}", $fn_name))
     };
-    ($fn_name:literal, $params:expr_2021) => {
+    ($fn_name:literal, $params:expr) => {
         ic_print(&format!(
             "\t{}\tparameters:\t{}\t",
             $fn_name,
             format!($params)
         ))
     };
-    ($fn_name:literal, $sresult:expr_2021, $stime:expr_2021) => {
+    ($fn_name:literal, $sresult:expr, $stime:expr) => {
         let etime = ic_instruction_counter();
 
         ic_print(&format!(
@@ -108,7 +106,7 @@ macro_rules! debug_instructions {
             etime - ($stime)
         ))
     };
-    ($fn_name:literal, $sresult:expr_2021, $stime:expr_2021, $out_params:expr_2021) => {
+    ($fn_name:literal, $sresult:expr, $stime:expr, $out_params:expr) => {
         let etime = ic_instruction_counter();
 
         ic_print(&format!(
@@ -129,50 +127,49 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_fd_write");
-        let src_io_vec: *const SrcBuf = iovs as *const SrcBuf;
-        let src_io_vec: &[SrcBuf] = std::slice::from_raw_parts(src_io_vec, len as wasi::Size);
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_fd_write");
+    let src_io_vec: *const SrcBuf = iovs as *const SrcBuf;
+    let src_io_vec: &[SrcBuf] =
+        unsafe { std::slice::from_raw_parts(src_io_vec, len as wasi::Size) };
 
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let lengths: Vec<_> = src_io_vec.iter().map(|x| x.len).collect();
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let lengths: Vec<_> = src_io_vec.iter().map(|x| x.len).collect();
 
-            let l = format!("iovs.lengths={:?}", lengths);
-            debug_instructions!("__ic_custom_fd_write", "fd={fd:?} iovs.len={len:?} {l}");
-        }
-
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
-
-        let result = if fd < 3 {
-            forward_to_debug(iovs, len, res)
-        } else {
-            FS.with(|fs| {
-                let mut fs = fs.borrow_mut();
-
-                match fs.write_vec(fd as Fd, src_io_vec) {
-                    Ok(r) => {
-                        *res = r as wasi::Size;
-                        wasi::ERRNO_SUCCESS.raw() as i32
-                    }
-                    Err(er) => {
-                        *res = 0;
-                        into_errno(er)
-                    }
-                }
-            })
-        };
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let r = format!("res={}", *res);
-            debug_instructions!("__ic_custom_fd_write", result, start, "{r}");
-        }
-
-        result
+        let l = format!("iovs.lengths={:?}", lengths);
+        debug_instructions!("__ic_custom_fd_write", "fd={fd:?} iovs.len={len:?} {l}");
     }
+
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
+
+    let result = if fd < 3 {
+        unsafe { forward_to_debug(iovs, len, res) }
+    } else {
+        FS.with(|fs| {
+            let mut fs = fs.borrow_mut();
+
+            match fs.write_vec(fd as Fd, src_io_vec) {
+                Ok(r) => {
+                    unsafe { *res = r as wasi::Size };
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    unsafe { *res = 0 };
+                    into_errno(er)
+                }
+            }
+        })
+    };
+
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let r = format!("res={}", *res);
+        debug_instructions!("__ic_custom_fd_write", result, start, "{r}");
+    }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -184,52 +181,51 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_fd_read");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_fd_read");
 
-        let dst_io_vec = iovs as *const DstBuf;
-        let dst_io_vec: &[DstBuf] = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
+    let dst_io_vec = iovs as *const DstBuf;
+    let dst_io_vec: &[DstBuf] =
+        unsafe { std::slice::from_raw_parts(dst_io_vec, len as wasi::Size) };
 
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let lengths: Vec<_> = dst_io_vec.iter().map(|x: &DstBuf| x.len).collect();
-            let l = format!("iovs.lengths={:?}", lengths);
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let lengths: Vec<_> = dst_io_vec.iter().map(|x: &DstBuf| x.len).collect();
+        let l = format!("iovs.lengths={:?}", lengths);
 
-            debug_instructions!("__ic_custom_fd_read", "fd={fd:?} iovs.lengths={l}");
-        }
-
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
-
-        // for now we don't support reading from the standard streams
-        if fd < 3 {
-            return wasi::ERRNO_INVAL.raw() as i32;
-        }
-
-        let result = FS.with(|fs| {
-            let mut fs = fs.borrow_mut();
-
-            match fs.read_vec(fd as Fd, dst_io_vec) {
-                Ok(r) => {
-                    *res = r as wasi::Size;
-                    wasi::ERRNO_SUCCESS.raw() as i32
-                }
-                Err(er) => {
-                    *res = 0;
-                    into_errno(er)
-                }
-            }
-        });
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let r = format!("res={}", *res);
-            debug_instructions!("__ic_custom_fd_read", result, start, "{r}");
-        }
-
-        result
+        debug_instructions!("__ic_custom_fd_read", "fd={fd:?} iovs.lengths={l}");
     }
+
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
+
+    // for now we don't support reading from the standard streams
+    if fd < 3 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
+    let result = FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        match fs.read_vec(fd as Fd, dst_io_vec) {
+            Ok(r) => {
+                unsafe { *res = r as wasi::Size };
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => {
+                unsafe { *res = 0 };
+                into_errno(er)
+            }
+        }
+    });
+
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let r = format!("res={}", *res);
+        debug_instructions!("__ic_custom_fd_read", result, start, "{r}");
+    }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -242,53 +238,52 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_fd_pwrite");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_fd_pwrite");
 
-        let src_io_vec: *const SrcBuf = iovs as *const SrcBuf;
-        let src_io_vec: &[SrcBuf] = std::slice::from_raw_parts(src_io_vec, len as wasi::Size);
+    let src_io_vec: *const SrcBuf = iovs as *const SrcBuf;
+    let src_io_vec: &[SrcBuf] =
+        unsafe { std::slice::from_raw_parts(src_io_vec, len as wasi::Size) };
 
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let lengths: Vec<_> = src_io_vec.iter().map(|x: &SrcBuf| x.len).collect();
-            let l = format!("iovs.lengths={:?}", lengths);
-            debug_instructions!(
-                "__ic_custom_fd_pwrite",
-                "fd={fd:?} iovs.len={len:?} offset={offset} iovs.lengths={l}"
-            );
-        }
-
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
-
-        let result = if fd < 3 {
-            forward_to_debug(iovs, len, res)
-        } else {
-            FS.with(|fs| {
-                let mut fs = fs.borrow_mut();
-                match fs.write_vec_with_offset(fd as Fd, src_io_vec, offset as FileSize) {
-                    Ok(r) => {
-                        *res = r as wasi::Size;
-
-                        wasi::ERRNO_SUCCESS.raw() as i32
-                    }
-                    Err(er) => {
-                        *res = 0;
-                        into_errno(er)
-                    }
-                }
-            })
-        };
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let r = format!("res={}", *res);
-            debug_instructions!("__ic_custom_fd_pwrite", result, start, "{r}");
-        }
-
-        result
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let lengths: Vec<_> = src_io_vec.iter().map(|x: &SrcBuf| x.len).collect();
+        let l = format!("iovs.lengths={:?}", lengths);
+        debug_instructions!(
+            "__ic_custom_fd_pwrite",
+            "fd={fd:?} iovs.len={len:?} offset={offset} iovs.lengths={l}"
+        );
     }
+
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
+
+    let result = if fd < 3 {
+        unsafe { forward_to_debug(iovs, len, res) }
+    } else {
+        FS.with(|fs| {
+            let mut fs = fs.borrow_mut();
+            match fs.write_vec_with_offset(fd as Fd, src_io_vec, offset as FileSize) {
+                Ok(r) => {
+                    unsafe { *res = r as wasi::Size };
+
+                    wasi::ERRNO_SUCCESS.raw() as i32
+                }
+                Err(er) => {
+                    unsafe { *res = 0 };
+                    into_errno(er)
+                }
+            }
+        })
+    };
+
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let r = format!("res={}", *res);
+        debug_instructions!("__ic_custom_fd_pwrite", result, start, "{r}");
+    }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -301,54 +296,52 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
-        let dst_io_vec = iovs as *const DstBuf;
-        let dst_io_vec = std::slice::from_raw_parts(dst_io_vec, len as wasi::Size);
+    let dst_io_vec = iovs as *const DstBuf;
+    let dst_io_vec = unsafe { std::slice::from_raw_parts(dst_io_vec, len as wasi::Size) };
 
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let lengths: Vec<_> = dst_io_vec.iter().map(|x: &DstBuf| x.len).collect();
-            let l = format!("iovs.lengths={:?}", lengths);
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let lengths: Vec<_> = dst_io_vec.iter().map(|x: &DstBuf| x.len).collect();
+        let l = format!("iovs.lengths={:?}", lengths);
 
-            debug_instructions!(
-                "__ic_custom_fd_pread",
-                "fd={fd:?} iovs.lengths={l} offset={offset:?}"
-            );
-        }
-
-        // for now we don't support reading from the standard streams
-        if fd < 3 {
-            return wasi::ERRNO_INVAL.raw() as i32;
-        }
-
-        let result = FS.with(|fs| {
-            let mut fs = fs.borrow_mut();
-
-            let reading_result = fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize);
-
-            match reading_result {
-                Ok(r) => {
-                    *res = r as wasi::Size;
-                    wasi::ERRNO_SUCCESS.raw() as i32
-                }
-                Err(er) => {
-                    *res = 0;
-                    into_errno(er)
-                }
-            }
-        });
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let r = format!("res={}", *res);
-            debug_instructions!("__ic_custom_fd_pread", result, start, "{r}");
-        }
-
-        result
+        debug_instructions!(
+            "__ic_custom_fd_pread",
+            "fd={fd:?} iovs.lengths={l} offset={offset:?}"
+        );
     }
+
+    // for now we don't support reading from the standard streams
+    if fd < 3 {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    }
+
+    let result = FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
+
+        let reading_result = fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize);
+
+        match reading_result {
+            Ok(r) => {
+                unsafe { *res = r as wasi::Size };
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => {
+                unsafe { *res = 0 };
+                into_errno(er)
+            }
+        }
+    });
+
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let r = format!("res={}", *res);
+        debug_instructions!("__ic_custom_fd_pread", result, start, "{r}");
+    }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -377,21 +370,19 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        unsafe {
-            match fs.seek(
-                fd as Fd,
-                delta,
-                wasi_helpers::into_stable_fs_wence(whence as u8),
-            ) {
-                Ok(r) => {
-                    *res = r as wasi::Filesize;
+        match fs.seek(
+            fd as Fd,
+            delta,
+            wasi_helpers::into_stable_fs_wence(whence as u8),
+        ) {
+            Ok(r) => {
+                unsafe { *res = r as wasi::Filesize };
 
-                    wasi::ERRNO_SUCCESS.raw() as i32
-                }
-                Err(er) => {
-                    *res = 0;
-                    into_errno(er)
-                }
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => {
+                unsafe { *res = 0 };
+                into_errno(er)
             }
         }
     });
@@ -421,57 +412,55 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fdflags: i32,
     res: *mut Fd,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
-        let file_name = get_file_name(path, path_len as wasi::Size);
+    let file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
 
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!(
-            "__ic_custom_path_open",
-            "parent_fd={parent_fd} dirflags={dirflags} path={file_name} oflags={oflags} fdflags={fdflags}"
-        );
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!(
+        "__ic_custom_path_open",
+        "parent_fd={parent_fd} dirflags={dirflags} path={file_name} oflags={oflags} fdflags={fdflags}"
+    );
 
-        // dirflags contains the information on whether to follow the symlinks,
-        // the symlinks are not supported yet by the file system
-        prevent_elimination(&[dirflags]);
+    // dirflags contains the information on whether to follow the symlinks,
+    // the symlinks are not supported yet by the file system
+    prevent_elimination(&[dirflags]);
 
-        let result = FS.with(|fs| {
-            let mut fs = fs.borrow_mut();
+    let result = FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
 
-            let fd_stat = FdStat {
-                flags: FdFlags::from_bits_truncate(fdflags as u16),
-                rights_base: fs_rights_base,
-                rights_inheriting: fs_rights_inheriting,
-            };
+        let fd_stat = FdStat {
+            flags: FdFlags::from_bits_truncate(fdflags as u16),
+            rights_base: fs_rights_base,
+            rights_inheriting: fs_rights_inheriting,
+        };
 
-            let open_flags = OpenFlags::from_bits_truncate(oflags as u16);
+        let open_flags = OpenFlags::from_bits_truncate(oflags as u16);
 
-            let now = ic_time();
+        let now = ic_time();
 
-            let r = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, now);
+        let r = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, now);
 
-            match r {
-                Ok(r) => {
-                    *res = r as Fd;
-                    wasi::ERRNO_SUCCESS.raw() as i32
-                }
-                Err(er) => {
-                    *res = 0;
-                    into_errno(er)
-                }
+        match r {
+            Ok(r) => {
+                unsafe { *res = r as Fd };
+                wasi::ERRNO_SUCCESS.raw() as i32
             }
-        });
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let par = format!("res={}", *res);
-            debug_instructions!("__ic_custom_path_open", result, start, "{par}");
+            Err(er) => {
+                unsafe { *res = 0 };
+                into_errno(er)
+            }
         }
+    });
 
-        result
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let par = format!("res={}", *res);
+        debug_instructions!("__ic_custom_path_open", result, start, "{par}");
     }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -582,17 +571,15 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        unsafe {
-            match fs.tell(fd as Fd) {
-                Ok(pos) => {
-                    *res = pos as wasi::Filesize;
+        match fs.tell(fd as Fd) {
+            Ok(pos) => {
+                unsafe { *res = pos as wasi::Filesize };
 
-                    wasi::ERRNO_SUCCESS.raw() as i32
-                }
-                Err(er) => {
-                    *res = 0;
-                    into_errno(er)
-                }
+                wasi::ERRNO_SUCCESS.raw() as i32
+            }
+            Err(er) => {
+                unsafe { *res = 0 };
+                into_errno(er)
             }
         }
     });
@@ -631,9 +618,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi:
                 },
             };
 
-            unsafe {
-                *prestat = pstat;
-            }
+            unsafe { *prestat = pstat };
 
             wasi::ERRNO_SUCCESS.raw() as i32
         } else {
@@ -820,9 +805,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi
                     fs_rights_inheriting: fdstat.rights_inheriting,
                 };
 
-                unsafe {
-                    *ret_fdstat = tmp_fd_stat;
-                }
+                unsafe { *ret_fdstat = tmp_fd_stat };
 
                 wasi::ERRNO_SUCCESS.raw() as i32
             }
@@ -1005,7 +988,8 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub extern "C" fn __ic_custom_fd_readdir(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_fd_readdir(
     fd: Fd,
     bytes: *mut u8,
     bytes_len: i32,
@@ -1023,7 +1007,7 @@ pub extern "C" fn __ic_custom_fd_readdir(
 
     let result = FS.with(|fs| {
         let fs = fs.borrow();
-        wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res)
+        unsafe { wasi_helpers::fd_readdir(&fs, fd, cookie, bytes, bytes_len, res) }
     });
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1072,28 +1056,26 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_random_get");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_random_get");
 
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
-        let buf = std::slice::from_raw_parts_mut(buf, buf_len);
-        RNG.with(|rng| {
-            let mut rng = rng.borrow_mut();
-            rng.fill_bytes(buf);
-        });
+    let buf = unsafe { std::slice::from_raw_parts_mut(buf, buf_len) };
+    RNG.with(|rng| {
+        let mut rng = rng.borrow_mut();
+        rng.fill_bytes(buf);
+    });
 
-        let result = wasi::ERRNO_SUCCESS.raw() as i32;
+    let result = wasi::ERRNO_SUCCESS.raw() as i32;
 
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            debug_instructions!("__ic_custom_random_get", result, start, "buf={buf:?}");
-        }
-
-        result
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        debug_instructions!("__ic_custom_random_get", result, start, "buf={buf:?}");
     }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -1103,33 +1085,31 @@ pub unsafe extern "C" fn __ic_custom_environ_get(
     environment: *mut *mut u8,
     environment_buffer: *mut u8,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_environ_get");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_environ_get");
 
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
-        let result = ENV.with(|env| {
+    let result = ENV.with(|env| {
+        let env = env.borrow();
+
+        unsafe { env.environ_get(environment, environment_buffer) }
+    });
+
+    let result = result.raw() as i32;
+
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        ENV.with(|env| {
             let env = env.borrow();
 
-            env.environ_get(environment, environment_buffer)
+            let t = format!("values={:?}", env.get_data_values());
+            debug_instructions!("__ic_custom_environ_get", result, start, "{t}");
         });
-
-        let result = result.raw() as i32;
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            ENV.with(|env| {
-                let env = env.borrow();
-
-                let t = format!("values={:?}", env.get_data_values());
-                debug_instructions!("__ic_custom_environ_get", result, start, "{t}");
-            });
-        }
-
-        result
     }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -1139,35 +1119,33 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     entry_count: *mut wasi::Size,
     buffer_size: *mut wasi::Size,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_environ_sizes_get");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_environ_sizes_get");
 
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
+    ENV.with(|env| {
+        let env = env.borrow();
+        let (count, size) = env.environ_sizes_get();
+
+        unsafe { *entry_count = count };
+        unsafe { *buffer_size = size };
+    });
+
+    let result = 0;
+
+    #[cfg(feature = "report_wasi_calls")]
+    {
         ENV.with(|env| {
             let env = env.borrow();
-            let (count, size) = env.environ_sizes_get();
 
-            *entry_count = count;
-            *buffer_size = size;
+            let t = format!("env_size={:?}", env.get_data_values().len());
+            debug_instructions!("__ic_custom_environ_sizes_get", result, start, "{t}");
         });
-
-        let result = 0;
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            ENV.with(|env| {
-                let env = env.borrow();
-
-                let t = format!("env_size={:?}", env.get_data_values().len());
-                debug_instructions!("__ic_custom_environ_sizes_get", result, start, "{t}");
-            });
-        }
-
-        result
     }
+
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -1193,29 +1171,27 @@ pub unsafe extern "C" fn __ic_custom_args_sizes_get(
     len1: *mut wasi::Size,
     len2: *mut wasi::Size,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_arg_sizes_get -> 0");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_arg_sizes_get -> 0");
 
+    unsafe {
         *len1 = 0;
         *len2 = 0;
-        0
     }
+    0
 }
 
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_clock_res_get(id: i32, result: *mut u64) -> i32 {
-    unsafe {
-        prevent_elimination(&[id]);
+    prevent_elimination(&[id]);
 
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_clock_res_get -> 0");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_clock_res_get -> 0");
 
-        *result = 1_000_000_000; // 1 second.
-        wasi::ERRNO_SUCCESS.raw() as i32
-    }
+    unsafe { *result = 1_000_000_000 }; // 1 second.
+    wasi::ERRNO_SUCCESS.raw() as i32
 }
 
 #[unsafe(no_mangle)]
@@ -1226,23 +1202,21 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     precision: i64,
     time: *mut u64,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_clock_time_get");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_clock_time_get");
 
-        prevent_elimination(&[id, precision as i32]);
+    prevent_elimination(&[id, precision as i32]);
 
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
-        *time = ic_time();
-        let result = wasi::ERRNO_SUCCESS.raw() as i32;
+    unsafe { *time = ic_time() };
+    let result = wasi::ERRNO_SUCCESS.raw() as i32;
 
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_clock_time_get", result, start);
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_clock_time_get", result, start);
 
-        result
-    }
+    result
 }
 
 #[unsafe(no_mangle)]
@@ -1256,7 +1230,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_create_directory");
 
-    let dir_name = get_file_name(path, path_len as wasi::Size);
+    let dir_name = unsafe { get_file_name(path, path_len as wasi::Size) };
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -1296,33 +1270,33 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     path_len: i32,
     result: *mut wasi::Filestat,
 ) -> i32 {
-    unsafe {
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!("__ic_custom_path_filestat_get");
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!("__ic_custom_path_filestat_get");
 
-        #[cfg(feature = "report_wasi_calls")]
-        let start = ic_instruction_counter();
+    #[cfg(feature = "report_wasi_calls")]
+    let start = ic_instruction_counter();
 
-        let file_name = get_file_name(path, path_len as wasi::Size);
+    let file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
 
-        #[cfg(feature = "report_wasi_calls")]
-        debug_instructions!(
-            "__ic_custom_path_filestat_get",
-            "parent_fd={parent_fd:?} file_name={file_name:?}"
-        );
+    #[cfg(feature = "report_wasi_calls")]
+    debug_instructions!(
+        "__ic_custom_path_filestat_get",
+        "parent_fd={parent_fd:?} file_name={file_name:?}"
+    );
 
-        prevent_elimination(&[simlink_flags]);
+    prevent_elimination(&[simlink_flags]);
 
-        let r = FS.with(|fs| {
-            let mut fs = fs.borrow_mut();
+    let r = FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
 
-            let fd_stat = FdStat::default();
+        let fd_stat = FdStat::default();
 
-            let open_flags = OpenFlags::empty();
+        let open_flags = OpenFlags::empty();
 
-            let fd = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
+        let fd = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
 
-            // don't leave result undefined
+        // don't leave result undefined
+        unsafe {
             *result = wasi::Filestat {
                 dev: 0,
                 ino: 0,
@@ -1332,15 +1306,17 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
                 atim: 0,
                 mtim: 0,
                 ctim: 0,
-            };
+            }
+        };
 
-            match fd {
-                Ok(fd) => {
-                    let res = fs.metadata(fd);
-                    let _ = fs.close(fd);
+        match fd {
+            Ok(fd) => {
+                let res = fs.metadata(fd);
+                let _ = fs.close(fd);
 
-                    match res {
-                        Ok(metadata) => {
+                match res {
+                    Ok(metadata) => {
+                        unsafe {
                             *result = wasi::Filestat {
                                 dev: 0,
                                 ino: metadata.node,
@@ -1350,29 +1326,30 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
                                 atim: metadata.times.accessed,
                                 mtim: metadata.times.modified,
                                 ctim: metadata.times.created,
-                            };
-                            wasi::ERRNO_SUCCESS.raw() as i32
-                        }
-                        Err(er) => into_errno(er),
+                            }
+                        };
+                        wasi::ERRNO_SUCCESS.raw() as i32
                     }
+                    Err(er) => into_errno(er),
                 }
-                Err(er) => into_errno(er),
             }
-        });
-
-        #[cfg(feature = "report_wasi_calls")]
-        {
-            let t = format!("res={:?}", *result);
-            debug_instructions!("__ic_custom_path_filestat_get", r, start, "{t}");
+            Err(er) => into_errno(er),
         }
+    });
 
-        r
+    #[cfg(feature = "report_wasi_calls")]
+    {
+        let t = format!("res={:?}", *result);
+        debug_instructions!("__ic_custom_path_filestat_get", r, start, "{t}");
     }
+
+    r
 }
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_filestat_set_times(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_filestat_set_times(
     parent_fd: i32,
     flags: i32,
     path: *const u8,
@@ -1387,7 +1364,7 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
     prevent_elimination(&[flags]);
-    let file_name = get_file_name(path, path_len as wasi::Size);
+    let file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -1466,7 +1443,8 @@ pub extern "C" fn __ic_custom_path_filestat_set_times(
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_link(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_link(
     old_fd: Fd,
     sym_flags: i32,
     old_path: *const u8,
@@ -1481,8 +1459,8 @@ pub extern "C" fn __ic_custom_path_link(
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
     prevent_elimination(&[sym_flags]);
-    let old_path = get_file_name(old_path, old_path_len as wasi::Size);
-    let new_path = get_file_name(new_path, new_path_len as wasi::Size);
+    let old_path = unsafe { get_file_name(old_path, old_path_len as wasi::Size) };
+    let new_path = unsafe { get_file_name(new_path, new_path_len as wasi::Size) };
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -1513,7 +1491,8 @@ pub extern "C" fn __ic_custom_path_link(
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_path_readlink(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_readlink(
     fd: i32,
     path: *const u8,
     path_len: i32,
@@ -1521,13 +1500,15 @@ pub extern "C" fn __ic_custom_path_readlink(
     buf_len: i32,
     rp0: *mut usize,
 ) -> i32 {
+    let _file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
     prevent_elimination(&[fd, path as i32, path_len, buf, buf_len, rp0 as i32]);
     unimplemented!("WASI path_readlink is not implemented");
 }
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_remove_directory(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_remove_directory(
     parent_fd: Fd,
     path: *const u8,
     path_len: i32,
@@ -1537,7 +1518,7 @@ pub extern "C" fn __ic_custom_path_remove_directory(
 
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
-    let file_name = get_file_name(path, path_len as wasi::Size);
+    let file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -1563,7 +1544,9 @@ pub extern "C" fn __ic_custom_path_remove_directory(
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_rename(
+#[allow(clippy::missing_safety_doc)]
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_rename(
     old_fd: i32,
     old_path: *const u8,
     old_path_len: i32,
@@ -1576,8 +1559,8 @@ pub extern "C" fn __ic_custom_path_rename(
 
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
-    let old_path = get_file_name(old_path, old_path_len as wasi::Size);
-    let new_path = get_file_name(new_path, new_path_len as wasi::Size);
+    let old_path = unsafe { get_file_name(old_path, old_path_len as wasi::Size) };
+    let new_path = unsafe { get_file_name(new_path, new_path_len as wasi::Size) };
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -1608,13 +1591,17 @@ pub extern "C" fn __ic_custom_path_rename(
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_path_symlink(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_symlink(
     old_path: *const u8,
     old_path_len: i32,
     fd: i32,
     new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
+    let _old_path = unsafe { get_file_name(old_path, old_path_len as wasi::Size) };
+    let _new_path = unsafe { get_file_name(new_path, new_path_len as wasi::Size) };
+
     prevent_elimination(&[
         old_path as i32,
         old_path_len,
@@ -1627,7 +1614,8 @@ pub extern "C" fn __ic_custom_path_symlink(
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub extern "C" fn __ic_custom_path_unlink_file(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_path_unlink_file(
     parent_fd: i32,
     path: *const u8,
     path_len: i32,
@@ -1638,7 +1626,7 @@ pub extern "C" fn __ic_custom_path_unlink_file(
     #[cfg(feature = "report_wasi_calls")]
     let start = ic_instruction_counter();
 
-    let file_name = get_file_name(path, path_len as wasi::Size);
+    let file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
@@ -1665,7 +1653,8 @@ pub extern "C" fn __ic_custom_path_unlink_file(
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_poll_oneoff(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_poll_oneoff(
     in_: *const wasi::Subscription,
     out: *mut wasi::Event,
     nsubscriptions: i32,
@@ -1706,7 +1695,8 @@ pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) 
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_sock_recv(
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn __ic_custom_sock_recv(
     arg0: i32,
     arg1: *const wasi::Iovec,
     arg2: i32,
@@ -1721,6 +1711,7 @@ pub extern "C" fn __ic_custom_sock_recv(
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
+#[allow(clippy::missing_safety_doc)]
 pub extern "C" fn __ic_custom_sock_send(
     arg0: i32,
     arg1: *const wasi::Ciovec,
@@ -1762,10 +1753,6 @@ pub fn init_seed(seed: &[u8]) {
 #[unsafe(no_mangle)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
-    if seed.is_null() || len == 0 {
-        return;
-    }
-
     let len = usize::min(len, 32);
 
     let mut seed_buf: [u8; 32] = [0u8; 32];
@@ -1780,27 +1767,26 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 #[unsafe(no_mangle)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
-    unsafe {
-        FS.with(|fs| {
-            let mut fs = fs.borrow_mut();
+    FS.with(|fs| {
+        let mut fs = fs.borrow_mut();
 
-            if fs.get_storage_version() == 0 {
-                *fs = if cfg!(feature = "transient") {
-                    FileSystem::new(Box::new(TransientStorage::new())).unwrap()
-                } else {
-                    FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default())))
-                        .unwrap()
-                }
+        if fs.get_storage_version() == 0 {
+            *fs = if cfg!(feature = "transient") {
+                FileSystem::new(Box::new(TransientStorage::new())).unwrap()
+            } else {
+                FileSystem::new(Box::new(StableStorage::new(DefaultMemoryImpl::default()))).unwrap()
             }
-        });
+        }
+    });
 
-        raw_init_seed(seed, len);
+    unsafe { raw_init_seed(seed, len) };
 
-        COUNTER.with(|var| {
-            if *var.borrow() == -11 {
-                // dummy calls to trick the linker not to throw away the functions
+    COUNTER.with(|var| {
+        if *var.borrow() == -11 {
+            // dummy calls to trick the linker not to throw away the functions
 
-                use std::ptr::{null, null_mut};
+            use std::ptr::{null, null_mut};
+            unsafe {
                 __ic_custom_fd_write(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_read(0, null::<wasi::Iovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_close(0);
@@ -1875,8 +1861,8 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 
                 __ic_custom_proc_exit(0);
             }
-        })
-    }
+        }
+    })
 }
 
 // the init function ensures the module is not thrown away by the linker

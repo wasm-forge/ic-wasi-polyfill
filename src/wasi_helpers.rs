@@ -9,7 +9,7 @@ use crate::wasi;
 #[cfg(not(all(target_arch = "wasm32")))]
 use crate::wasi_mock as wasi;
 
-pub fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
+pub unsafe fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     let path_bytes = unsafe { std::slice::from_raw_parts(path, path_len as wasi::Size) };
     let file_name = unsafe { std::str::from_utf8_unchecked(path_bytes) };
 
@@ -120,7 +120,7 @@ pub fn _into_stable_fs_filetype(
     }
 }
 
-pub fn fd_readdir(
+pub unsafe fn fd_readdir(
     fs: &FileSystem,
     fd: Fd,
     cookie: i64,
@@ -157,9 +157,7 @@ pub fn fd_readdir(
                 }
             }
 
-            unsafe {
-                *res = std::cmp::min(result, bytes_len);
-            }
+            unsafe { *res = std::cmp::min(result, bytes_len) };
         }
         Err(err) => return into_errno(err),
     }
@@ -380,14 +378,16 @@ mod tests {
             let mut bytes_used: wasi::Size = 0usize;
 
             // read folder with special files
-            let result = fd_readdir(
-                &fs,
-                fs.root_fd(),
-                0,
-                p,
-                buf.len() as i32,
-                &mut bytes_used as *mut wasi::Size,
-            );
+            let result = unsafe {
+                fd_readdir(
+                    &fs,
+                    fs.root_fd(),
+                    0,
+                    p,
+                    buf.len() as i32,
+                    &mut bytes_used as *mut wasi::Size,
+                )
+            };
 
             assert_eq!(result, 0);
 
@@ -396,14 +396,16 @@ mod tests {
             assert_eq!(bytes_used, expected_bytes);
 
             // read files starting with test2.txt (it has entry index 2)
-            let result = fd_readdir(
-                &fs,
-                fs.root_fd(),
-                2,
-                p,
-                buf.len() as i32,
-                &mut bytes_used as *mut wasi::Size,
-            );
+            let result = unsafe {
+                fd_readdir(
+                    &fs,
+                    fs.root_fd(),
+                    2,
+                    p,
+                    buf.len() as i32,
+                    &mut bytes_used as *mut wasi::Size,
+                )
+            };
 
             assert_eq!(result, 0);
 

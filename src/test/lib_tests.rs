@@ -296,11 +296,13 @@ fn test_create_dirs_and_file_in_it() {
     assert!(res == 0);
 
     // delete the second directory
-    let ret = __ic_custom_path_remove_directory(
-        root_fd,
-        new_folder_name2.as_ptr(),
-        new_folder_name2.len() as i32,
-    );
+    let ret = unsafe {
+        __ic_custom_path_remove_directory(
+            root_fd,
+            new_folder_name2.as_ptr(),
+            new_folder_name2.len() as i32,
+        )
+    };
     assert!(ret == 0);
 
     // check there are now 2 directories in the root folder and 1 file in the first directory
@@ -310,13 +312,15 @@ fn test_create_dirs_and_file_in_it() {
 
     let mut new_length: wasi::Size = 0;
 
-    let res = __ic_custom_fd_readdir(
-        root_fd,
-        bytes.as_mut_ptr(),
-        len as i32,
-        0,
-        (&mut new_length) as *mut wasi::Size,
-    );
+    let res = unsafe {
+        __ic_custom_fd_readdir(
+            root_fd,
+            bytes.as_mut_ptr(),
+            len as i32,
+            0,
+            (&mut new_length) as *mut wasi::Size,
+        )
+    };
 
     assert!(res == 0);
 
@@ -679,15 +683,17 @@ fn test_link_seek_tell() {
     // create link
     let link_file_name = String::from("file_link.txt");
 
-    let res = __ic_custom_path_link(
-        root_fd,
-        0,
-        new_file_name.as_ptr(),
-        new_file_name.len() as i32,
-        root_fd,
-        link_file_name.as_ptr(),
-        link_file_name.len() as i32,
-    );
+    let res = unsafe {
+        __ic_custom_path_link(
+            root_fd,
+            0,
+            new_file_name.as_ptr(),
+            new_file_name.len() as i32,
+            root_fd,
+            link_file_name.as_ptr(),
+            link_file_name.len() as i32,
+        )
+    };
 
     assert!(res == 0);
 
@@ -842,17 +848,20 @@ fn test_rename_unlink() {
     let file_fd = create_test_file(3, filename3);
     __ic_custom_fd_close(file_fd);
 
-    let res = __ic_custom_path_rename(
-        3,
-        filename1.as_ptr(),
-        filename1.len() as i32,
-        3,
-        filename1_renamed.as_ptr(),
-        filename1_renamed.len() as i32,
-    );
+    let res = unsafe {
+        __ic_custom_path_rename(
+            3,
+            filename1.as_ptr(),
+            filename1.len() as i32,
+            3,
+            filename1_renamed.as_ptr(),
+            filename1_renamed.len() as i32,
+        )
+    };
     assert!(res == 0);
 
-    let res = __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32);
+    let res =
+        unsafe { __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32) };
     assert!(res == 0);
 
     // list files, include . and ..
@@ -925,15 +934,17 @@ fn test_path_filestat_get_set_times() {
         )
     };
 
-    __ic_custom_path_filestat_set_times(
-        3,
-        0,
-        filename.as_ptr(),
-        filename.len() as i32,
-        123,
-        456,
-        1 + 4,
-    );
+    unsafe {
+        __ic_custom_path_filestat_set_times(
+            3,
+            0,
+            filename.as_ptr(),
+            filename.len() as i32,
+            123,
+            456,
+            1 + 4,
+        );
+    }
 
     let mut filestat2: wasi::Filestat = wasi::Filestat {
         dev: 0,

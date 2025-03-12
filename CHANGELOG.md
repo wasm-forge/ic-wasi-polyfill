@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.8.1]
+- refine unsafe blocks in the 2024 edition
+
 ## [v0.8.0]
 
 - pocket-ic 7.0/8.0

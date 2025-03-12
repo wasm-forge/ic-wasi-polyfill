@@ -74,13 +74,15 @@ pub fn read_directory(root_fd: Fd) -> Vec<String> {
 
     let mut new_length: wasi::Size = 0;
 
-    let res = __ic_custom_fd_readdir(
-        root_fd,
-        bytes.as_mut_ptr(),
-        len as i32,
-        0,
-        (&mut new_length) as *mut wasi::Size,
-    );
+    let res = unsafe {
+        __ic_custom_fd_readdir(
+            root_fd,
+            bytes.as_mut_ptr(),
+            len as i32,
+            0,
+            (&mut new_length) as *mut wasi::Size,
+        )
+    };
 
     assert!(res == 0);
 
