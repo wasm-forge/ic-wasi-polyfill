@@ -51,7 +51,7 @@ fn ic_time() -> u64 {
 }
 
 #[cfg(target_arch = "wasm32")]
-use ic_cdk::api::print as ic_print;
+use ic_cdk::api::debug_print as ic_print;
 #[cfg(not(all(target_arch = "wasm32")))]
 fn ic_print(value: &str) {
     println!("{}", value);
@@ -1738,7 +1738,7 @@ thread_local! {
 fn prevent_elimination(args: &[i32]) {
     COUNTER.with(|var| {
         if *var.borrow() == -1 {
-            ic_cdk::api::print(format!("args: {args:?}"));
+            ic_cdk::api::debug_print(format!("args: {args:?}"));
         }
     });
 }

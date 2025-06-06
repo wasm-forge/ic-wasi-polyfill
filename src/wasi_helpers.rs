@@ -11,9 +11,7 @@ use crate::wasi_mock as wasi;
 
 pub unsafe fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     let path_bytes = unsafe { std::slice::from_raw_parts(path, path_len as wasi::Size) };
-    let file_name = unsafe { std::str::from_utf8_unchecked(path_bytes) };
-
-    file_name
+    unsafe { std::str::from_utf8_unchecked(path_bytes) }
 }
 
 pub const DIRENT_SIZE: usize = std::mem::size_of::<wasi::Dirent>();

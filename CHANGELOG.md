@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.8.2]
+- update version ic-cdk v0.18.3
+- update pocket-ic to v9.0
+- update dependecies
+
 ## [v0.8.1]
 - refine unsafe blocks in the 2024 edition
 

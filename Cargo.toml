@@ -1,6 +1,6 @@
 [package]
 name = "ic-wasi-polyfill"
-version = "0.8.1"
+version = "0.8.2"
 edition = "2024"
 keywords = ["ic", "wasi", "wasi-polyfill"]
 description = "The project provides polyfill implementation of *wasi_snapshot_preview1* functions using IC System API."
@@ -8,11 +8,12 @@ license = "MIT"
 repository = "https://github.com/wasm-forge/ic-wasi-polyfill"
 
 [dependencies]
-ic-cdk = "0.17.1"
+ic-cdk = "0.18.3"
 ic-stable-structures = "0.6.7"
-stable-fs = "0.8.0"
+stable-fs = "0.8.1"
 
-rand = "0.9.0"
+
+rand = "0.9.1"
 function_name = "0.3.0"
 
 [features]
@@ -24,6 +25,6 @@ skip_unimplemented_functions=[]
 crate-type = ["staticlib","lib"]
 
 [dev-dependencies]
-candid = "0.10.13"
-pocket-ic = "7.0.0"
+candid = "0.10.14"
+pocket-ic = "9.0.2"
 
