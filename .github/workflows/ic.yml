@@ -22,9 +22,6 @@ jobs:
     - name: Check Format
       run: cargo fmt --all -- --check
 
-    - name: Install pocket-ic
-      run: scripts/download-pocket-ic.sh
-
     - name: Install wasi2ic
       run: cargo install wasi2ic
 
