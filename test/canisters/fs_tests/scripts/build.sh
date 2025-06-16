@@ -11,7 +11,7 @@ ic-wasm $RELEASE_DIR/fs_tests_backend.wasm -o $RELEASE_DIR/fs_tests_backend_meta
 wasi2ic $RELEASE_DIR/fs_tests_backend_meta.wasm $RELEASE_DIR/fs_tests_backend_nowasi.wasm
 
 
-dfx canister create fs_tests_backend
+#dfx canister create fs_tests_backend
 
-dfx canister install --mode reinstall fs_tests_backend --wasm $RELEASE_DIR/fs_tests_backend_nowasi.wasm -y
+#dfx canister install --mode reinstall fs_tests_backend --wasm $RELEASE_DIR/fs_tests_backend_nowasi.wasm -y
 

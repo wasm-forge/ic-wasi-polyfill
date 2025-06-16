@@ -4,7 +4,8 @@
       "candid": "src/fs_tests_backend/fs_tests_backend.did",
       "package": "fs_tests_backend",
       "wasm": "target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm",
-      "type": "rust"
+      "build": "scripts/build.sh",
+      "type": "custom"
     }
   },
   "defaults": {

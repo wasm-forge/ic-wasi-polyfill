@@ -1,7 +1,10 @@
 service : {
+    "greet": (text) -> (text) query;
+    "basic_fs_test": () -> ();
+
+    "compute_file_hash": (text) -> (text);
 
     "read_file": (text) -> (text);
 
     "write_file": (text, text) -> ();
-
 }
