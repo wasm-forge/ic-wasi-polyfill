@@ -147,37 +147,12 @@ pub fn _into_stable_fs_filetype(
 /// - The buffer behind `bytes` must not be mutated or deallocated by other threads during the call.
 /// - The memory must not alias with other references passed to or held by `fs`.
 ///
-/// Failing to uphold these guarantees may lead to undefined behavior.
-///
-/// # Arguments
-///
-/// - `fs`: The file system handle.
-/// - `fd`: File descriptor of the directory to read.
-/// - `cookie`: A directory read offset (0 for beginning).
-/// - `bytes`: Pointer to the output buffer to write directory entries.
-/// - `bytes_len`: Length in bytes of the buffer pointed to by `bytes`.
-/// - `res`: Pointer where the number of bytes written will be stored.
-///
-/// # Return
-///
-/// Returns 0 (`wasi::ERRNO_SUCCESS`) on success. On failure, returns a WASI errno code.
 ///
 /// # Notes
 ///
 /// - The number of bytes actually written is stored in the location pointed to by `res`.
 /// - If the buffer fills up before all entries are read, the function stops early.
 ///
-/// # Examples
-///
-/// ```rust
-/// // This is unsafe and must ensure all memory requirements are satisfied.
-/// unsafe {
-///     let mut buf = [0u8; 1024];
-///     let mut written = 0;
-///     let ret = fd_readdir(&fs, fd, 0, buf.as_mut_ptr(), buf.len() as i32, &mut written);
-///     assert_eq!(ret, wasi::ERRNO_SUCCESS.raw() as i32);
-/// }
-/// ```
 pub unsafe fn fd_readdir(
     fs: &FileSystem,
     fd: Fd,
