@@ -12,18 +12,18 @@ use stable_fs::fs::{FdFlags, FdStat, FileSize, OpenFlags};
 use stable_fs::storage::dummy::DummyStorage;
 
 #[cfg(target_arch = "wasm32")]
-mod wasi;
+pub mod wasi;
 
 #[cfg(not(all(target_arch = "wasm32")))]
-mod wasi_mock;
+pub mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
-use wasi_mock as wasi;
+pub use wasi_mock as wasi;
 
 use environment::*;
 use wasi_helpers::*;
 
 mod environment;
-mod wasi_helpers;
+pub mod wasi_helpers;
 
 pub use stable_fs::fs::FileSystem;
 pub use stable_fs::fs::{ChunkSize, ChunkType};
@@ -39,9 +39,9 @@ pub fn ic_instruction_counter() -> u64 {
 }
 
 #[cfg(target_arch = "wasm32")]
-use ic_cdk::api::time as ic_time;
+pub use ic_cdk::api::time as ic_time;
 #[cfg(not(all(target_arch = "wasm32")))]
-fn ic_time() -> u64 {
+pub fn ic_time() -> u64 {
     use std::time::UNIX_EPOCH;
 
     std::time::SystemTime::now()
@@ -1978,6 +1978,3 @@ pub fn store_memory_file(file_name: &str) -> i32 {
         }
     })
 }
-
-#[cfg(test)]
-mod test;

@@ -1,6 +1,8 @@
-use crate::test::common::{create_empty_test_file, create_test_file, libc};
-use crate::wasi_mock::CLOCKID_MONOTONIC;
-use crate::{init, wasi};
+mod common;
+
+use common::{create_empty_test_file, create_test_file, libc};
+use ic_wasi_polyfill::wasi::CLOCKID_MONOTONIC;
+use ic_wasi_polyfill::{init, wasi};
 
 #[test]
 fn test_interesting_paths() {

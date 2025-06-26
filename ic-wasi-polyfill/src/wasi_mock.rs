@@ -2218,29 +2218,29 @@ pub mod wasi_snapshot_preview1 {
         unsafe { __ic_custom_args_get(arg0, arg1) }
     }
     /// Return command-line argument data sizes.
-    pub fn args_sizes_get(arg0: *mut wasi::Size, arg1: *mut wasi::Size) -> i32 {
+    pub unsafe fn args_sizes_get(arg0: *mut wasi::Size, arg1: *mut wasi::Size) -> i32 {
         unsafe { __ic_custom_args_sizes_get(arg0, arg1) }
     }
     /// Read environment variable data.
     /// The sizes of the buffers should match that returned by `environ_sizes_get`.
     /// Key/value pairs are expected to be joined with `=`s, and terminated with `\0`s.
-    pub fn environ_get(arg0: *mut *mut u8, arg1: *mut u8) -> i32 {
+    pub unsafe fn environ_get(arg0: *mut *mut u8, arg1: *mut u8) -> i32 {
         unsafe { __ic_custom_environ_get(arg0, arg1) }
     }
     /// Return environment variable data sizes.
-    pub fn environ_sizes_get(arg0: *mut wasi::Size, arg1: *mut wasi::Size) -> i32 {
+    pub unsafe fn environ_sizes_get(arg0: *mut wasi::Size, arg1: *mut wasi::Size) -> i32 {
         unsafe { __ic_custom_args_sizes_get(arg0, arg1) }
     }
     /// Return the resolution of a clock.
     /// Implementations are required to provide a non-zero value for supported clocks. For unsupported clocks,
     /// return `errno::inval`.
     /// Note: This is similar to `clock_getres` in POSIX.
-    pub fn clock_res_get(arg0: i32, arg1: *mut u64) -> i32 {
+    pub unsafe fn clock_res_get(arg0: i32, arg1: *mut u64) -> i32 {
         unsafe { __ic_custom_clock_res_get(arg0, arg1) }
     }
     /// Return the time value of a clock.
     /// Note: This is similar to `clock_gettime` in POSIX.
-    pub fn clock_time_get(arg0: i32, arg1: i64, arg2: *mut u64) -> i32 {
+    pub unsafe fn clock_time_get(arg0: i32, arg1: i64, arg2: *mut u64) -> i32 {
         unsafe { __ic_custom_clock_time_get(arg0, arg1, arg2) }
     }
     /// Provide file advisory information on a file descriptor.
@@ -2265,7 +2265,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Get the attributes of a file descriptor.
     /// Note: This returns similar flags to `fsync(fd, F_GETFL)` in POSIX, as well as additional fields.
-    pub fn fd_fdstat_get(arg0: i32, arg1: *mut wasi::Fdstat) -> i32 {
+    pub unsafe fn fd_fdstat_get(arg0: i32, arg1: *mut wasi::Fdstat) -> i32 {
         unsafe { __ic_custom_fd_fdstat_get(arg0 as Fd, arg1) }
     }
     /// Adjust the flags associated with a file descriptor.
@@ -2279,7 +2279,7 @@ pub mod wasi_snapshot_preview1 {
         unsafe { __ic_custom_fd_fdstat_set_rights(arg0, arg1, arg2) }
     }
     /// Return the attributes of an open file.
-    pub fn fd_filestat_get(arg0: i32, arg1: *mut wasi::Filestat) -> i32 {
+    pub unsafe fn fd_filestat_get(arg0: i32, arg1: *mut wasi::Filestat) -> i32 {
         unsafe { __ic_custom_fd_filestat_get(arg0 as Fd, arg1) }
     }
     /// Adjust the size of an open file. If this increases the file's size, the extra bytes are filled with zeros.
@@ -2294,7 +2294,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Read from a file descriptor, without using and updating the file descriptor's offset.
     /// Note: This is similar to `preadv` in POSIX.
-    pub fn fd_pread(
+    pub unsafe fn fd_pread(
         arg0: i32,
         arg1: *const wasi::Iovec,
         arg2: i32,
@@ -2304,16 +2304,16 @@ pub mod wasi_snapshot_preview1 {
         unsafe { __ic_custom_fd_pread(arg0 as Fd, arg1, arg2, arg3, arg4) }
     }
     /// Return a description of the given preopened file descriptor.
-    pub fn fd_prestat_get(arg0: i32, arg1: *mut wasi::Prestat) -> i32 {
+    pub unsafe fn fd_prestat_get(arg0: i32, arg1: *mut wasi::Prestat) -> i32 {
         unsafe { __ic_custom_fd_prestat_get(arg0, arg1) }
     }
     /// Return a description of the given preopened file descriptor.
-    pub fn fd_prestat_dir_name(arg0: i32, arg1: *mut u8, arg2: i32) -> i32 {
+    pub unsafe fn fd_prestat_dir_name(arg0: i32, arg1: *mut u8, arg2: i32) -> i32 {
         unsafe { __ic_custom_fd_prestat_dir_name(arg0, arg1, arg2) }
     }
     /// Write to a file descriptor, without using and updating the file descriptor's offset.
     /// Note: This is similar to `pwritev` in POSIX.
-    pub fn fd_pwrite(
+    pub unsafe fn fd_pwrite(
         arg0: i32,
         arg1: *const wasi::Ciovec,
         arg2: i32,
@@ -2324,7 +2324,12 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Read from a file descriptor.
     /// Note: This is similar to `readv` in POSIX.
-    pub fn fd_read(arg0: i32, arg1: *const wasi::Iovec, arg2: i32, arg3: *mut wasi::Size) -> i32 {
+    pub unsafe fn fd_read(
+        arg0: i32,
+        arg1: *const wasi::Iovec,
+        arg2: i32,
+        arg3: *mut wasi::Size,
+    ) -> i32 {
         unsafe { __ic_custom_fd_read(arg0 as Fd, arg1, arg2, arg3) }
     }
     /// Read directory entries from a directory.
@@ -2336,7 +2341,7 @@ pub mod wasi_snapshot_preview1 {
     /// truncating the last directory entry. This allows the caller to grow its
     /// read buffer size in case it's too small to fit a single large directory
     /// entry, or skip the oversized directory entry.
-    pub fn fd_readdir(
+    pub unsafe fn fd_readdir(
         arg0: i32,
         arg1: *mut u8,
         arg2: i32,
@@ -2358,7 +2363,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Move the offset of a file descriptor.
     /// Note: This is similar to `lseek` in POSIX.
-    pub fn fd_seek(arg0: i32, arg1: i64, arg2: i32, arg3: *mut wasi::Filesize) -> i32 {
+    pub unsafe fn fd_seek(arg0: i32, arg1: i64, arg2: i32, arg3: *mut wasi::Filesize) -> i32 {
         unsafe { __ic_custom_fd_seek(arg0 as Fd, arg1, arg2, arg3) }
     }
     /// Synchronize the data and metadata of a file to disk.
@@ -2368,22 +2373,27 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Return the current offset of a file descriptor.
     /// Note: This is similar to `lseek(fd, 0, SEEK_CUR)` in POSIX.
-    pub fn fd_tell(arg0: i32, arg1: *mut wasi::Filesize) -> i32 {
+    pub unsafe fn fd_tell(arg0: i32, arg1: *mut wasi::Filesize) -> i32 {
         unsafe { __ic_custom_fd_tell(arg0 as Fd, arg1) }
     }
     /// Write to a file descriptor.
     /// Note: This is similar to `writev` in POSIX.
-    pub fn fd_write(arg0: i32, arg1: *const wasi::Ciovec, arg2: i32, arg3: *mut wasi::Size) -> i32 {
+    pub unsafe fn fd_write(
+        arg0: i32,
+        arg1: *const wasi::Ciovec,
+        arg2: i32,
+        arg3: *mut wasi::Size,
+    ) -> i32 {
         unsafe { __ic_custom_fd_write(arg0 as u32, arg1, arg2, arg3) }
     }
     /// Create a directory.
     /// Note: This is similar to `mkdirat` in POSIX.
-    pub fn path_create_directory(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
+    pub unsafe fn path_create_directory(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
         unsafe { __ic_custom_path_create_directory(arg0 as Fd, arg1, arg2) }
     }
     /// Return the attributes of a file or directory.
     /// Note: This is similar to `stat` in POSIX.
-    pub fn path_filestat_get(
+    pub unsafe fn path_filestat_get(
         arg0: i32,
         arg1: i32,
         arg2: *const u8,
@@ -2394,7 +2404,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Adjust the timestamps of a file or directory.
     /// Note: This is similar to `utimensat` in POSIX.
-    pub fn path_filestat_set_times(
+    pub unsafe fn path_filestat_set_times(
         arg0: i32,
         arg1: i32,
         arg2: *const u8,
@@ -2407,7 +2417,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Create a hard link.
     /// Note: This is similar to `linkat` in POSIX.
-    pub fn path_link(
+    pub unsafe fn path_link(
         arg0: i32,
         arg1: i32,
         arg2: *const u8,
@@ -2425,7 +2435,7 @@ pub mod wasi_snapshot_preview1 {
     /// is error-prone in multi-threaded contexts. The returned file descriptor is
     /// guaranteed to be less than 2**31.
     /// Note: This is similar to `openat` in POSIX.
-    pub fn path_open(
+    pub unsafe fn path_open(
         arg0: i32,
         arg1: i32,
         arg2: *const u8,
@@ -2440,7 +2450,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Read the contents of a symbolic link.
     /// Note: This is similar to `readlinkat` in POSIX.
-    pub fn path_readlink(
+    pub unsafe fn path_readlink(
         arg0: i32,
         arg1: *const u8,
         arg2: i32,
@@ -2453,12 +2463,12 @@ pub mod wasi_snapshot_preview1 {
     /// Remove a directory.
     /// Return `errno::notempty` if the directory is not empty.
     /// Note: This is similar to `unlinkat(fd, path, AT_REMOVEDIR)` in POSIX.
-    pub fn path_remove_directory(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
+    pub unsafe fn path_remove_directory(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
         unsafe { __ic_custom_path_remove_directory(arg0 as Fd, arg1, arg2) }
     }
     /// Rename a file or directory.
     /// Note: This is similar to `renameat` in POSIX.
-    pub fn path_rename(
+    pub unsafe fn path_rename(
         arg0: i32,
         arg1: *const u8,
         arg2: i32,
@@ -2470,17 +2480,23 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Create a symbolic link.
     /// Note: This is similar to `symlinkat` in POSIX.
-    pub fn path_symlink(arg0: *const u8, arg1: i32, arg2: i32, arg3: *const u8, arg4: i32) -> i32 {
+    pub unsafe fn path_symlink(
+        arg0: *const u8,
+        arg1: i32,
+        arg2: i32,
+        arg3: *const u8,
+        arg4: i32,
+    ) -> i32 {
         unsafe { __ic_custom_path_symlink(arg0, arg1, arg2, arg3, arg4) }
     }
     /// Unlink a file.
     /// Return `errno::isdir` if the path refers to a directory.
     /// Note: This is similar to `unlinkat(fd, path, 0)` in POSIX.
-    pub fn path_unlink_file(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
+    pub unsafe fn path_unlink_file(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
         unsafe { __ic_custom_path_unlink_file(arg0, arg1, arg2) }
     }
     /// Concurrently poll for the occurrence of a set of events.
-    pub fn poll_oneoff(
+    pub unsafe fn poll_oneoff(
         arg0: *const wasi::Subscription,
         arg1: *mut wasi::Event,
         arg2: i32,
@@ -2510,7 +2526,7 @@ pub mod wasi_snapshot_preview1 {
     /// This function may execute slowly, so when large mounts of random data are
     /// required, it's advisable to use this function to seed a pseudo-random
     /// number generator, rather than to provide the random data directly.
-    pub fn random_get(arg0: *mut u8, arg1: i32) -> i32 {
+    pub unsafe fn random_get(arg0: *mut u8, arg1: i32) -> i32 {
         unsafe { __ic_custom_random_get(arg0, arg1 as wasi::Size) }
     }
     /// Accept a new incoming connection.
@@ -2521,7 +2537,7 @@ pub mod wasi_snapshot_preview1 {
     /// Receive a message from a socket.
     /// Note: This is similar to `recv` in POSIX, though it also supports reading
     /// the data into multiple buffers in the manner of `readv`.
-    pub fn sock_recv(
+    pub unsafe fn sock_recv(
         arg0: i32,
         arg1: *const wasi::Iovec,
         arg2: i32,

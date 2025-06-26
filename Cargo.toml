@@ -1,5 +1,5 @@
 [workspace]
-members = [ 
+members = [
     "ic-wasi-polyfill", "fuzz-tests", "test/canisters/fs_tests/src/fs_tests_backend"
 ]
 resolver = "2"

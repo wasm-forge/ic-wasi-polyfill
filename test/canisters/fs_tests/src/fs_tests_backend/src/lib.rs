@@ -1,6 +1,6 @@
 use ic_stable_structures::{
-    DefaultMemoryImpl, Memory,
     memory_manager::{MemoryId, MemoryManager},
+    DefaultMemoryImpl, Memory,
 };
 
 #[ic_cdk::query]
@@ -133,9 +133,7 @@ fn read_file(file_name: String) -> String {
 
     let data: Vec<u8> = std::fs::read(file_name).unwrap();
 
-    let res = String::from_utf8(data).unwrap();
-
-    res
+    String::from_utf8(data).unwrap()
 }
 
 #[ic_cdk::update]

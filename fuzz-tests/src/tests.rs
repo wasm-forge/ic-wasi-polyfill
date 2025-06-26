@@ -8,7 +8,10 @@ use crate::bindings::fs_tests_backend::{self, FsTestsBackendCanister};
 use crate::test_setup;
 
 #[tokio::test]
-async fn test_() {
+async fn test_basic_fs_check() {
+    let cur = std::env::current_dir().unwrap();
+    println!("Current folder: {:?}", cur);
+
     let test_setup::Env {
         icp_test,
         fs_tests_backend,
@@ -18,5 +21,5 @@ async fn test_() {
     // ...
 
     // example calls
-    // let result = fs_tests_backend./*canister method name*/().call().await;
+    let result = fs_tests_backend.basic_fs_test().call().await;
 }

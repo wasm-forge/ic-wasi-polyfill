@@ -1,8 +1,12 @@
-use crate::wasi;
-use crate::*;
+use ic_wasi_polyfill::wasi;
+
+use ic_wasi_polyfill::wasi::Fd;
+
+use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;
+use ic_wasi_polyfill::*;
 
 pub mod libc {
-    use crate::wasi::Fd;
+    use ic_wasi_polyfill::wasi::Fd;
 
     pub const STDIN_FILENO: Fd = 0;
     pub const STDOUT_FILENO: Fd = 1;
@@ -45,7 +49,7 @@ pub fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Ve
             file_fd,
             src.as_ptr(),
             src.len() as i32,
-            (&mut bytes_written) as *mut wasi::Size,
+            &mut bytes_written as *mut wasi::Size,
         )
     };
 

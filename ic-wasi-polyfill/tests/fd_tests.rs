@@ -1,6 +1,8 @@
-use crate::test::common::libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-use crate::wasi;
-use crate::*;
+mod common;
+
+use common::libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use ic_wasi_polyfill::wasi::{self, Fd};
+use ic_wasi_polyfill::*;
 
 #[test]
 fn test_fd_prestat_init_fd_prestat_dir_name() {

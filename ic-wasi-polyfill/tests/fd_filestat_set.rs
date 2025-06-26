@@ -1,4 +1,7 @@
-use crate::{init, test::common::libc, wasi};
+mod common;
+
+use common::libc;
+use ic_wasi_polyfill::{init, wasi};
 
 unsafe fn test_fd_filestat_set_size_rw(dir_fd: wasi::Fd) {
     unsafe {

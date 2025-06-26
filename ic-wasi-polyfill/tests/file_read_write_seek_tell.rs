@@ -1,4 +1,8 @@
-use crate::{init, test::common::libc, wasi};
+mod common;
+
+use ic_wasi_polyfill::{init, wasi};
+
+use common::libc;
 
 #[test]
 fn test_file_read_write() {

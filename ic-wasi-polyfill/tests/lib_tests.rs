@@ -1,6 +1,9 @@
-use crate::test::common::*;
-use crate::wasi;
-use crate::*;
+mod common;
+
+use common::*;
+use ic_wasi_polyfill::wasi::{self, Fd};
+use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;
+use ic_wasi_polyfill::*;
 
 #[test]
 fn test_environ_get() {
