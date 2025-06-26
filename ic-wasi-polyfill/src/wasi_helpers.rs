@@ -1,7 +1,7 @@
 use stable_fs::{
     error::Error,
     fs::{Fd, FileSystem},
-    storage::types::{DUMMY_DOT_DOT_ENTRY_INDEX, DUMMY_DOT_ENTRY_INDEX, DirEntry, DirEntryIndex},
+    storage::types::{DirEntry, DirEntryIndex, DUMMY_DOT_DOT_ENTRY_INDEX, DUMMY_DOT_ENTRY_INDEX},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -242,7 +242,7 @@ pub fn into_stable_fs_wence(whence: u8) -> stable_fs::fs::Whence {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DIRENT_SIZE, wasi, wasi_helpers::put_single_entry};
+    use crate::{wasi, wasi_helpers::put_single_entry, DIRENT_SIZE};
     use ic_stable_structures::DefaultMemoryImpl;
     use stable_fs::{
         fs::{FdStat, FileSystem, OpenFlags},

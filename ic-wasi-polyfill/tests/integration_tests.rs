@@ -62,7 +62,7 @@ fn upgrade_canister(pic: &PocketIc) {
 
 mod fns {
 
-    use candid::{Principal, decode_one, encode_one};
+    use candid::{decode_one, encode_one, Principal};
     use pocket_ic::PocketIc;
 
     use super::active_canister;
