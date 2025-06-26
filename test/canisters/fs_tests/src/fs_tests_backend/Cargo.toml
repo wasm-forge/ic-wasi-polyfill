@@ -13,11 +13,11 @@ name = "fs_test"
 path = "src/main.rs"
 
 [dependencies]
-candid = "0.10"
+candid.workspace = true
 ic-cdk = "0.18.3"
 ic-stable-structures = "0.6.7"
 
-ic-wasi-polyfill = {path="../../../../../../ic-wasi-polyfill"}
+ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill"}
 #ic-wasi-polyfill = "0.5"
 
 sha2 = "0.10"

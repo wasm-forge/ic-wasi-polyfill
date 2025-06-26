@@ -2,13 +2,8 @@
 set -e
 
 
-cd test/canisters/fs_tests
 
-cargo build --release --target wasm32-wasip1
-
-wasi2ic target/wasm32-wasip1/release/fs_tests_backend.wasm target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm
-
-cd ../canister_initial
+cd test/canister_initial
 
 cargo build --release --target wasm32-wasip1
 
