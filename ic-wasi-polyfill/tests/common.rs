@@ -1,7 +1,8 @@
+#![allow(dead_code)]
+
 use ic_wasi_polyfill::wasi;
 
 use ic_wasi_polyfill::wasi::Fd;
-
 use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;
 use ic_wasi_polyfill::*;
 

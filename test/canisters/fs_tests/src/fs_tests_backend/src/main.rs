@@ -1,5 +1,4 @@
-mod lib;
-
+mod canister;
 fn main() {
-    lib::basic_fs_test();
+    canister::basic_fs_test();
 }

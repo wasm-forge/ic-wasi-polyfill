@@ -9,6 +9,19 @@ use crate::wasi;
 #[cfg(not(all(target_arch = "wasm32")))]
 use crate::wasi_mock as wasi;
 
+/// Returns a UTF-8 string slice from a raw pointer and length.
+///
+/// # Safety
+///
+/// This function is `unsafe` because it dereferences a raw pointer and
+/// uses `from_utf8_unchecked`, both of which can lead to undefined behavior
+/// if used improperly.
+///
+/// The caller must ensure:
+/// - `path` points to a valid memory region that is at least `path_len` bytes long.
+/// - The memory referenced by `path` must remain valid for the returned lifetime `'a`.
+/// - The memory must contain valid UTF-8 data; otherwise, the behavior is undefined.
+/// - The pointer must not be null.
 pub unsafe fn get_file_name<'a>(path: *const u8, path_len: wasi::Size) -> &'a str {
     let path_bytes = unsafe { std::slice::from_raw_parts(path, path_len as wasi::Size) };
     unsafe { std::str::from_utf8_unchecked(path_bytes) }
@@ -118,6 +131,53 @@ pub fn _into_stable_fs_filetype(
     }
 }
 
+/// Reads directory entries from a file descriptor into the provided buffer.
+///
+/// # Safety
+///
+/// This function is `unsafe` because it operates on raw pointers (`bytes`, `res`)
+/// and assumes the caller provides valid memory.
+///
+/// The caller **must** ensure the following:
+///
+/// - `bytes` must be a valid, writable pointer to a buffer of at least `bytes_len` bytes.
+/// - `bytes` must be aligned properly for arbitrary byte writes.
+/// - `res` must be a valid, writable pointer to a `wasi::Size`.
+/// - Both `bytes` and `res` must remain valid for the duration of the function call.
+/// - The buffer behind `bytes` must not be mutated or deallocated by other threads during the call.
+/// - The memory must not alias with other references passed to or held by `fs`.
+///
+/// Failing to uphold these guarantees may lead to undefined behavior.
+///
+/// # Arguments
+///
+/// - `fs`: The file system handle.
+/// - `fd`: File descriptor of the directory to read.
+/// - `cookie`: A directory read offset (0 for beginning).
+/// - `bytes`: Pointer to the output buffer to write directory entries.
+/// - `bytes_len`: Length in bytes of the buffer pointed to by `bytes`.
+/// - `res`: Pointer where the number of bytes written will be stored.
+///
+/// # Return
+///
+/// Returns 0 (`wasi::ERRNO_SUCCESS`) on success. On failure, returns a WASI errno code.
+///
+/// # Notes
+///
+/// - The number of bytes actually written is stored in the location pointed to by `res`.
+/// - If the buffer fills up before all entries are read, the function stops early.
+///
+/// # Examples
+///
+/// ```rust
+/// // This is unsafe and must ensure all memory requirements are satisfied.
+/// unsafe {
+///     let mut buf = [0u8; 1024];
+///     let mut written = 0;
+///     let ret = fd_readdir(&fs, fd, 0, buf.as_mut_ptr(), buf.len() as i32, &mut written);
+///     assert_eq!(ret, wasi::ERRNO_SUCCESS.raw() as i32);
+/// }
+/// ```
 pub unsafe fn fd_readdir(
     fs: &FileSystem,
     fd: Fd,

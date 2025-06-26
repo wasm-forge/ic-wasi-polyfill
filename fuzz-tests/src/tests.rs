@@ -1,9 +1,4 @@
-use std::path::PathBuf;
-
-use candid::Principal;
-use ic_test::{IcpTest, IcpUser};
-
-use crate::bindings::fs_tests_backend::{self, FsTestsBackendCanister};
+use ic_test::IcpTest;
 
 use crate::test_setup;
 
@@ -13,13 +8,9 @@ async fn test_basic_fs_check() {
     println!("Current folder: {:?}", cur);
 
     let test_setup::Env {
-        icp_test,
+        icp_test: _,
         fs_tests_backend,
     } = test_setup::setup(IcpTest::new().await).await;
 
-    // Your test code
-    // ...
-
-    // example calls
-    let result = fs_tests_backend.basic_fs_test().call().await;
+    fs_tests_backend.basic_fs_test().call().await;
 }
