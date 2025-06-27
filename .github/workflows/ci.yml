@@ -1,0 +1,87 @@
+name: Tests
+
+on:
+  [push]
+
+env:
+  CARGO_TERM_COLOR: always
+  TERM: xterm-256color
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [1.88.0]
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ matrix.build }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.build }}-cargo-
+
+      - name: Install Rust
+        run: |
+          rustup update ${{ matrix.rust }} --no-self-update
+          rustup default ${{ matrix.rust }}
+          rustup component add rustfmt
+          rustup component add clippy
+          rustup toolchain install nightly
+
+      - name: Check Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --tests --benches -- -D clippy::all
+
+      - name: Install wasi2ic
+        run: cargo install wasi2ic
+
+      - name: Build test projects
+        run: ./scripts/build_tests.sh
+
+      - name: Cache Rust
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}        
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-dir
+          path: target/
+      
+      - name: Current folder
+        run: echo $PWD
+
+      - name: Run tests
+        run: cargo test -- --color always
+
+      - name: Install llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate code coverage
+        run: cargo llvm-cov --features report_wasi_calls,transient --ignore-filename-regex=wasi_mock.rs --workspace --lcov --output-path lcov.info
+
+      - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true
