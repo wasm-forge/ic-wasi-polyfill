@@ -41,9 +41,6 @@ jobs:
 
       - name: Install dfx
         uses: dfinity/setup-dfx@main
-          
-      - name: Confirm successful installation
-        run: dfx --version
             
       - name: Check Format
         run: cargo fmt --all -- --check
@@ -54,32 +51,15 @@ jobs:
       - name: Install wasi2ic
         run: cargo install wasi2ic
 
+      # Build everything
       - name: Build test projects
         run: ./scripts/build_tests.sh
 
-      - name: Cache Rust
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}        
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: target-dir
-          path: target/
-      
-      - name: Current folder
-        run: echo $PWD
-
+      # Run tests
       - name: Run tests
         run: cargo test -- --color always
 
+      # Prepare coverage
       - name: Install llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
