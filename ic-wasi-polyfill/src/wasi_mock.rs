@@ -1,4 +1,6 @@
 #![allow(warnings)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::too_many_arguments)]
 
 use core::fmt;
 use core::mem::MaybeUninit;

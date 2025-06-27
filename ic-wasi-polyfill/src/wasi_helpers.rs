@@ -148,11 +148,6 @@ pub fn _into_stable_fs_filetype(
 /// - The memory must not alias with other references passed to or held by `fs`.
 ///
 ///
-/// # Notes
-///
-/// - The number of bytes actually written is stored in the location pointed to by `res`.
-/// - If the buffer fills up before all entries are read, the function stops early.
-///
 pub unsafe fn fd_readdir(
     fs: &FileSystem,
     fd: Fd,
@@ -332,6 +327,7 @@ mod tests {
 
         let mut buf = [0u8; 27];
         let len = fill_buffer(wasi_dirent, &mut buf, &direntry.name);
+
         // stabilize test, the three bytes can take random value here...
         buf[DIRENT_SIZE - 3] = 243;
         buf[DIRENT_SIZE - 2] = 243;
