@@ -44,39 +44,45 @@ jobs:
     needs: format
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: wasm32-wasip1
-        profile: minimal
-        override: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasip1
+          profile: minimal
+          override: true
 
-    - name: Cache Rust
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}        
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}        
 
-    - name: Install wasi2ic
-      run: cargo install wasi2ic
+      - name: Install wasi2ic
+        run: cargo install wasi2ic
+        
+      - name: Current folder before build
+        run: echo $PWD
 
-    - name: Build test projects
-      run: ./scripts/build_tests.sh
+      - name: Build test projects
+        run: ./scripts/build_tests.sh
+        
+      - name: Current folder after build
+        run: echo $PWD
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: target-dir
-        path: target/
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-dir
+          path: target/
 
   test:
     runs-on: ubuntu-latest
@@ -118,43 +124,42 @@ jobs:
         run: cargo test --verbose
 
   coverage:
-      runs-on: ubuntu-latest
-      needs: build
-      steps:
-        - uses: actions/checkout@v4
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
 
-        - uses: actions-rs/toolchain@v1
-          with:
-            toolchain: stable
-            target: wasm32-wasip1
-            profile: minimal
-            override: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-wasip1
+          profile: minimal
+          override: true
 
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}        
 
-        - name: Cache Rust
-          uses: actions/cache@v4
-          with:
-            path: |
-              ~/.cargo/bin/
-              ~/.cargo/registry/index/
-              ~/.cargo/registry/cache/
-              ~/.cargo/git/db/
-              target/
-            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}        
+      - uses: actions/download-artifact@v4
+        with:
+          name: target-dir
+          path: target/
 
-        - uses: actions/download-artifact@v4
-          with:
-            name: target-dir
-            path: target/
+      - uses: taiki-e/install-action@cargo-llvm-cov
 
-        - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate code coverage
+        run: cargo llvm-cov --features report_wasi_calls,transient --ignore-filename-regex=wasi_mock.rs --workspace --lcov --output-path lcov.info
 
-        - name: Generate code coverage
-          run: cargo llvm-cov --features report_wasi_calls,transient --ignore-filename-regex=wasi_mock.rs --workspace --lcov --output-path lcov.info
-
-        - uses: codecov/codecov-action@v3
-          with:
-            token: ${{ secrets.CODECOV_TOKEN }}
-            files: lcov.info
-            fail_ci_if_error: true
+      - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true
 
