@@ -5,7 +5,7 @@ use ic_stable_structures::{
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
-    format!("Hello, {}!", name)
+    format!("Hello, {name}!")
 }
 
 #[allow(dead_code)]
@@ -86,7 +86,7 @@ fn compute_file_hash(path: String) -> String {
 
     let hash = hasher.finalize();
 
-    format!("{:x}", hash)
+    format!("{hash:x}")
 }
 
 #[ic_cdk::update]
@@ -108,14 +108,14 @@ pub fn basic_fs_test() {
 
 #[ic_cdk::update]
 fn test_create_dir_all(dir_name: String) {
-    println!("Creating directory: {}", dir_name);
+    println!("Creating directory: {dir_name}");
 
     fs::create_dir_all(dir_name).unwrap();
 }
 
 #[ic_cdk::update]
 fn test_read_dir(dir_name: String) -> Vec<String> {
-    println!("Reading directory: {}", dir_name);
+    println!("Reading directory: {dir_name}");
 
     let mut res = vec![];
     let entries = fs::read_dir(dir_name).unwrap();
@@ -131,7 +131,7 @@ fn test_read_dir(dir_name: String) -> Vec<String> {
 
 #[ic_cdk::update]
 fn read_file(file_name: String) -> String {
-    println!("Reading file: {:?}", file_name);
+    println!("Reading file: {file_name:?}");
 
     let data: Vec<u8> = std::fs::read(file_name).unwrap();
 
@@ -140,7 +140,7 @@ fn read_file(file_name: String) -> String {
 
 #[ic_cdk::update]
 fn write_file(file_name: String, content: String) {
-    println!("Writing file: {:?}", file_name);
+    println!("Writing file: {file_name:?}");
 
     std::fs::write(file_name, content).unwrap();
 }

@@ -5,7 +5,7 @@ use crate::test_setup;
 #[tokio::test]
 async fn test_basic_fs_check() {
     let cur = std::env::current_dir().unwrap();
-    println!("Current folder: {:?}", cur);
+    println!("Current folder: {cur:?}");
 
     let test_setup::Env {
         icp_test: _,
