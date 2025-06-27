@@ -37,7 +37,7 @@ jobs:
           rustup default ${{ matrix.rust }}
           rustup component add rustfmt
           rustup component add clippy
-          rustup toolchain install nightly
+          rustup target add wasm32-wasip1
 
       - name: Install dfx
         uses: dfinity/setup-dfx@main
