@@ -54,7 +54,7 @@ pub fn ic_time() -> u64 {
 use ic_cdk::api::debug_print as ic_print;
 #[cfg(not(all(target_arch = "wasm32")))]
 fn ic_print(value: &str) {
-    println!("{}", value);
+    println!("{value}");
 }
 
 #[allow(clippy::missing_safety_doc)]

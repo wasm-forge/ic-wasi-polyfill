@@ -62,7 +62,7 @@ impl Environment {
             let name = pair.0;
             let value = pair.1;
 
-            let stored_pair = format!("{}={}\0", name, value);
+            let stored_pair = format!("{name}={value}\0");
             self.data_size += stored_pair.len();
             self.data_values.push(stored_pair);
         }
