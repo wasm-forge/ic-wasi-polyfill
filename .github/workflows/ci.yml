@@ -39,6 +39,12 @@ jobs:
           rustup component add clippy
           rustup toolchain install nightly
 
+      - name: Install dfx
+        uses: dfinity/setup-dfx@main
+          
+      - name: Confirm successful installation
+        run: dfx --version
+            
       - name: Check Format
         run: cargo fmt --all -- --check
 
