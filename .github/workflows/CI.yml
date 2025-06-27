@@ -110,6 +110,9 @@ jobs:
         with:
           name: target-dir
           path: target/
+      
+      - name: Current folder
+        run: echo $PWD
 
       - name: Run tests
         run: cargo test --verbose
@@ -120,7 +123,7 @@ jobs:
       steps:
         - uses: actions/checkout@v4
 
-        - uses: actions-rs/toolchain@v2
+        - uses: actions-rs/toolchain@v1
           with:
             toolchain: stable
             target: wasm32-wasip1
