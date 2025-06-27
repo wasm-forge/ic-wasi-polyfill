@@ -27,9 +27,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ matrix.build }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.build }}-cargo-
+            ${{ matrix.rust }}-cargo-
 
       - name: Install Rust
         run: |
