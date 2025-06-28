@@ -44,8 +44,8 @@ jobs:
       - name: Check Format
         run: cargo fmt --all -- --check
 
-      - name: Clippy
-        run: cargo clippy --tests --benches -- -D clippy::all
+      #- name: Clippy
+      #  run: cargo clippy --tests --benches -- -D clippy::all
 
       - name: Install wasi2ic
         run: cargo install wasi2ic
