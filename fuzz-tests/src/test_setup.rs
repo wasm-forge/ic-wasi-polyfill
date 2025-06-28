@@ -1,6 +1,7 @@
-#![allow(dead_code)]
+use std::path::PathBuf;
 
-use ic_test::IcpTest;
+use candid::Principal;
+use ic_test::{IcpTest, IcpUser};
 
 use crate::bindings::fs_tests_backend::{self, FsTestsBackendCanister};
 

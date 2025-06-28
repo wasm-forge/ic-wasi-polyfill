@@ -1,4 +1,6 @@
 mod canister;
 fn main() {
-    canister::basic_fs_test();
+    let scan = canister::do_fs_test_basic();
+
+    println!("{scan}");
 }

@@ -1,10 +1,12 @@
-service : {
-    "greet": (text) -> (text) query;
-    "basic_fs_test": () -> ();
-
-    "compute_file_hash": (text) -> (text);
-
-    "read_file": (text) -> (text);
-
-    "write_file": (text, text) -> ();
+service : () -> {
+  basic_fs_test : () -> ();
+  compute_file_hash : (text) -> (text);
+  do_fs_test_basic : () -> (text);
+  generate_random_fs : (nat64, nat64, nat64) -> ();
+  greet : (text) -> (text) query;
+  read_file : (text) -> (text);
+  scan_directory : (text) -> (text);
+  test_create_dir_all : (text) -> ();
+  test_read_dir : (text) -> (vec text);
+  write_file : (text, text) -> ();
 }

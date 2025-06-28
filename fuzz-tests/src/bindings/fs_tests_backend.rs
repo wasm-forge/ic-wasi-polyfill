@@ -27,6 +27,24 @@ impl FsTestsBackendCanister {
             args,
         )
     }
+    pub fn do_fs_test_basic(&self) -> super::CallBuilder<String> {
+        let args = Encode!();
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "do_fs_test_basic",
+            args,
+        )
+    }
+    pub fn generate_random_fs(&self, arg0: u64, arg1: u64, arg2: u64) -> super::CallBuilder<()> {
+        let args = Encode!(&arg0, &arg1, &arg2);
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "generate_random_fs",
+            args,
+        )
+    }
     pub fn greet(&self, arg0: String) -> super::CallBuilder<String> {
         let args = Encode!(&arg0);
         self.caller
@@ -36,6 +54,33 @@ impl FsTestsBackendCanister {
         let args = Encode!(&arg0);
         self.caller
             .call(self.canister_id, super::CallMode::Update, "read_file", args)
+    }
+    pub fn scan_directory(&self, arg0: String) -> super::CallBuilder<String> {
+        let args = Encode!(&arg0);
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "scan_directory",
+            args,
+        )
+    }
+    pub fn test_create_dir_all(&self, arg0: String) -> super::CallBuilder<()> {
+        let args = Encode!(&arg0);
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "test_create_dir_all",
+            args,
+        )
+    }
+    pub fn test_read_dir(&self, arg0: String) -> super::CallBuilder<Vec<String>> {
+        let args = Encode!(&arg0);
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "test_read_dir",
+            args,
+        )
     }
     pub fn write_file(&self, arg0: String, arg1: String) -> super::CallBuilder<()> {
         let args = Encode!(&arg0, &arg1);
@@ -76,7 +121,7 @@ pub fn canister_id() -> Option<Principal> {
 pub fn wasm() -> Option<Vec<u8>> {
     let mut path = std::path::PathBuf::new();
     path.push("../target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm");
-    let wasm =
-        std::fs::read(path.as_path()).unwrap_or_else(|_| panic!("wasm binary not found: {path:?}"));
+    let wasm = std::fs::read(path.as_path())
+        .unwrap_or_else(|_| panic!("wasm binary not found: {:?}", path));
     Some(wasm)
 }
