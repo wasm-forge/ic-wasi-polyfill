@@ -42,14 +42,14 @@ pub fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Ve
             0,
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
-            (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC | wasi::OFLAGS_EXCL) as i32,
+            (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC) as i32,
             DEFAULT_RIGHTS,
             DEFAULT_RIGHTS,
             0,
             (&mut file_fd) as *mut u32,
         )
     };
-    assert!(res == 0);
+    assert_eq!(res, 0);
 
     let mut src = Vec::new();
 
@@ -137,4 +137,49 @@ pub fn read_directory(root_fd: Fd) -> Vec<String> {
     }
 
     folders
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub fn fd_close(fd: Fd) {
+    __ic_custom_fd_close(fd);
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub fn read_file_to_string(file: &str) -> String {
+    let mut file_fd = 0u32;
+
+    let res = unsafe {
+        __ic_custom_path_open(
+            3,
+            0,
+            file.as_ptr(),
+            file.len() as i32,
+            0,
+            DEFAULT_RIGHTS,
+            DEFAULT_RIGHTS,
+            0,
+            (&mut file_fd) as *mut u32,
+        )
+    };
+
+    assert_eq!(res, 0);
+
+    // read buffers
+    let mut buf_to_read = vec![0u8; 1024];
+
+    let read_buf = [wasi::Iovec {
+        buf: buf_to_read.as_mut_ptr(),
+        buf_len: buf_to_read.len(),
+    }];
+
+    let mut bytes_read: wasi::Size = 0;
+
+    // reading from root folder
+    let res: i32 = unsafe { __ic_custom_fd_read(file_fd, read_buf.as_ptr(), 1, &mut bytes_read) };
+    assert_eq!(res, 0, "fd_read error");
+
+    buf_to_read.truncate(bytes_read);
+
+    // Convert to UTF-8 String (returning String or panic if invalid UTF-8)
+    String::from_utf8(buf_to_read).expect("Invalid UTF-8 in file")
 }

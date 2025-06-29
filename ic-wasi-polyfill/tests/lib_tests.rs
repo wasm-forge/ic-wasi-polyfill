@@ -1,5 +1,7 @@
 mod common;
 
+use std::fs::read_to_string;
+
 use common::*;
 use ic_wasi_polyfill::wasi::{self, Fd};
 use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;
@@ -1404,4 +1406,62 @@ fn test_ic_custom_fd_fdstat_set_rights_success() {
         assert_eq!(fdstat.fs_rights_base, 6 & common::DEFAULT_RIGHTS);
         assert_eq!(fdstat.fs_rights_inheriting, 6 & common::DEFAULT_RIGHTS);
     }
+}
+
+#[test]
+fn test_mounts() {
+    let dir_fd = 3;
+
+    init(&[], &[]);
+
+    let memory = new_vector_memory();
+    let file_name = "file.txt";
+    let hello_message = "Hello host".to_string();
+    let hello_message2 = "Hello from regular file".to_string();
+
+    mount_memory_file(file_name, Box::new(memory.clone()));
+
+    // write something into a host memory file
+    let fd = create_test_file_with_content(dir_fd, file_name, vec![hello_message.clone()]);
+    fd_close(fd);
+
+    // the memory should contain the file now
+    let v: Vec<u8> = memory.borrow().clone();
+    assert_eq!(&v[0..hello_message.len()], hello_message.as_bytes());
+
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // unmount file, the file.txt should become empty
+    unmount_memory_file(file_name);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, "".to_string());
+
+    // mount again, the old content should recover
+    mount_memory_file(file_name, Box::new(memory.clone()));
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // store mounted contents into the host file, check the host file content is renewed
+    store_memory_file(file_name);
+    unmount_memory_file(file_name);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // write some other content message,
+    // check there is a new content now
+    let fd = create_test_file_with_content(dir_fd, file_name, vec![hello_message2.clone()]);
+    fd_close(fd);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message2);
+
+    // after mounting, we still have the old content
+    mount_memory_file(file_name, Box::new(memory.clone()));
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // initializing should recover the data from the host file to the mounted memory
+    init_memory_file(file_name);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message2);
 }

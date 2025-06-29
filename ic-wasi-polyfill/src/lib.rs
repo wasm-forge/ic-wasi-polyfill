@@ -1867,13 +1867,16 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
     })
 }
 
-// the init function ensures the module is not thrown away by the linker
-// seed       -  The seed of the random numbers, up to 32 byte array can be used.
-// env_pairs  -  The pre-defined environment variables.
-//
-// Example:
-// init(&[12,3,54,1], &[("PATH", "/usr/bin"), ("UID", "1028"), ("HOME", "/home/user")]);
-#[allow(clippy::missing_safety_doc)]
+/// Initializes the runtime environment and random number generator.
+///
+/// # Parameters
+/// - `seed`: A byte slice (up to 32 bytes) used to seed the random number generator.
+/// - `env_pairs`: A list of key-value pairs representing environment variables to initialize.
+///
+/// # Safety
+/// This function calls an `unsafe` function `raw_init`, passing a raw pointer and length of the seed slice.
+/// It is safe to call this function as long as `seed` is a valid slice.
+///
 pub fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
     ENV.with(|env| {
         let mut env = env.borrow_mut();
@@ -1916,10 +1919,12 @@ pub fn init_with_memory_manager<M: Memory + 'static>(
     init(seed, env_pairs);
 }
 
-// mount external memory onto a file to speed-up file access. All further file reads and writes be forwarded to this memory.
-// file_name    -  Name of the host file to mount on
-// memory       -  Memory to use as file storage
-//
+/// Mounts external memory onto a file to speed-up file access. All further file reads and writes be forwarded to this memory.
+///
+/// # Parameters
+/// - `file_name`    -  Name of the host file to mount on
+/// - `memory`       -  Memory to use as an actual file storage
+///
 pub fn mount_memory_file(file_name: &str, memory: Box<dyn Memory>) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1933,9 +1938,11 @@ pub fn mount_memory_file(file_name: &str, memory: Box<dyn Memory>) -> i32 {
     })
 }
 
-// unmount external memory from a host file. All further file reads and writes are written to a normal file.
-// file_name    -  Name of the host file holding the mount
-//
+/// unmounts external memory from a host file. All further file reads and writes are written to a normal file.
+///
+/// # Parameters
+/// `file_name`    -  Name of the host file holding the mount
+///
 pub fn unmount_memory_file(file_name: &str) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1949,9 +1956,11 @@ pub fn unmount_memory_file(file_name: &str) -> i32 {
     })
 }
 
-// initialize mouned memory with the contents of the host file.
-// file_name    -  Name of the host file holding the mount
-//
+/// Initializes mouned memory with the contents of the host file.
+///
+/// # Parameters
+/// `file_name`    -  Name of the host file holding the mount
+///
 pub fn init_memory_file(file_name: &str) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1965,9 +1974,11 @@ pub fn init_memory_file(file_name: &str) -> i32 {
     })
 }
 
-// Store memory contents into the host file.
-// file_name    -  Name of the host file holding the mount
-//
+/// Store memory contents into the host file.
+///
+/// # Parameters
+/// `file_name`    -  Name of the host file holding the mount
+///
 pub fn store_memory_file(file_name: &str) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
