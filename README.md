@@ -1,6 +1,6 @@
 # The IC Polyfill library
 
-![Tests](https://github.com/wasm-forge/ic-wasi-polyfill/actions/workflows/rust.yml/badge.svg?event=push)
+![Tests](https://github.com/wasm-forge/ic-wasi-polyfill/actions/workflows/ci.yml/badge.svg?event=push)
 [![Coverage](https://codecov.io/gh/wasm-forge/ic-wasi-polyfill/branch/main/graph/badge.svg)](https://codecov.io/gh/wasm-forge/ic-wasi-polyfill/branch/main/)
 
 The project provides polyfill implementation of *wasi_unstable* and *wasi_snapshot_preview1* functions using IC System API.
