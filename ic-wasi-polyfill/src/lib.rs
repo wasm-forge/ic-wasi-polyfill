@@ -887,8 +887,8 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 
         match stat {
             Ok((_ftype, mut fdstat)) => {
-                fdstat.rights_base = rights_base as u64;
-                fdstat.rights_inheriting = rights_inheriting as u64;
+                fdstat.rights_base &= rights_base as u64;
+                fdstat.rights_inheriting &= rights_inheriting as u64;
 
                 match fs.set_stat(fd as Fd, fdstat) {
                     Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
@@ -1545,7 +1545,6 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_rename(
     old_fd: i32,
     old_path: *const u8,
@@ -1786,7 +1785,9 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
             // dummy calls to trick the linker not to throw away the functions
 
             use std::ptr::{null, null_mut};
+
             unsafe {
+                // coverage:ignore-start
                 __ic_custom_fd_write(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_read(0, null::<wasi::Iovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_close(0);
@@ -1860,6 +1861,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_sock_shutdown(0, 0);
 
                 __ic_custom_proc_exit(0);
+                // coverage:ignore-end
             }
         }
     })

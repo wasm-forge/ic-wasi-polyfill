@@ -14,6 +14,23 @@ pub mod libc {
     pub const STDERR_FILENO: Fd = 2;
 }
 
+pub const DEFAULT_RIGHTS: u64 = wasi::RIGHTS_FD_READ
+    | wasi::RIGHTS_FD_SEEK
+    | wasi::RIGHTS_FD_FDSTAT_SET_FLAGS
+    | wasi::RIGHTS_FD_SYNC
+    | wasi::RIGHTS_FD_TELL
+    | wasi::RIGHTS_FD_WRITE
+    | wasi::RIGHTS_FD_ADVISE
+    | wasi::RIGHTS_FD_ALLOCATE
+    | wasi::RIGHTS_PATH_OPEN
+    | wasi::RIGHTS_PATH_FILESTAT_GET
+    | wasi::RIGHTS_PATH_FILESTAT_SET_SIZE
+    | wasi::RIGHTS_PATH_FILESTAT_SET_TIMES
+    | wasi::RIGHTS_FD_FILESTAT_GET
+    | wasi::RIGHTS_FD_FILESTAT_SET_SIZE
+    | wasi::RIGHTS_FD_FILESTAT_SET_TIMES
+    | wasi::RIGHTS_PATH_UNLINK_FILE;
+
 pub fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Vec<String>) -> Fd {
     let new_file_name = String::from(file_name);
 
@@ -26,8 +43,8 @@ pub fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Ve
             new_file_name.as_ptr(),
             new_file_name.len() as i32,
             (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC | wasi::OFLAGS_EXCL) as i32,
-            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
-            0,
+            DEFAULT_RIGHTS,
+            DEFAULT_RIGHTS,
             0,
             (&mut file_fd) as *mut u32,
         )

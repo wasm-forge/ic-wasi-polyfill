@@ -2460,7 +2460,13 @@ pub mod wasi_snapshot_preview1 {
         arg4: i32,
         arg5: *mut usize,
     ) -> i32 {
-        unsafe { __ic_custom_path_readlink(arg0, arg1, arg2, arg3, arg4, arg5) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_path_readlink(arg0, arg1, arg2, arg3, arg4, arg5)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Remove a directory.
     /// Return `errno::notempty` if the directory is not empty.
@@ -2489,7 +2495,13 @@ pub mod wasi_snapshot_preview1 {
         arg3: *const u8,
         arg4: i32,
     ) -> i32 {
-        unsafe { __ic_custom_path_symlink(arg0, arg1, arg2, arg3, arg4) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_path_symlink(arg0, arg1, arg2, arg3, arg4)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Unlink a file.
     /// Return `errno::isdir` if the path refers to a directory.
@@ -2504,7 +2516,13 @@ pub mod wasi_snapshot_preview1 {
         arg2: i32,
         arg3: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_poll_oneoff(arg0, arg1, arg2, arg3) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_poll_oneoff(arg0, arg1, arg2, arg3)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Terminate the process normally. An exit code of 0 indicates successful
     /// termination of the program. The meanings of other values is dependent on
@@ -2515,7 +2533,13 @@ pub mod wasi_snapshot_preview1 {
     /// Send a signal to the process of the calling thread.
     /// Note: This is similar to `raise` in POSIX.
     pub fn proc_raise(arg0: i32) -> i32 {
-        unsafe { __ic_custom_proc_raise(arg0) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_proc_raise(arg0)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Temporarily yield execution of the calling thread.
     /// Note: This is similar to `sched_yield` in POSIX.
@@ -2534,7 +2558,13 @@ pub mod wasi_snapshot_preview1 {
     /// Accept a new incoming connection.
     /// Note: This is similar to `accept` in POSIX.
     pub fn sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) -> i32 {
-        unsafe { __ic_custom_sock_accept(arg0, arg1, arg2) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_sock_accept(arg0, arg1, arg2)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Receive a message from a socket.
     /// Note: This is similar to `recv` in POSIX, though it also supports reading
@@ -2547,7 +2577,13 @@ pub mod wasi_snapshot_preview1 {
         arg4: *mut usize,
         arg5: *mut u16,
     ) -> i32 {
-        unsafe { __ic_custom_sock_recv(arg0, arg1, arg2, arg3, arg4, arg5) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_sock_recv(arg0, arg1, arg2, arg3, arg4, arg5)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Send a message on a socket.
     /// Note: This is similar to `send` in POSIX, though it also supports writing
@@ -2559,11 +2595,23 @@ pub mod wasi_snapshot_preview1 {
         arg3: i32,
         arg4: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_sock_send(arg0, arg1, arg2, arg3, arg4) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_sock_send(arg0, arg1, arg2, arg3, arg4)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
     /// Shut down socket send and receive channels.
     /// Note: This is similar to `shutdown` in POSIX.
     pub fn sock_shutdown(arg0: i32, arg1: i32) -> i32 {
-        unsafe { __ic_custom_sock_shutdown(arg0, arg1) }
+        #[cfg(not(feature = "skip_unimplemented_functions"))]
+        unsafe {
+            __ic_custom_sock_shutdown(arg0, arg1)
+        }
+
+        #[cfg(feature = "skip_unimplemented_functions")]
+        0
     }
 }

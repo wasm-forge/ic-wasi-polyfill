@@ -1376,6 +1376,32 @@ fn unicode_write() {
         buf: text.as_bytes().as_ptr(),
         buf_len: text.len(),
     }];
+
     let written = unsafe { wasi::fd_write(libc::STDOUT_FILENO, &ciovecs) }.expect("write succeeds");
     assert_eq!(written, text.len(), "full contents should be written");
+}
+
+#[test]
+fn test_ic_custom_fd_fdstat_set_rights_success() {
+    let dir_fd = 3;
+
+    init(&[], &[]);
+
+    unsafe {
+        let fd = create_test_file(dir_fd, "file.txt");
+
+        let fdstat =
+            wasi::fd_fdstat_get(fd).expect("calling fd_fdstat on the open file descriptor");
+
+        assert_eq!(fdstat.fs_rights_base, common::DEFAULT_RIGHTS);
+        assert_eq!(fdstat.fs_rights_inheriting, common::DEFAULT_RIGHTS);
+
+        wasi::fd_fdstat_set_rights(fd, 6, 6).unwrap();
+
+        let fdstat =
+            wasi::fd_fdstat_get(fd).expect("calling fd_fdstat on the open file descriptor");
+
+        assert_eq!(fdstat.fs_rights_base, 6 & common::DEFAULT_RIGHTS);
+        assert_eq!(fdstat.fs_rights_inheriting, 6 & common::DEFAULT_RIGHTS);
+    }
 }
