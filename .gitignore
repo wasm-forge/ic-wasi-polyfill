@@ -10,5 +10,6 @@ test/test_programs
 tarpaulin-report.html
 /.vscode/
 lcov.info
+codecov.json
 
 .codegpt
