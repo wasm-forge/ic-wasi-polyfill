@@ -202,10 +202,7 @@ pub fn scan_directory(path: String) -> String {
 pub fn generate_random_fs(seed: u64, steps: u64, max_depth: u64) {
     seed_rand(seed);
 
-    let count =
-        generate_random_file_structure(steps, max_depth, std::path::Path::new(".")).unwrap();
-
-    println!("Used {count} operations");
+    generate_random_file_structure(steps, max_depth, std::path::Path::new(".")).unwrap();
 }
 
 #[ic_cdk::update]
@@ -326,10 +323,18 @@ fn generate_random_file_structure(
             }
             13 => {
                 // Recursively generate inside subfolder
-                let dirs: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
+                let mut dirs: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
                     .filter_map(Result::ok)
                     .filter(|e| e.path().is_dir())
                     .collect();
+
+                // sort folders before choosing the one to enter
+                dirs.sort_by(|a, b| {
+                    a.file_name()
+                        .to_string_lossy()
+                        .to_string()
+                        .cmp(&b.file_name().to_string_lossy().to_string())
+                });
 
                 if !dirs.is_empty() {
                     let rnd = next_rand() as usize % dirs.len();

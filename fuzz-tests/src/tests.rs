@@ -29,8 +29,5 @@ async fn test_fs_durability() {
 
     let expected = std::fs::read_to_string("../target/release/report.txt").unwrap();
 
-    println!("result:\n{result}\n\n\n");
-    println!("expected:\n{expected}\n\n\n");
-
-    assert_eq!(result, expected);
+    assert_eq!(result.trim(), expected.trim());
 }
