@@ -66,7 +66,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --features report_wasi_calls,transient --lcov --show --ignore-filename-regex='(wasi_mock\.rs|^fuzz\-tests)' --workspace --output-path lcov.info
+        run: cargo llvm-cov --features report_wasi_calls,transient --lcov --ignore-filename-regex='(wasi_mock\.rs|^fuzz\-tests)' --workspace --output-path lcov.info
 
       - uses: codecov/codecov-action@v5
         with:
