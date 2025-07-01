@@ -1,5 +1,3 @@
-use std::f32::consts::E;
-
 use ic_test::IcpTest;
 
 use crate::test_setup;
