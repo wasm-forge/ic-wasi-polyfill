@@ -1,56 +1,71 @@
 . 2/.
-./dir17 2/.
-./dir17/dir6 1/.
-./dir17/dir6/file9.txt e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-./dir17/file15.txt e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-./log.txt afe5b229ae90662af5c3ed48b9f34c0750b609157bbd9d15e31fa236fb3f98b7
-13 (19) 			 "."
-No subdirectory found
+./dir11 1/.
+./dir11/file10.txt e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+./log.txt 53f023e7d1ef110620bdd4b77698edfaf04576fa500b4114b1beee19d250573f
+8 (19) 			 "."
+Remove file "./file19.txt"
 
-10 (18) 			 "."
+3 (18) 			 "."
+Open existing file with options: truncate=false,write=true,append=true,create=false -> Err
 
-15 (17) 			 "."
-Move file "./file17.txt" to "./dir17/file17.txt"
+2 (17) 			 "."
+No opened files to write...
 
-13 (16) 			 "."
-Enter existing subdirectory "./dir17"
+3 (17) 			 "."
+Open existing file with options: truncate=false,write=true,append=false,create=false -> Err
 
-1 (15) 			 "./dir17"
-Open existing file with options: truncate=true,write=true,append=false,create=true -> Ok: "./dir17/file15.txt"
+1 (16) 			 "."
+No opened files to close...
 
-8 (14) 			 "./dir17"
+11 (16) 			 "."
+Store folder contents to "./file16_dir_contents.txt"
 
-4 (13) 			 "./dir17"
+8 (15) 			 "."
+Remove file "./file16_dir_contents.txt"
 
-6 (12) 			 "./dir17"
+8 (14) 			 "."
+Remove file "./file14.txt"
 
-11 (11) 			 "./dir17"
+13 (13) 			 "."
+Cannot exit, min depth reached!
 
-13 (10) 			 "./dir17"
-No subdirectory found
+3 (12) 			 "."
+Open existing file with options: truncate=false,write=false,append=true,create=false -> Err
 
-0 (9) 			 "./dir17"
-Open or create file "./dir17/file9.txt"
+15 (11) 			 "."
+Move file "./file11.txt" to "./dir11/file11.txt"
 
-11 (8) 			 "./dir17"
+1 (10) 			 "."
+No opened files to close...
 
-13 (7) 			 "./dir17"
-No subdirectory found
+0 (10) 			 "."
+Open or create file "./file10.txt"
 
-7 (6) 			 "./dir17"
-Create subdirectory "./dir17/dir6"
+0 (9) 			 "."
+Open or create file "./file9.txt"
 
-9 (5) 			 "./dir17"
+15 (8) 			 "."
+Move file "./file10.txt" to "./dir11/file10.txt"
 
-6 (4) 			 "./dir17"
+1 (7) 			 "."
 
-1 (3) 			 "./dir17"
-Open existing file with options: truncate=true,write=true,append=false,create=false -> Err: Some(2)
+5 (6) 			 "."
+Truncate "./file9.txt"
 
-9 (2) 			 "./dir17"
+6 (5) 			 "."
+Rename file from "./file9.txt" to "./file5_renamed.txt"
 
-12 (1) 			 "./dir17"
-Symlink creation: (skip)
+8 (4) 			 "."
+Remove file "./file5_renamed.txt"
 
-15 (0) 			 "./dir17"
-Move file "./dir17/file9.txt" to "./dir17/dir6/file9.txt"
+6 (3) 			 "."
+Rename file from "./file3.txt" to "./file3_renamed.txt"
+
+13 (2) 			 "."
+Cannot exit, min depth reached!
+
+15 (1) 			 "."
+Move file "./file1.txt" to "./dir11/file1.txt"
+
+15 (0) 			 "."
+Move file "./file0.txt" to "./dir11/file0.txt"

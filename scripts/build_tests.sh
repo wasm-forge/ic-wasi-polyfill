@@ -9,8 +9,6 @@ candid-extractor target/wasm32-wasip1/release/fs_tests_backend.wasm > test/canis
 
 wasi2ic target/wasm32-wasip1/release/fs_tests_backend.wasm target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm
 
-ic-test update --force
-
 # build fs_tests for local launch
 cargo build --release
 
@@ -34,21 +32,16 @@ popd
 
 pushd .
 
-# build fuzz-tests 
-cargo build --release 
-
-# build other test canisters
-cd test/canisters/canister_initial
-
-cargo build --release --target wasm32-wasip1
+# prepare other canisters
+candid-extractor target/wasm32-wasip1/release/canister_initial_backend.wasm > test/canisters/canister_initial/src/canister_initial_backend/canister_initial_backend.did
 
 wasi2ic target/wasm32-wasip1/release/canister_initial_backend.wasm target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm
 
-cd ../canister_upgraded
-
-cargo build --release --target wasm32-wasip1
+candid-extractor target/wasm32-wasip1/release/canister_upgraded_backend.wasm > test/canisters/canister_upgraded/src/canister_upgraded_backend/canister_upgraded_backend.did
 
 wasi2ic target/wasm32-wasip1/release/canister_upgraded_backend.wasm target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm
 
-
 popd
+
+# regenerate APIs
+ic-test update --force

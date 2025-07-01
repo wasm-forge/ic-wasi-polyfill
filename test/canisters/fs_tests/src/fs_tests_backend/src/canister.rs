@@ -11,7 +11,9 @@ fn greet(name: String) -> String {
 
 use std::{
     cell::RefCell,
-    fs::{self, OpenOptions},
+    collections::BTreeMap,
+    fs::{self},
+    io::{Seek, SeekFrom},
 };
 
 pub struct SimpleRng {
@@ -60,9 +62,9 @@ pub fn seed_rand(seed: u64) {
 
 fn new_log(path: &str) {
     let file = fs::OpenOptions::new()
-        .truncate(false)
         .create(true)
-        .append(true)
+        .write(true)
+        .truncate(true)
         .open(path)
         .unwrap();
 
@@ -234,8 +236,14 @@ pub fn scan_directory(path: String) -> String {
 pub fn generate_random_fs(seed: u64, steps: u64, max_depth: u64) {
     seed_rand(seed);
 
-    generate_random_file_structure(steps, max_depth, std::path::Path::new("."), &mut Vec::new())
-        .unwrap();
+    generate_random_file_structure(
+        steps,
+        0,
+        max_depth,
+        std::path::Path::new("."),
+        &mut BTreeMap::new(),
+    )
+    .unwrap();
 }
 
 #[ic_cdk::query]
@@ -244,9 +252,9 @@ pub fn get_log() -> String {
 }
 
 #[ic_cdk::update]
-pub fn do_fs_test_basic() -> String {
+pub fn do_fs_test_basic(seed: u64) -> String {
     new_log("log.txt");
-    generate_random_fs(43, 200, 20);
+    generate_random_fs(seed, 15, 20);
     scan_directory(".".to_string())
 }
 
@@ -265,6 +273,8 @@ fn get_random_file(
             .to_string()
             .cmp(&b.file_name().to_string_lossy().to_string())
     });
+
+    //log(format!("files:{files}"));
 
     if !files.is_empty() {
         let rnd = next_rand(files.len().try_into().unwrap()) as usize;
@@ -312,60 +322,67 @@ fn get_random_dir(
 fn generate_random_file_structure(
     mut op_count: u64,
     depth: u64,
+    max_depth: u64,
     parent_path: &std::path::Path,
-    opened_files: &mut Vec<File>,
+    opened_files: &mut BTreeMap<String, File>,
 ) -> anyhow::Result<u64> {
-    let depth = depth - 1;
+    let depth = depth + 1;
 
-    if depth == 0 {
+    if depth == max_depth {
+        log("Max depth reached!");
         return Ok(op_count);
     }
 
     while op_count > 0 {
         op_count -= 1;
-        let action = next_rand(16);
+        let action = next_rand(17);
 
         log(&format!("\n{action} ({op_count}) \t\t\t {parent_path:?}"));
         match action {
             0 => {
                 // Create a new file
-
                 let path = parent_path.join(format!("file{op_count}.txt"));
                 log(&format!("Open or create file {path:?}"));
-                let file = File::create(path)?;
-                opened_files.push(file);
+                let mut file = File::create(&path)?;
+                file.flush()?;
+                opened_files.insert(path.as_path().to_string_lossy().to_string(), file);
             }
-            16 => {
+            1 => {
                 if !opened_files.is_empty() {
                     // Close one of the opened files
-                    let file = opened_files
-                        .remove(next_rand(opened_files.len() as u64).try_into().unwrap());
+                    let index = next_rand(opened_files.len() as u64);
 
-                    log(&format!("Close opened file {file:?}"));
+                    let key = {
+                        let (key, _file) = opened_files.iter().nth(index as usize).unwrap();
+                        key.clone()
+                    };
+
+                    let _file = opened_files.remove(&key).unwrap();
+
+                    log(&format!("Close opened file {key:?}"));
                 } else {
                     op_count += 1;
                     log("No opened files to close...");
                 }
             }
-            17 => {
+            2 => {
                 if !opened_files.is_empty() {
                     // Write something to one of the opened files
-                    let mut file = opened_files
-                        .remove(next_rand(opened_files.len() as u64).try_into().unwrap());
+                    let index = next_rand(opened_files.len() as u64);
 
-                    let _res = writeln!(file, "write_into_opened{op_count}");
+                    let (key, file) = opened_files.iter_mut().nth(index as usize).unwrap();
 
                     log(&format!(
                         "Write into opened file {file:?} write_into_opened{op_count}"
                     ));
-                    opened_files.push(file);
+
+                    writeln!(file, "Sequential write into opened file {key}")?;
                 } else {
                     op_count += 1;
                     log("No opened files to write...");
                 }
             }
-
-            1 => {
+            3 => {
                 // Open with options a new file
                 let path = parent_path.join(format!("file{op_count}.txt"));
 
@@ -374,35 +391,32 @@ fn generate_random_file_structure(
                 let truncate = !append && next_rand(2) == 1;
                 let create = next_rand(2) == 1;
 
-                let res = fs::OpenOptions::new()
+                let mut res = fs::OpenOptions::new()
                     .write(write)
                     .append(append)
                     .truncate(truncate)
                     .create(create)
                     .open(&path);
 
-                let res_str = match &res {
-                    Ok(_f) => format!("Ok: {:?}", &path),
+                let res_str = match &mut res {
+                    Ok(f) => {
+                        f.flush()?;
+                        format!("Ok: {:?}", &path)
+                    }
                     Err(_e) => "Err".to_string(),
                 };
 
                 log(&format!("Open existing file with options: truncate={truncate},write={write},append={append},create={create} -> {res_str}"));
 
                 if let Ok(file) = res {
-                    opened_files.push(file);
+                    opened_files.insert(path.to_string_lossy().to_string(), file);
                 }
             }
-
-            2 => {
+            4 => {
                 // Read text from a random file
                 let file = get_random_file(parent_path, op_count)?;
 
                 if file.exists() {
-                    log(&format!(
-                        "read from file: {} that exists",
-                        file.to_string_lossy()
-                    ));
-
                     //
                     let mut f = fs::OpenOptions::new().read(true).open(&file)?;
 
@@ -410,7 +424,7 @@ fn generate_random_file_structure(
                     f.read_to_string(&mut buffer).unwrap();
 
                     log(&format!(
-                        "read from file: {}, content: {buffer}",
+                        "read from file that exists: {}, content: {buffer}",
                         file.to_string_lossy()
                     ));
                 } else {
@@ -421,106 +435,122 @@ fn generate_random_file_structure(
                     ));
                 }
             }
-            3 => {
+            5 => {
                 // Truncate file (delete its contents)
                 let file = get_random_file(parent_path, op_count)?;
 
                 log(&format!("Truncate {file:?}"));
 
-                let _ = fs::OpenOptions::new()
+                let mut f = fs::OpenOptions::new()
                     .write(true)
                     .truncate(true)
                     .create(true)
                     .open(&file)?;
-            }
-            4 => {
-                // Rename file
-                let from = parent_path.join(format!("file{op_count}.txt"));
-                let to = parent_path.join(format!("file{op_count}_renamed.txt"));
-                let _ = fs::rename(&from, &to);
-            }
-            5 => {
-                // Copy file
-                let from = parent_path.join(format!("file{op_count}.txt"));
-                let to = parent_path.join(format!("file{op_count}_copy.txt"));
-                let _ = fs::copy(&from, &to);
+
+                f.flush()?;
             }
             6 => {
-                // Delete file
-                let path = parent_path.join(format!("file{op_count}.txt"));
-                let _ = fs::remove_file(&path);
+                // Rename file
+                let from = get_random_file(parent_path, op_count)?;
+                let to = parent_path.join(format!("file{op_count}_renamed.txt"));
+                log(&format!("Rename file from {from:?} to {to:?}"));
+                let _ = fs::rename(&from, &to);
             }
             7 => {
+                // Copy file
+                let from = get_random_file(parent_path, op_count)?;
+                let to = parent_path.join(format!("file{op_count}_copy.txt"));
+                log(&format!("Copy file from {from:?} to {to:?}"));
+                let _ = fs::copy(&from, &to);
+            }
+            8 => {
+                // Delete file
+                let path = get_random_file(parent_path, op_count)?;
+                log(&format!("Remove file {path:?}"));
+                let _ = fs::remove_file(&path);
+            }
+            9 => {
                 // Create directory
                 let path = parent_path.join(format!("dir{op_count}"));
                 log(&format!("Create subdirectory {path:?}"));
                 let _ = fs::create_dir(&path);
             }
-            8 => {
+            10 => {
                 // Remove directory
-                let path = parent_path.join(format!("dir{op_count}"));
+                let path = get_random_dir(parent_path, op_count)?;
+
+                log(&format!("Remove directory {path:?}"));
                 let _ = fs::remove_dir_all(&path);
             }
-            9 => {
+            11 => {
                 // List directory contents
-                let _ = fs::read_dir(parent_path)?
+                let dir = fs::read_dir(parent_path)?
                     .filter_map(Result::ok)
                     .map(|e| e.path())
                     .collect::<Vec<_>>();
-            }
-            10 => {
-                // Get metadata
-                let path = parent_path.join(format!("file{op_count}.txt"));
-                let _ = fs::metadata(&path);
-            }
-            11 => {
-                // Get file permissions
-                let path = parent_path.join(format!("file{op_count}.txt"));
-                if let Ok(meta) = fs::metadata(&path) {
-                    let perms = meta.permissions();
+
+                // store contents
+                let save_path = parent_path.join(format!("file{op_count}_dir_contents.txt"));
+                log(&format!("Store folder contents to {save_path:?}"));
+
+                let mut save = fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(false)
+                    .write(true)
+                    .open(&save_path)?;
+
+                save.write_all("ls:\n".to_string().as_bytes())?;
+
+                for x in &dir {
+                    save.write_all(format!("{}\n", x.as_path().to_string_lossy()).as_bytes())?;
                 }
+
+                save.flush()?;
             }
-            12 => log("Symlink creation: (skip)"),
+            12 => {
+                // Get metadata
+                let save_path = parent_path.join(format!("file{op_count}_metadata.txt"));
+                log(&format!("Store folder contents to {save_path:?}"));
+
+                let mut save = fs::OpenOptions::new()
+                    .write(true)
+                    .truncate(false)
+                    .create(true)
+                    .open(&save_path)?;
+
+                let path = get_random_file(parent_path, op_count)?;
+                let meta = fs::metadata(&path)?;
+
+                save.write_all(
+                    format!("{path:?}.metadata.permissions = {:?}\n", meta.permissions())
+                        .as_bytes(),
+                )?;
+
+                save.write_all(
+                    format!("{path:?}.metadata.file_type = {:?}\n", meta.file_type()).as_bytes(),
+                )?;
+
+                save.flush()?;
+            }
             13 => {
-                // Recursively generate inside subfolder
-                let mut dirs: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
-                    .filter_map(Result::ok)
-                    .filter(|e| e.path().is_dir())
-                    .collect();
-
-                // sort folders before choosing the one to enter
-                dirs.sort_by(|a, b| {
-                    a.file_name()
-                        .to_string_lossy()
-                        .to_string()
-                        .cmp(&b.file_name().to_string_lossy().to_string())
-                });
-
-                if !dirs.is_empty() {
-                    let rnd = next_rand(dirs.len().try_into().unwrap()) as usize;
-                    let sub = dirs[rnd].path();
-
-                    log(&format!("Enter existing subdirectory {sub:?}"));
-
-                    let res = generate_random_file_structure(op_count, depth, &sub, opened_files)?;
-                    op_count = res;
+                // exit current directory
+                if depth > 1 {
+                    log("Exit current folder");
+                    return Ok(op_count);
                 } else {
-                    log("No subdirectory found");
+                    log("Cannot exit, min depth reached!");
                 }
             }
             14 => {
+                // Recursively generate inside subfolder
+                let dir = get_random_dir(parent_path, op_count)?;
 
-                // Simulate access/modification time updates (requires `filetime` crate)
-                /*
-                #[cfg(feature = "filetime")]
-                {
-                    use filetime::FileTime;
-                    let path = parent_path.join(format!("file{op_count}.txt"));
-                    let now = FileTime::now();
-                    let _ = filetime::set_file_times(&path, now, now);
-                }
+                log(&format!("Enter subdirectory {dir:?}"));
 
-                 */
+                let res =
+                    generate_random_file_structure(op_count, depth, max_depth, &dir, opened_files)?;
+
+                op_count = res;
             }
             15 => {
                 // Move file into subdirectory
@@ -534,6 +564,28 @@ fn generate_random_file_structure(
 
                 log(&format!("Move file {from:?} to {to:?}"));
                 let _ = fs::rename(from, to);
+            }
+            16 => {
+                // write some prepared text into one of the files at a random position
+                let path = get_random_file(parent_path, op_count)?;
+
+                let mut save = fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(false)
+                    .open(&path)?;
+
+                let position = next_rand(12000);
+
+                log(&format!("Writing into file {path:?}"));
+
+                let text = format!("Writing at position {position}");
+
+                save.seek(SeekFrom::Start(position))?;
+
+                save.write_all(text.as_bytes())?;
+
+                save.flush()?;
             }
             _ => unreachable!(),
         }

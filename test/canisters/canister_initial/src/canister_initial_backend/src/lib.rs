@@ -11,6 +11,8 @@ use ic_stable_structures::{
     DefaultMemoryImpl, StableBTreeMap,
 };
 
+use ic_cdk::export_candid;
+
 use ic_stable_structures::memory_manager::VirtualMemory;
 
 const PROFILING: MemoryId = MemoryId::new(100);
@@ -20,7 +22,7 @@ type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
-    format!("Hello, {}!", name)
+    format!("Hello, {name}!")
 }
 
 thread_local! {
@@ -723,3 +725,5 @@ fn check_new_file_is_writable(file: String) -> String {
         "Is writable".to_string()
     }
 }
+
+export_candid!();

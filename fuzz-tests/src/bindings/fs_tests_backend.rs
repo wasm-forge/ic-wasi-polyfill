@@ -27,8 +27,8 @@ impl FsTestsBackendCanister {
             args,
         )
     }
-    pub fn do_fs_test_basic(&self) -> super::CallBuilder<String> {
-        let args = Encode!();
+    pub fn do_fs_test_basic(&self, arg0: u64) -> super::CallBuilder<String> {
+        let args = Encode!(&arg0);
         self.caller.call(
             self.canister_id,
             super::CallMode::Update,

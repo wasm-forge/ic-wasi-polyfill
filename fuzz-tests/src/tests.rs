@@ -1,10 +1,6 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::Write,
-};
+use std::{fs::OpenOptions, io::Write};
 
 use ic_test::IcpTest;
-use serde::de::Expected;
 
 use crate::test_setup;
 
@@ -13,12 +9,9 @@ async fn test_basic_fs_check() {
     let cur = std::env::current_dir().unwrap();
     println!("Current folder: {cur:?}");
 
-    let test_setup::Env {
-        icp_test: _,
-        fs_tests_backend,
-    } = test_setup::setup(IcpTest::new().await).await;
+    let env = test_setup::setup(IcpTest::new().await).await;
 
-    fs_tests_backend.basic_fs_test().call().await;
+    env.fs_tests_backend.basic_fs_test().call().await;
 }
 
 #[tokio::test]
@@ -26,12 +19,11 @@ async fn test_fs_durability() {
     let cur = std::env::current_dir().unwrap();
     println!("Current folder: {cur:?}");
 
-    let test_setup::Env {
-        icp_test: _,
-        fs_tests_backend,
-    } = test_setup::setup(IcpTest::new().await).await;
+    let env = test_setup::setup(IcpTest::new().await).await;
 
-    let c = fs_tests_backend.do_fs_test_basic().call().await;
+    let seed = 42;
+
+    let c = env.fs_tests_backend.do_fs_test_basic(seed).call().await;
     let computed = c.trim();
 
     let e = std::fs::read_to_string("../target/release/report.txt").unwrap();
@@ -42,7 +34,7 @@ async fn test_fs_durability() {
     let expected_log = expected_log_.trim();
 
     if computed != expected {
-        let computed_log = fs_tests_backend.get_log().call().await;
+        let computed_log = env.fs_tests_backend.get_log().call().await;
 
         // write scans and logs into a separate files for comparisons
         let mut a = OpenOptions::new()

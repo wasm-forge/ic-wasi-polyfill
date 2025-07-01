@@ -5,6 +5,8 @@ use std::{
     io::{BufWriter, Read, Seek, Write},
 };
 
+use ic_cdk::export_candid;
+
 use ic_stable_structures::{
     memory_manager::{MemoryId, MemoryManager},
     storable::Bound,
@@ -20,7 +22,7 @@ type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
-    format!("Greetings, {}!", name)
+    format!("Greetings, {name}!")
 }
 
 thread_local! {
@@ -723,3 +725,5 @@ fn check_new_file_is_writable(file: String) -> String {
         "Is writable".to_string()
     }
 }
+
+export_candid!();
