@@ -238,10 +238,15 @@ pub fn generate_random_fs(seed: u64, steps: u64, max_depth: u64) {
         .unwrap();
 }
 
+#[ic_cdk::query]
+pub fn get_log() -> String {
+    std::fs::read_to_string("./log.txt").unwrap()
+}
+
 #[ic_cdk::update]
 pub fn do_fs_test_basic() -> String {
     new_log("log.txt");
-    generate_random_fs(42, 20, 20);
+    generate_random_fs(43, 200, 20);
     scan_directory(".".to_string())
 }
 
@@ -320,7 +325,7 @@ fn generate_random_file_structure(
         op_count -= 1;
         let action = next_rand(16);
 
-        log(&format!("\n{op_count})   {action} \t\t\t {parent_path:?}"));
+        log(&format!("\n{action} ({op_count}) \t\t\t {parent_path:?}"));
         match action {
             0 => {
                 // Create a new file
@@ -361,12 +366,12 @@ fn generate_random_file_structure(
             }
 
             1 => {
-                // Open with options
+                // Open with options a new file
                 let path = parent_path.join(format!("file{op_count}.txt"));
 
-                let truncate = next_rand(2) == 1;
                 let write = next_rand(2) == 1;
                 let append = next_rand(2) == 1;
+                let truncate = !append && next_rand(2) == 1;
                 let create = next_rand(2) == 1;
 
                 let res = fs::OpenOptions::new()
@@ -376,7 +381,12 @@ fn generate_random_file_structure(
                     .create(create)
                     .open(&path);
 
-                log("Open existing file with options: truncate={truncate},writable={writable},append={append},create={create} -> {res:?}");
+                let res_str = match &res {
+                    Ok(_f) => format!("Ok: {:?}", &path),
+                    Err(_e) => "Err".to_string(),
+                };
+
+                log(&format!("Open existing file with options: truncate={truncate},write={write},append={append},create={create} -> {res_str}"));
 
                 if let Ok(file) = res {
                     opened_files.push(file);

@@ -1,0 +1,56 @@
+. 2/.
+./dir17 2/.
+./dir17/dir6 1/.
+./dir17/dir6/file9.txt e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+./dir17/file15.txt e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+./log.txt e75bc2fd0b5ddd839b7e0f063af1d1dcc545415d8c62acbdd68a726a35037997
+13 (19) 			 "."
+No subdirectory found
+
+10 (18) 			 "."
+
+15 (17) 			 "."
+Move file "./file17.txt" to "./dir17/file17.txt"
+
+13 (16) 			 "."
+Enter existing subdirectory "./dir17"
+
+1 (15) 			 "./dir17"
+Open existing file with options: truncate=true,write=true,append=false,create=true -> Ok: "./dir17/file15.txt"
+
+8 (14) 			 "./dir17"
+
+4 (13) 			 "./dir17"
+
+6 (12) 			 "./dir17"
+
+11 (11) 			 "./dir17"
+
+13 (10) 			 "./dir17"
+No subdirectory found
+
+0 (9) 			 "./dir17"
+Open or create file "./dir17/file9.txt"
+
+11 (8) 			 "./dir17"
+
+13 (7) 			 "./dir17"
+No subdirectory found
+
+7 (6) 			 "./dir17"
+Create subdirectory "./dir17/dir6"
+
+9 (5) 			 "./dir17"
+
+6 (4) 			 "./dir17"
+
+1 (3) 			 "./dir17"
+Open existing file with options: truncate=true,write=true,append=false,create=false -> Err: Some(44)
+
+9 (2) 			 "./dir17"
+
+12 (1) 			 "./dir17"
+Symlink creation: (skip)
+
+15 (0) 			 "./dir17"
+Move file "./dir17/file9.txt" to "./dir17/dir6/file9.txt"

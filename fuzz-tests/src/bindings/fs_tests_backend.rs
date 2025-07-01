@@ -45,6 +45,11 @@ impl FsTestsBackendCanister {
             args,
         )
     }
+    pub fn get_log(&self) -> super::CallBuilder<String> {
+        let args = Encode!();
+        self.caller
+            .call(self.canister_id, super::CallMode::Query, "get_log", args)
+    }
     pub fn greet(&self, arg0: String) -> super::CallBuilder<String> {
         let args = Encode!(&arg0);
         self.caller
