@@ -11,7 +11,7 @@ fn greet(name: String) -> String {
 
 use std::{
     cell::RefCell,
-    fs::{self},
+    fs::{self, OpenOptions},
 };
 
 pub struct SimpleRng {
@@ -25,9 +25,10 @@ impl SimpleRng {
 
     pub fn next_rand(&mut self) -> u64 {
         const A: u64 = 6364136223846793005;
-        const C: u64 = 1;
+        const C: u64 = 1013904223;
 
         self.state = self.state.wrapping_mul(A).wrapping_add(C);
+
         self.state
     }
 }
@@ -38,16 +39,47 @@ const WASI_MEMORY_ID: MemoryId = MemoryId::new(11);
 thread_local! {
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
         RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+
     static RND: RefCell<SimpleRng> =
         const { RefCell::new(SimpleRng { state: 42 }) };
+
+    static LOG: RefCell<Option<File>> =
+        const { RefCell::new(None) };
+
 }
 
-fn next_rand() -> u64 {
-    RND.with(|rng| rng.borrow_mut().next_rand())
+pub fn next_rand(max: u64) -> u64 {
+    let rnd = RND.with(|rng| rng.borrow_mut().next_rand());
+
+    ((rnd as f64 / u64::MAX as f64) * max as f64) as u64
 }
 
-fn seed_rand(seed: u64) {
+pub fn seed_rand(seed: u64) {
     RND.with(|rng| rng.borrow_mut().seed(seed));
+}
+
+fn new_log(path: &str) {
+    let file = fs::OpenOptions::new()
+        .truncate(false)
+        .create(true)
+        .append(true)
+        .open(path)
+        .unwrap();
+
+    LOG.with(|log| {
+        *log.borrow_mut() = Some(file);
+    });
+}
+
+fn log(msg: &str) {
+    LOG.with(|log| {
+        if let Some(file) = log.borrow_mut().as_mut() {
+            use std::io::Write;
+            writeln!(file, "{msg}").unwrap();
+        } else {
+            panic!("Log file not initialized. Call new_log() first.");
+        }
+    });
 }
 
 pub fn profiling_init() {
@@ -202,20 +234,81 @@ pub fn scan_directory(path: String) -> String {
 pub fn generate_random_fs(seed: u64, steps: u64, max_depth: u64) {
     seed_rand(seed);
 
-    generate_random_file_structure(steps, max_depth, std::path::Path::new(".")).unwrap();
+    generate_random_file_structure(steps, max_depth, std::path::Path::new("."), &mut Vec::new())
+        .unwrap();
 }
 
 #[ic_cdk::update]
 pub fn do_fs_test_basic() -> String {
-    generate_random_fs(42, 100, 20);
-
+    new_log("log.txt");
+    generate_random_fs(42, 20, 20);
     scan_directory(".".to_string())
+}
+
+fn get_random_file(
+    parent_path: &std::path::Path,
+    op_count: u64,
+) -> anyhow::Result<std::path::PathBuf> {
+    let mut files: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_file() && e.file_name().to_string_lossy() != "log.txt")
+        .collect();
+
+    files.sort_by(|a, b| {
+        a.file_name()
+            .to_string_lossy()
+            .to_string()
+            .cmp(&b.file_name().to_string_lossy().to_string())
+    });
+
+    if !files.is_empty() {
+        let rnd = next_rand(files.len().try_into().unwrap()) as usize;
+        let file = files[rnd].path();
+
+        return Ok(file);
+    }
+
+    // no files, create a new one for writing
+    let path = parent_path.join(format!("file{op_count}.txt"));
+    Ok(path)
+}
+
+fn get_random_dir(
+    parent_path: &std::path::Path,
+    op_count: u64,
+) -> anyhow::Result<std::path::PathBuf> {
+    let mut dirs: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_dir())
+        .collect();
+
+    // sort folders before choosing the one to enter
+    dirs.sort_by(|a, b| {
+        a.file_name()
+            .to_string_lossy()
+            .to_string()
+            .cmp(&b.file_name().to_string_lossy().to_string())
+    });
+
+    if !dirs.is_empty() {
+        let rnd = next_rand(dirs.len().try_into().unwrap()) as usize;
+        let path = dirs[rnd].path();
+
+        Ok(path)
+    } else {
+        let path = parent_path.join(format!("dir{op_count}"));
+
+        fs::create_dir(&path);
+
+        Ok(path)
+    }
 }
 
 fn generate_random_file_structure(
     mut op_count: u64,
     depth: u64,
     parent_path: &std::path::Path,
+    opened_files: &mut Vec<File>,
 ) -> anyhow::Result<u64> {
     let depth = depth - 1;
 
@@ -225,41 +318,110 @@ fn generate_random_file_structure(
 
     while op_count > 0 {
         op_count -= 1;
-        let action = next_rand() % 16;
+        let action = next_rand(16);
 
+        log(&format!("\n{op_count})   {action} \t\t\t {parent_path:?}"));
         match action {
             0 => {
                 // Create a new file
+
                 let path = parent_path.join(format!("file{op_count}.txt"));
-                let _ = File::create(path)?;
+                log(&format!("Open or create file {path:?}"));
+                let file = File::create(path)?;
+                opened_files.push(file);
             }
-            1 => {
-                // Write to file
-                let path = parent_path.join(format!("file{op_count}.txt"));
-                if let Ok(mut file) = fs::OpenOptions::new()
-                    .write(true)
-                    .truncate(next_rand() % 2 == 1)
-                    .create(true)
-                    .open(&path)
-                {
-                    writeln!(file, "Hello world {op_count}")?;
+            16 => {
+                if !opened_files.is_empty() {
+                    // Close one of the opened files
+                    let file = opened_files
+                        .remove(next_rand(opened_files.len() as u64).try_into().unwrap());
+
+                    log(&format!("Close opened file {file:?}"));
+                } else {
+                    op_count += 1;
+                    log("No opened files to close...");
                 }
             }
-            2 => {
-                // Read from file
+            17 => {
+                if !opened_files.is_empty() {
+                    // Write something to one of the opened files
+                    let mut file = opened_files
+                        .remove(next_rand(opened_files.len() as u64).try_into().unwrap());
+
+                    let _res = writeln!(file, "write_into_opened{op_count}");
+
+                    log(&format!(
+                        "Write into opened file {file:?} write_into_opened{op_count}"
+                    ));
+                    opened_files.push(file);
+                } else {
+                    op_count += 1;
+                    log("No opened files to write...");
+                }
+            }
+
+            1 => {
+                // Open with options
                 let path = parent_path.join(format!("file{op_count}.txt"));
-                if let Ok(mut file) = File::open(&path) {
+
+                let truncate = next_rand(2) == 1;
+                let write = next_rand(2) == 1;
+                let append = next_rand(2) == 1;
+                let create = next_rand(2) == 1;
+
+                let res = fs::OpenOptions::new()
+                    .write(write)
+                    .append(append)
+                    .truncate(truncate)
+                    .create(create)
+                    .open(&path);
+
+                log("Open existing file with options: truncate={truncate},writable={writable},append={append},create={create} -> {res:?}");
+
+                if let Ok(file) = res {
+                    opened_files.push(file);
+                }
+            }
+
+            2 => {
+                // Read text from a random file
+                let file = get_random_file(parent_path, op_count)?;
+
+                if file.exists() {
+                    log(&format!(
+                        "read from file: {} that exists",
+                        file.to_string_lossy()
+                    ));
+
+                    //
+                    let mut f = fs::OpenOptions::new().read(true).open(&file)?;
+
                     let mut buffer = String::new();
-                    let _ = file.read_to_string(&mut buffer);
+                    f.read_to_string(&mut buffer).unwrap();
+
+                    log(&format!(
+                        "read from file: {}, content: {buffer}",
+                        file.to_string_lossy()
+                    ));
+                } else {
+                    //
+                    log(&format!(
+                        "read from file: {} that does not exist",
+                        file.to_string_lossy()
+                    ));
                 }
             }
             3 => {
-                // Truncate file
-                let path = parent_path.join(format!("file{op_count}.txt"));
+                // Truncate file (delete its contents)
+                let file = get_random_file(parent_path, op_count)?;
+
+                log(&format!("Truncate {file:?}"));
+
                 let _ = fs::OpenOptions::new()
                     .write(true)
                     .truncate(true)
-                    .open(&path);
+                    .create(true)
+                    .open(&file)?;
             }
             4 => {
                 // Rename file
@@ -281,6 +443,7 @@ fn generate_random_file_structure(
             7 => {
                 // Create directory
                 let path = parent_path.join(format!("dir{op_count}"));
+                log(&format!("Create subdirectory {path:?}"));
                 let _ = fs::create_dir(&path);
             }
             8 => {
@@ -307,20 +470,7 @@ fn generate_random_file_structure(
                     let perms = meta.permissions();
                 }
             }
-            12 => {
-                // TODO: test symlink creation
-
-                /*
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::symlink;
-                    let target = parent_path.join(format!("file{op_count}.txt"));
-                    let link = parent_path.join(format!("symlink{op_count}.txt"));
-                    let _ = symlink(&target, &link);
-                }
-
-                 */
-            }
+            12 => log("Symlink creation: (skip)"),
             13 => {
                 // Recursively generate inside subfolder
                 let mut dirs: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
@@ -337,13 +487,19 @@ fn generate_random_file_structure(
                 });
 
                 if !dirs.is_empty() {
-                    let rnd = next_rand() as usize % dirs.len();
+                    let rnd = next_rand(dirs.len().try_into().unwrap()) as usize;
                     let sub = dirs[rnd].path();
-                    let res = generate_random_file_structure(op_count, depth, &sub)?;
+
+                    log(&format!("Enter existing subdirectory {sub:?}"));
+
+                    let res = generate_random_file_structure(op_count, depth, &sub, opened_files)?;
                     op_count = res;
+                } else {
+                    log("No subdirectory found");
                 }
             }
             14 => {
+
                 // Simulate access/modification time updates (requires `filetime` crate)
                 /*
                 #[cfg(feature = "filetime")]
@@ -358,10 +514,15 @@ fn generate_random_file_structure(
             }
             15 => {
                 // Move file into subdirectory
-                let from = parent_path.join(format!("file{op_count}.txt"));
-                let to_dir = parent_path.join(format!("dir{op_count}"));
-                fs::create_dir_all(&to_dir)?;
-                let to = to_dir.join(format!("file{op_count}.txt"));
+                let from = get_random_file(parent_path, op_count)?;
+                let filename = from.file_name().unwrap().to_string_lossy().to_string();
+
+                let dir = get_random_dir(parent_path, op_count)?;
+
+                fs::create_dir_all(&dir)?;
+                let to = dir.join(filename);
+
+                log(&format!("Move file {from:?} to {to:?}"));
                 let _ = fs::rename(from, to);
             }
             _ => unreachable!(),

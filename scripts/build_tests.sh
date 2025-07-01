@@ -9,6 +9,8 @@ candid-extractor target/wasm32-wasip1/release/fs_tests_backend.wasm > test/canis
 
 wasi2ic target/wasm32-wasip1/release/fs_tests_backend.wasm target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm
 
+ic-test update --force
+
 # build fs_tests for local launch
 cargo build --release
 

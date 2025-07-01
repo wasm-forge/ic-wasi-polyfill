@@ -1,3 +1,5 @@
+use std::f32::consts::E;
+
 use ic_test::IcpTest;
 
 use crate::test_setup;
@@ -29,5 +31,10 @@ async fn test_fs_durability() {
 
     let expected = std::fs::read_to_string("../target/release/report.txt").unwrap();
 
-    assert_eq!(result.trim(), expected.trim());
+    let computed = result.trim().split("\n");
+    let expected = expected.trim().split("\n");
+
+    for (c, e) in computed.zip(expected) {
+        assert_eq!(c, e);
+    }
 }

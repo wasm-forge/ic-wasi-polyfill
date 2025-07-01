@@ -1,7 +1,5 @@
 mod common;
 
-use std::fs::read_to_string;
-
 use common::*;
 use ic_wasi_polyfill::wasi::{self, Fd};
 use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;

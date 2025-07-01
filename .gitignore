@@ -12,5 +12,4 @@ test/test_programs
 
 lcov.info
 codecov.json
-
-.codegpt
+playground

@@ -53,6 +53,9 @@ jobs:
       - name: Install candid-extractor
         run: cargo install candid-extractor
 
+      - name: Install ic-test
+        run: cargo install ic-test
+
       # Build everything
       - name: Build test projects
         run: ./scripts/build_tests.sh
