@@ -551,7 +551,7 @@ fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
 
     f.seek(std::io::SeekFrom::Start(offset)).unwrap();
 
-    f.read(res.as_mut_slice()).unwrap();
+    let _ = f.read(res.as_mut_slice()).unwrap();
 
     res
 }
