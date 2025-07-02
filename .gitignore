@@ -9,6 +9,8 @@ pocket-ic
 test/test_programs
 
 /.vscode/
+a_computed.txt
+b_expected.txt
 
 lcov.info
 codecov.json
