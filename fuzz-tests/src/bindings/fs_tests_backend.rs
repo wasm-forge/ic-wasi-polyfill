@@ -27,16 +27,16 @@ impl FsTestsBackendCanister {
             args,
         )
     }
-    pub fn do_fs_test_basic(&self, arg0: u64) -> super::CallBuilder<String> {
-        let args = Encode!(&arg0);
+    pub fn do_fs_test(&self) -> super::CallBuilder<String> {
+        let args = Encode!();
         self.caller.call(
             self.canister_id,
             super::CallMode::Update,
-            "do_fs_test_basic",
+            "do_fs_test",
             args,
         )
     }
-    pub fn generate_random_fs(&self, arg0: u64, arg1: u64, arg2: u64) -> super::CallBuilder<()> {
+    pub fn generate_random_fs(&self, arg0: u64, arg1: u64, arg2: u64) -> super::CallBuilder<u64> {
         let args = Encode!(&arg0, &arg1, &arg2);
         self.caller.call(
             self.canister_id,

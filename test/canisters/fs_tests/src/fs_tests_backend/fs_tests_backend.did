@@ -1,8 +1,8 @@
 service : () -> {
   basic_fs_test : () -> ();
   compute_file_hash : (text) -> (text);
-  do_fs_test_basic : (nat64) -> (text);
-  generate_random_fs : (nat64, nat64, nat64) -> ();
+  do_fs_test : () -> (text);
+  generate_random_fs : (nat64, nat64, nat64) -> (nat64);
   get_log : () -> (text) query;
   greet : (text) -> (text) query;
   read_file : (text) -> (text);

@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+// This is a generated test setup file.
+// Manual changes are possible, but you still need to make sure they are not lost, if the file is regenerated.
+// If possible, it is best to keep any additional manual test preparation steps outside, in `tests.rs`,
+// then this file can be regenerated without risk of losing work.
 
-use candid::Principal;
-use ic_test::{IcpTest, IcpUser};
+use ic_test::IcpTest;
 
 use crate::bindings::{
     canister_initial_backend::{self, CanisterInitialBackendCanister},
@@ -26,9 +28,6 @@ pub(crate) async fn setup(icp_test: IcpTest) -> Env {
     let canister_upgraded_backend = canister_upgraded_backend::deploy(&icp_user).call().await;
 
     let fs_tests_backend = fs_tests_backend::deploy(&icp_user).call().await;
-
-    // Additional setup steps
-    // ...
 
     Env {
         icp_test,

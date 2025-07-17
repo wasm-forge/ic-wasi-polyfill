@@ -21,9 +21,7 @@ async fn test_fs_durability() {
 
     let env = test_setup::setup(IcpTest::new().await).await;
 
-    let seed = 42;
-
-    let c = env.fs_tests_backend.do_fs_test_basic(seed).call().await;
+    let c = env.fs_tests_backend.do_fs_test().call().await;
     let computed = c.trim();
 
     let e = std::fs::read_to_string("../target/release/report.txt").unwrap();

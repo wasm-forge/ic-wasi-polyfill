@@ -12,7 +12,6 @@ ic-cdk = "0.18.5"
 ic-stable-structures = "0.6.7"
 stable-fs = "0.8.1"
 
-
 rand = "0.9.1"
 function_name = "0.3.0"
 
