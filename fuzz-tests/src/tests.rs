@@ -2,7 +2,7 @@ use std::{fs::OpenOptions, io::Write};
 
 use ic_test::IcpTest;
 
-use crate::test_setup;
+use crate::{bindings::fs_tests_backend, test_setup};
 
 #[tokio::test]
 async fn test_basic_fs_check() {
@@ -21,7 +21,20 @@ async fn test_fs_durability() {
 
     let env = test_setup::setup(IcpTest::new().await).await;
 
-    let c = env.fs_tests_backend.do_fs_test().call().await;
+    let icp_user = env.icp_test.icp.test_user(0);
+
+    let backend = env.fs_tests_backend;
+
+    let _c = backend.do_fs_test().call().await;
+
+    // re-deploy
+    let backend = fs_tests_backend::deploy(&icp_user)
+        .with_upgrade()
+        .call()
+        .await;
+
+    let c = backend.do_fs_test().call().await;
+
     let computed = c.trim();
 
     let e = std::fs::read_to_string("../target/release/report.txt").unwrap();
@@ -32,7 +45,7 @@ async fn test_fs_durability() {
     let expected_log = expected_log_.trim();
 
     if computed != expected {
-        let computed_log = env.fs_tests_backend.get_log().call().await;
+        let computed_log = backend.get_log().call().await;
 
         // write scans and logs into a separate files for comparisons
         let mut a = OpenOptions::new()

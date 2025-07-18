@@ -11,6 +11,9 @@ fn main() {
 
     env::set_current_dir("playground").unwrap();
 
+    // double fs_test call (for the canister upgrade imitation)
+    let _scan = canister::do_fs_test();
+    //
     let scan = canister::do_fs_test();
 
     println!("{scan}");

@@ -14,6 +14,7 @@ use std::{
     collections::BTreeMap,
     fs::{self, FileType, Permissions},
     io::{Seek, SeekFrom},
+    path::PathBuf,
 };
 
 pub struct SimpleRng {
@@ -69,12 +70,21 @@ pub fn get_seed() -> u64 {
 }
 
 pub(crate) fn new_log(path: &str) {
-    let file = fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(path)
-        .unwrap();
+    let p = std::path::Path::new(path);
+
+    let file = if p.exists() {
+        fs::OpenOptions::new()
+            .create(false)
+            .append(true)
+            .open(path)
+            .unwrap()
+    } else {
+        fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .unwrap()
+    };
 
     LOG.with(|log| {
         *log.borrow_mut() = Some(file);
@@ -110,6 +120,11 @@ fn init() {
             .set_chunk_size(ic_wasi_polyfill::ChunkSize::CHUNK16K)
             .unwrap();
     });
+}
+
+#[ic_cdk::post_upgrade]
+fn upgrade() {
+    init();
 }
 
 use sha2::{Digest, Sha256};
@@ -265,7 +280,28 @@ pub fn get_log() -> String {
 fn get_random_file(
     parent_path: &std::path::Path,
     op_count: u64,
+    opened_files: &mut BTreeMap<String, File>,
 ) -> anyhow::Result<std::path::PathBuf> {
+    // sometimes return an opened file
+    if next_rand(2) < 1 {
+        let len = opened_files.len();
+        let file = opened_files.iter().nth(next_rand(len as u64) as usize);
+
+        if let Some(f) = file {
+            let path = PathBuf::new().join(f.0);
+
+            // just recreate the file, if it doesn't exist
+            let _res = fs::OpenOptions::new()
+                .write(true)
+                .append(false)
+                .truncate(false)
+                .create(true)
+                .open(&path);
+
+            return Ok(path);
+        }
+    }
+
     let mut files: Vec<fs::DirEntry> = fs::read_dir(parent_path)?
         .filter_map(Result::ok)
         .filter(|e| e.path().is_file() && e.file_name().to_string_lossy() != "log.txt")
@@ -289,6 +325,9 @@ fn get_random_file(
 
     // no files, create a new one for writing
     let path = parent_path.join(format!("file{op_count}.txt"));
+
+    File::create(&path).unwrap();
+
     Ok(path)
 }
 
@@ -354,6 +393,7 @@ fn generate_random_file_structure(
     max_depth: u64,
 
     parent_path: &std::path::Path,
+
     opened_files: &mut BTreeMap<String, File>,
 ) -> anyhow::Result<u64> {
     let depth = depth + 1;
@@ -375,7 +415,7 @@ fn generate_random_file_structure(
                 // Create a new file
                 let path = parent_path.join(format!("file{current_op}.txt"));
                 log(&format!("Open or create file {path:?}"));
-                let mut file = File::create(&path)?;
+                let mut file = File::create(&path).unwrap();
                 file.flush()?;
                 opened_files.insert(path.as_path().to_string_lossy().to_string(), file);
             }
@@ -446,7 +486,7 @@ fn generate_random_file_structure(
             }
             4 => {
                 // Read text from a random file
-                let file = get_random_file(parent_path, current_op)?;
+                let file = get_random_file(parent_path, current_op, opened_files)?;
 
                 if file.exists() {
                     //
@@ -469,7 +509,7 @@ fn generate_random_file_structure(
             }
             5 => {
                 // Truncate file (delete its contents)
-                let file = get_random_file(parent_path, current_op)?;
+                let file = get_random_file(parent_path, current_op, opened_files)?;
 
                 log(&format!("Truncate {file:?}"));
 
@@ -483,7 +523,8 @@ fn generate_random_file_structure(
             }
             6 => {
                 // Rename file
-                let from = get_random_file(parent_path, current_op)?;
+                let from = get_random_file(parent_path, current_op, opened_files)?;
+
                 let to = parent_path.join(format!("file{current_op}_renamed.txt"));
                 log(&format!("Rename file from {from:?} to {to:?}"));
                 let res = fs::rename(&from, &to);
@@ -500,7 +541,8 @@ fn generate_random_file_structure(
             }
             7 => {
                 // Copy file
-                let from = get_random_file(parent_path, current_op)?;
+                let from = get_random_file(parent_path, current_op, opened_files)?;
+
                 let to = parent_path.join(format!("file{current_op}_copy.txt"));
                 log(&format!("Copy file from {from:?} to {to:?}"));
                 let res = fs::copy(&from, &to);
@@ -510,7 +552,7 @@ fn generate_random_file_structure(
             }
             8 => {
                 // Delete file
-                let path = get_random_file(parent_path, current_op)?;
+                let path = get_random_file(parent_path, current_op, opened_files)?;
 
                 // we do not have dangling file support yet, so do not try to delete an opened file...
                 if opened_files.contains_key(&path.as_path().to_string_lossy().to_string()) {
@@ -584,7 +626,8 @@ fn generate_random_file_structure(
                     .create(true)
                     .open(&save_path)?;
 
-                let path = get_random_file(parent_path, current_op)?;
+                let path = get_random_file(parent_path, current_op, opened_files)?;
+
                 let meta = fs::metadata(&path)?;
 
                 save.write_all(
@@ -634,7 +677,7 @@ fn generate_random_file_structure(
             }
             15 => {
                 // Move file into subdirectory
-                let from = get_random_file(parent_path, current_op)?;
+                let from = get_random_file(parent_path, current_op, opened_files)?;
                 let filename = from.file_name().unwrap().to_string_lossy().to_string();
 
                 let dir = get_random_dir(parent_path, current_op)?;
@@ -647,7 +690,7 @@ fn generate_random_file_structure(
             }
             16 => {
                 // write some prepared text into one of the files at a random position
-                let path = get_random_file(parent_path, current_op)?;
+                let path = get_random_file(parent_path, current_op, opened_files)?;
 
                 let mut save = fs::OpenOptions::new()
                     .write(true)
