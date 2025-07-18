@@ -12,18 +12,18 @@ use stable_fs::fs::{FdFlags, FdStat, FileSize, OpenFlags};
 use stable_fs::storage::dummy::DummyStorage;
 
 #[cfg(target_arch = "wasm32")]
-mod wasi;
+pub mod wasi;
 
 #[cfg(not(all(target_arch = "wasm32")))]
-mod wasi_mock;
+pub mod wasi_mock;
 #[cfg(not(all(target_arch = "wasm32")))]
-use wasi_mock as wasi;
+pub use wasi_mock as wasi;
 
 use environment::*;
 use wasi_helpers::*;
 
 mod environment;
-mod wasi_helpers;
+pub mod wasi_helpers;
 
 pub use stable_fs::fs::FileSystem;
 pub use stable_fs::fs::{ChunkSize, ChunkType};
@@ -39,9 +39,9 @@ pub fn ic_instruction_counter() -> u64 {
 }
 
 #[cfg(target_arch = "wasm32")]
-use ic_cdk::api::time as ic_time;
+pub use ic_cdk::api::time as ic_time;
 #[cfg(not(all(target_arch = "wasm32")))]
-fn ic_time() -> u64 {
+pub fn ic_time() -> u64 {
     use std::time::UNIX_EPOCH;
 
     std::time::SystemTime::now()
@@ -54,7 +54,7 @@ fn ic_time() -> u64 {
 use ic_cdk::api::debug_print as ic_print;
 #[cfg(not(all(target_arch = "wasm32")))]
 fn ic_print(value: &str) {
-    println!("{}", value);
+    println!("{value}");
 }
 
 #[allow(clippy::missing_safety_doc)]
@@ -887,8 +887,8 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 
         match stat {
             Ok((_ftype, mut fdstat)) => {
-                fdstat.rights_base = rights_base as u64;
-                fdstat.rights_inheriting = rights_inheriting as u64;
+                fdstat.rights_base &= rights_base as u64;
+                fdstat.rights_inheriting &= rights_inheriting as u64;
 
                 match fs.set_stat(fd as Fd, fdstat) {
                     Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
@@ -1545,7 +1545,6 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_rename(
     old_fd: i32,
     old_path: *const u8,
@@ -1786,7 +1785,9 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
             // dummy calls to trick the linker not to throw away the functions
 
             use std::ptr::{null, null_mut};
+
             unsafe {
+                // coverage:ignore-start
                 __ic_custom_fd_write(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_read(0, null::<wasi::Iovec>(), 0, null_mut::<wasi::Size>());
                 __ic_custom_fd_close(0);
@@ -1860,18 +1861,22 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
                 __ic_custom_sock_shutdown(0, 0);
 
                 __ic_custom_proc_exit(0);
+                // coverage:ignore-end
             }
         }
     })
 }
 
-// the init function ensures the module is not thrown away by the linker
-// seed       -  The seed of the random numbers, up to 32 byte array can be used.
-// env_pairs  -  The pre-defined environment variables.
-//
-// Example:
-// init(&[12,3,54,1], &[("PATH", "/usr/bin"), ("UID", "1028"), ("HOME", "/home/user")]);
-#[allow(clippy::missing_safety_doc)]
+/// Initializes the runtime environment and random number generator.
+///
+/// # Parameters
+/// - `seed`: A byte slice (up to 32 bytes) used to seed the random number generator.
+/// - `env_pairs`: A list of key-value pairs representing environment variables to initialize.
+///
+/// # Safety
+/// This function calls an `unsafe` function `raw_init`, passing a raw pointer and length of the seed slice.
+/// It is safe to call this function as long as `seed` is a valid slice.
+///
 pub fn init(seed: &[u8], env_pairs: &[(&str, &str)]) {
     ENV.with(|env| {
         let mut env = env.borrow_mut();
@@ -1914,10 +1919,12 @@ pub fn init_with_memory_manager<M: Memory + 'static>(
     init(seed, env_pairs);
 }
 
-// mount external memory onto a file to speed-up file access. All further file reads and writes be forwarded to this memory.
-// file_name    -  Name of the host file to mount on
-// memory       -  Memory to use as file storage
-//
+/// Mounts external memory onto a file to speed-up file access. All further file reads and writes be forwarded to this memory.
+///
+/// # Parameters
+/// - `file_name`    -  Name of the host file to mount on
+/// - `memory`       -  Memory to use as an actual file storage
+///
 pub fn mount_memory_file(file_name: &str, memory: Box<dyn Memory>) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1931,9 +1938,11 @@ pub fn mount_memory_file(file_name: &str, memory: Box<dyn Memory>) -> i32 {
     })
 }
 
-// unmount external memory from a host file. All further file reads and writes are written to a normal file.
-// file_name    -  Name of the host file holding the mount
-//
+/// unmounts external memory from a host file. All further file reads and writes are written to a normal file.
+///
+/// # Parameters
+/// `file_name`    -  Name of the host file holding the mount
+///
 pub fn unmount_memory_file(file_name: &str) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1947,9 +1956,11 @@ pub fn unmount_memory_file(file_name: &str) -> i32 {
     })
 }
 
-// initialize mouned memory with the contents of the host file.
-// file_name    -  Name of the host file holding the mount
-//
+/// Initializes mouned memory with the contents of the host file.
+///
+/// # Parameters
+/// `file_name`    -  Name of the host file holding the mount
+///
 pub fn init_memory_file(file_name: &str) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1963,9 +1974,11 @@ pub fn init_memory_file(file_name: &str) -> i32 {
     })
 }
 
-// Store memory contents into the host file.
-// file_name    -  Name of the host file holding the mount
-//
+/// Store memory contents into the host file.
+///
+/// # Parameters
+/// `file_name`    -  Name of the host file holding the mount
+///
 pub fn store_memory_file(file_name: &str) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
@@ -1978,6 +1991,3 @@ pub fn store_memory_file(file_name: &str) -> i32 {
         }
     })
 }
-
-#[cfg(test)]
-mod test;

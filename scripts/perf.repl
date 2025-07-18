@@ -1,0 +1,56 @@
+#!ic-repl
+
+function install(wasm, args, cycle) {
+  let id = call ic.provisional_create_canister_with_cycles(record { settings = null; amount = cycle });
+  let S = id.canister_id;
+  let _ = call ic.install_code(
+    record {
+      arg = args;
+      wasm_module = gzip(wasm);
+      mode = variant { install };
+      canister_id = S;
+    }
+  );
+  S
+};
+
+function upgrade(id, wasm, args) {
+  call ic.install_code(
+    record {
+      arg = args;
+      wasm_module = gzip(wasm);
+      mode = variant { upgrade };
+      canister_id = id;
+    }
+  );
+};
+
+function uninstall(id) {
+  call ic.stop_canister(record { canister_id = id });
+  call ic.delete_canister(record { canister_id = id });
+};
+
+function get_memory(cid) {
+  let _ = call ic.canister_status(record { canister_id = cid });
+  _.memory_size
+};
+
+let file = "README.md";
+
+let rs_config = record { start_page = 1; page_limit = 1128};
+
+let wasm_name = "../target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm";
+
+
+function perf_fuzz_test() {
+  let cid = install(wasm_profiling(wasm_name, rs_config), encode (), null);
+
+  call cid.do_fs_test_basic();
+
+  flamegraph(cid, "perf_write_10mb", "svg/perf_fuzz_test.svg");
+  uninstall(cid)
+};
+
+
+/// main calls
+perf_fuzz_test();

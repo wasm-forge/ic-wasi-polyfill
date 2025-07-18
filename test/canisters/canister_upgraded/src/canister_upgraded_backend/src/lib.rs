@@ -5,6 +5,8 @@ use std::{
     io::{BufWriter, Read, Seek, Write},
 };
 
+use ic_cdk::export_candid;
+
 use ic_stable_structures::{
     memory_manager::{MemoryId, MemoryManager},
     storable::Bound,
@@ -20,7 +22,7 @@ type Memory = VirtualMemory<DefaultMemoryImpl>;
 
 #[ic_cdk::query]
 fn greet(name: String) -> String {
-    format!("Greetings, {}!", name)
+    format!("Greetings, {name}!")
 }
 
 thread_local! {
@@ -549,7 +551,7 @@ fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
 
     f.seek(std::io::SeekFrom::Start(offset)).unwrap();
 
-    f.read(res.as_mut_slice()).unwrap();
+    let _ = f.read(res.as_mut_slice()).unwrap();
 
     res
 }
@@ -723,3 +725,5 @@ fn check_new_file_is_writable(file: String) -> String {
         "Is writable".to_string()
     }
 }
+
+export_candid!();

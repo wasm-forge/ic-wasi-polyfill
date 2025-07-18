@@ -1,7 +1,9 @@
-use crate::test::common::{create_empty_test_file, create_test_file};
-use crate::{init, wasi};
+mod common;
 
-use super::common::create_test_file_with_content;
+use common::{create_empty_test_file, create_test_file};
+use ic_wasi_polyfill::{init, wasi};
+
+use common::create_test_file_with_content;
 
 #[test]
 fn test_path_open_create_existing() {

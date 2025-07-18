@@ -2359,7 +2359,7 @@ pub mod wasi_snapshot_preview1 {
         /// Rename a file or directory.
         /// Note: This is similar to `renameat` in POSIX.
         pub fn path_rename(arg0: i32, arg1: i32, arg2: i32, arg3: i32, arg4: i32, arg5: i32)
-        -> i32;
+            -> i32;
         /// Create a symbolic link.
         /// Note: This is similar to `symlinkat` in POSIX.
         pub fn path_symlink(arg0: i32, arg1: i32, arg2: i32, arg3: i32, arg4: i32) -> i32;

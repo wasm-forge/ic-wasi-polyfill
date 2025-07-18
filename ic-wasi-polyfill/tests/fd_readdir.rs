@@ -1,6 +1,9 @@
+mod common;
+
 use std::{mem, slice, str};
 
-use crate::{init, test::common::libc, wasi};
+use common::libc;
+use ic_wasi_polyfill::{init, wasi};
 
 const BUF_LEN: usize = 256;
 

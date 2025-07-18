@@ -1,6 +1,9 @@
-use crate::test::common::*;
-use crate::wasi;
-use crate::*;
+mod common;
+
+use common::*;
+use ic_wasi_polyfill::wasi::{self, Fd};
+use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;
+use ic_wasi_polyfill::*;
 
 #[test]
 fn test_environ_get() {
@@ -1373,6 +1376,90 @@ fn unicode_write() {
         buf: text.as_bytes().as_ptr(),
         buf_len: text.len(),
     }];
+
     let written = unsafe { wasi::fd_write(libc::STDOUT_FILENO, &ciovecs) }.expect("write succeeds");
     assert_eq!(written, text.len(), "full contents should be written");
+}
+
+#[test]
+fn test_ic_custom_fd_fdstat_set_rights_success() {
+    let dir_fd = 3;
+
+    init(&[], &[]);
+
+    unsafe {
+        let fd = create_test_file(dir_fd, "file.txt");
+
+        let fdstat =
+            wasi::fd_fdstat_get(fd).expect("calling fd_fdstat on the open file descriptor");
+
+        assert_eq!(fdstat.fs_rights_base, common::DEFAULT_RIGHTS);
+        assert_eq!(fdstat.fs_rights_inheriting, common::DEFAULT_RIGHTS);
+
+        wasi::fd_fdstat_set_rights(fd, 6, 6).unwrap();
+
+        let fdstat =
+            wasi::fd_fdstat_get(fd).expect("calling fd_fdstat on the open file descriptor");
+
+        assert_eq!(fdstat.fs_rights_base, 6 & common::DEFAULT_RIGHTS);
+        assert_eq!(fdstat.fs_rights_inheriting, 6 & common::DEFAULT_RIGHTS);
+    }
+}
+
+#[test]
+fn test_mounts() {
+    let dir_fd = 3;
+
+    init(&[], &[]);
+
+    let memory = new_vector_memory();
+    let file_name = "file.txt";
+    let hello_message = "Hello host".to_string();
+    let hello_message2 = "Hello from regular file".to_string();
+
+    mount_memory_file(file_name, Box::new(memory.clone()));
+
+    // write something into a host memory file
+    let fd = create_test_file_with_content(dir_fd, file_name, vec![hello_message.clone()]);
+    fd_close(fd);
+
+    // the memory should contain the file now
+    let v: Vec<u8> = memory.borrow().clone();
+    assert_eq!(&v[0..hello_message.len()], hello_message.as_bytes());
+
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // unmount file, the file.txt should become empty
+    unmount_memory_file(file_name);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, "".to_string());
+
+    // mount again, the old content should recover
+    mount_memory_file(file_name, Box::new(memory.clone()));
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // store mounted contents into the host file, check the host file content is renewed
+    store_memory_file(file_name);
+    unmount_memory_file(file_name);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // write some other content message,
+    // check there is a new content now
+    let fd = create_test_file_with_content(dir_fd, file_name, vec![hello_message2.clone()]);
+    fd_close(fd);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message2);
+
+    // after mounting, we still have the old content
+    mount_memory_file(file_name, Box::new(memory.clone()));
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message);
+
+    // initializing should recover the data from the host file to the mounted memory
+    init_memory_file(file_name);
+    let str = read_file_to_string(file_name);
+    assert_eq!(str, hello_message2);
 }
