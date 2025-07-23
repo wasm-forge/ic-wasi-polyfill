@@ -5,13 +5,14 @@ rm *.wasm
 set -e
 
 
-cd ../../..
+cd ../../../ic-wasi-polyfill
 pwd
-cargo build --release --target wasm32-wasi --features "report_wasi_calls"
 
-cd test_canisters/c_tests/src
+cargo build --release --target wasm32-wasip1 --features "report_wasi_calls"
 
-/opt/wasi-sdk/bin/clang++ -mexec-model=reactor -fno-exceptions main.cpp -L../../../../../ic-wasi-polyfill/ic-wasi-polyfill/target/wasm32-wasi/release -lic_wasi_polyfill -o main.wasm
+cd ../test_canisters/c_tests/src
+
+/opt/wasi-sdk/bin/clang++ -mexec-model=reactor -fno-exceptions main.cpp -L../../../../ic-wasi-polyfill/target/wasm32-wasip1/release -lic_wasi_polyfill -o main.wasm
 wasi2ic main.wasm nowasi.wasm
 
 dfx canister create c_tests_backend
