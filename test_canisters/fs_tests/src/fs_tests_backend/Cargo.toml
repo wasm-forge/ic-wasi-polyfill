@@ -14,13 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 candid.workspace = true
+ic-stable-structures.workspace = true
+ic-cdk.workspace = true
+anyhow.workspace = true
 
-ic-cdk = "0.18.3"
-ic-stable-structures = "0.6.9"
-
-ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill", features=["report_wasi_calls"]}
-
+ic-wasi-polyfill = {workspace = true, features=["report_wasi_calls"]}
 
 sha2 = "0.10"
-anyhow = "1.0.98"
 

@@ -9,7 +9,9 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-candid = "0.10"
-ic-cdk = "0.18.3"
-ic-stable-structures = "0.6.9"
-ic-wasi-polyfill = {path="../../../../../ic-wasi-polyfill"}
+candid.workspace = true
+ic-stable-structures.workspace = true
+ic-cdk.workspace = true
+anyhow.workspace = true
+
+ic-wasi-polyfill.workspace = true

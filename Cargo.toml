@@ -1,14 +1,20 @@
 [workspace]
 members = [
-    "ic-wasi-polyfill", "fuzz-tests", "test/canisters/fs_tests/src/fs_tests_backend",
-    "test/canisters/canister_initial/src/canister_initial_backend",
-    "test/canisters/canister_upgraded/src/canister_upgraded_backend",
+    "ic-wasi-polyfill", "fuzz-tests", "test_canisters/fs_tests/src/fs_tests_backend",
+    "test_canisters/canister_initial/src/canister_initial_backend",
+    "test_canisters/canister_upgraded/src/canister_upgraded_backend",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 candid = "0.10.14"
-ic-cdk = "0.18.3"
-ic-stable-structures = "0.16.9"
+ic-cdk = "0.18.5"
+ic-stable-structures = "0.7.0"
 
+#stable-fs = "0.9.0"
+stable-fs = {path = "../stable-fs/stable-fs"}
+
+pocket-ic = "9.0.2"
+anyhow = "1.0.98"
 ic-wasi-polyfill = {path="ic-wasi-polyfill"}
+

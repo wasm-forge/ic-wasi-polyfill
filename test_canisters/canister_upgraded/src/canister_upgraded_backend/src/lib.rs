@@ -44,6 +44,10 @@ impl ic_stable_structures::Storable for MyChunk {
         self.0.to_bytes()
     }
 
+    fn into_bytes(self) -> std::vec::Vec<u8> {
+        self.0
+    }
+
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
         Self(<Vec<u8>>::from_bytes(bytes))
     }
@@ -60,6 +64,10 @@ struct MyChunk4k(Vec<u8>);
 impl ic_stable_structures::Storable for MyChunk4k {
     fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
         self.0.to_bytes()
+    }
+
+    fn into_bytes(self) -> std::vec::Vec<u8> {
+        self.0
     }
 
     fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
