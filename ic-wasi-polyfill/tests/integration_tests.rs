@@ -2,8 +2,9 @@ use candid::Principal;
 use pocket_ic::PocketIc;
 use std::{cell::RefCell, fs};
 
-const BACKEND_WASM: &str = "../test_canisters/canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
-const BACKEND_WASM_UPGRADED: &str = "../test_canisters/canister_upgraded/target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
+const BACKEND_WASM: &str = "../target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
+const BACKEND_WASM_UPGRADED: &str =
+    "../target/wasm32-wasip1/release/canister_upgraded_backend_nowasi.wasm";
 
 thread_local!(
     static ACTIVE_CANISTER: RefCell<Option<Principal>> = const { RefCell::new(None) };
@@ -35,7 +36,7 @@ fn setup_initial_canister() -> PocketIc {
     setup_test_projects();
     let pic = PocketIc::new();
 
-    let wasm = fs::read(BACKEND_WASM).expect("Wasm file not found, run 'dfx build'.");
+    let wasm = fs::read(BACKEND_WASM).expect("Wasm file not found.");
 
     let backend_canister = pic.create_canister();
 
@@ -53,8 +54,7 @@ fn setup_initial_canister() -> PocketIc {
 fn upgrade_canister(pic: &PocketIc) {
     setup_test_projects();
 
-    let wasm_upgraded =
-        fs::read(BACKEND_WASM_UPGRADED).expect("Wasm file not found, run 'dfx build'.");
+    let wasm_upgraded = fs::read(BACKEND_WASM_UPGRADED).expect("Wasm file not found.");
 
     pic.upgrade_canister(active_canister(), wasm_upgraded, vec![], None)
         .unwrap();

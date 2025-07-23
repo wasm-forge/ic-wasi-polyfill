@@ -18,7 +18,7 @@ ic-stable-structures.workspace = true
 ic-cdk.workspace = true
 anyhow.workspace = true
 
-ic-wasi-polyfill = {workspace = true, features=["report_wasi_calls"]}
+ic-wasi-polyfill = {workspace = true, features=[]}
 
 sha2 = "0.10"
 

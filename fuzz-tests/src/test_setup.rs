@@ -2,6 +2,7 @@
 // Manual changes are possible, but you still need to make sure they are not lost, if the file is regenerated.
 // If possible, it is best to keep any additional manual test preparation steps outside, in `tests.rs`,
 // then this file can be regenerated without risk of losing work.
+#![allow(dead_code)]
 
 use ic_test::IcpTest;
 
