@@ -12,11 +12,7 @@ stable-fs.workspace = true
 ic-stable-structures.workspace = true
 ic-cdk.workspace = true
 anyhow.workspace = true
-
-
-
-rand = "0.9.1"
-function_name = "0.3.0"
+rand.workspace = true
 
 [features]
 transient=[]
@@ -27,6 +23,6 @@ skip_unimplemented_functions=[]
 crate-type = ["staticlib","lib"]
 
 [dev-dependencies]
-candid = "0.10.14"
-pocket-ic = "9.0.2"
+candid.workspace = true
+pocket-ic.workspace = true
 
