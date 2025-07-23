@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.9.0]
+- update stable-structures to v0.7.0
+- update dependecies
+- introduce ic-test
+- add durability tests
+
+
 ## [v0.8.2]
 - update version ic-cdk v0.18.3
 - update pocket-ic to v9.0
@@ -60,6 +67,9 @@
 - Benchmark tests added.
 
 
+[v0.9.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.2...v0.9.0
+[v0.8.2]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.1...v0.8.2
+[v0.8.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.7.0...v0.8.0
 [v0.7.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.4...v0.7.0
 [v0.6.4]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.6.3...v0.6.4
