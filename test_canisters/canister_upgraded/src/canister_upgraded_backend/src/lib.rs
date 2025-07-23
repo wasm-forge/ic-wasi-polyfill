@@ -81,7 +81,7 @@ impl ic_stable_structures::Storable for MyChunk4k {
 }
 
 thread_local! {
-    static LARGE_CHUNK: RefCell<Option<MyChunk>> = RefCell::new(None);
+    static LARGE_CHUNK: RefCell<Option<MyChunk>> = const { RefCell::new(None) };
 
     static MAP: RefCell<StableBTreeMap<u64, MyChunk, Memory>> = RefCell::new(
         StableBTreeMap::init(MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(110))))
@@ -269,8 +269,8 @@ pub fn store_chunk_map4k(key: u64) -> (u64, usize) {
             let mut mp = mp.borrow_mut();
 
             loop {
-                let upper = std::cmp::min((&chunk.0).len(), ((idx + 1) * 4096) as usize);
-                let lower = std::cmp::min((&chunk.0).len(), (idx * 4096) as usize);
+                let upper = std::cmp::min(chunk.0.len(), ((idx + 1) * 4096) as usize);
+                let lower = std::cmp::min(chunk.0.len(), (idx * 4096) as usize);
 
                 if lower == upper {
                     break;
@@ -283,7 +283,7 @@ pub fn store_chunk_map4k(key: u64) -> (u64, usize) {
 
                 len += vec.len();
 
-                if vec.len() > 0 {
+                if !vec.is_empty() {
                     mp.insert((key, idx as u64), MyChunk4k(vec));
                 } else {
                     break;
@@ -459,7 +459,6 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
 
     let file = OpenOptions::new()
         .create(true)
-        .write(true)
         .append(true)
         .open(filename)
         .unwrap();
@@ -578,13 +577,11 @@ fn delete_folder(path: String) {
 
 #[ic_cdk::query]
 fn current_dir() -> String {
-    let res = env::current_dir()
+    env::current_dir()
         .unwrap()
         .into_os_string()
         .into_string()
-        .unwrap();
-
-    res
+        .unwrap()
 }
 
 #[ic_cdk::query]
@@ -608,8 +605,8 @@ fn list_files(path: String) -> Vec<String> {
     res
 }
 
-fn list_all_files_recursive(path: &String, files: &mut Vec<String>) {
-    let entries = fs::read_dir(&path).unwrap();
+fn list_all_files_recursive(path: &str, files: &mut Vec<String>) {
+    let entries = fs::read_dir(path).unwrap();
 
     for entry in entries {
         let entry = entry.unwrap();
@@ -627,7 +624,7 @@ fn list_all_files_recursive(path: &String, files: &mut Vec<String>) {
 
 #[ic_cdk::query]
 fn list_all_files(path: String) -> Vec<String> {
-    println!("Reading directory: {}", path);
+    println!("Reading directory: {path}");
 
     let mut res = vec![];
     list_all_files_recursive(&path, &mut res);
@@ -640,10 +637,10 @@ fn create_depth_folders(path: String, count: usize) -> String {
     let mut dir_name = "d0".to_string();
 
     for num in 1..count {
-        dir_name = format!("{}/d{}", dir_name, num);
+        dir_name = format!("{dir_name}/d{num}");
     }
 
-    dir_name = format!("{}/{}", path, dir_name);
+    dir_name = format!("{path}/{dir_name}");
 
     fs::create_dir_all(&dir_name).unwrap();
 
@@ -655,10 +652,10 @@ fn delete_depth_folders(path: String, count: usize) -> String {
     let mut dir_name = "d0".to_string();
 
     for num in 1..count {
-        dir_name = format!("{}/d{}", dir_name, num);
+        dir_name = format!("{dir_name}/d{num}");
     }
 
-    dir_name = format!("{}/{}", path, dir_name);
+    dir_name = format!("{path}/{dir_name}");
 
     fs::remove_dir_all(&dir_name).unwrap();
 
@@ -670,14 +667,12 @@ fn create_files(path: String, count: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     for num in 0..count {
-        let filename = format!("{}/{}.txt", path, num);
+        let filename = format!("{path}/{num}.txt");
         let mut file = File::create(&filename).unwrap();
 
         // 64 byte block + file name
-        let text = format!(
-            "0123456789012345678901234567890123456789012345678901234567890123:{}",
-            filename
-        );
+        let text =
+            format!("0123456789012345678901234567890123456789012345678901234567890123:{filename}");
 
         file.write_all(text.as_bytes()).unwrap();
         file.flush().unwrap();
