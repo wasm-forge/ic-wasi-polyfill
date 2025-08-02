@@ -79,7 +79,14 @@ thread_local! {
     pub static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
 
     pub static FS: RefCell<FileSystem> = RefCell::new(
-        FileSystem::new(Box::new(DummyStorage::new())).unwrap()
+        FileSystem::new(
+            // transient feature does not require explicit initialization
+            if cfg!(feature = "transient") {
+                Box::new(TransientStorage::new())
+            } else {
+                Box::new(DummyStorage::new())
+            }
+        ).unwrap()
     );
 
     pub static ENV: RefCell<Environment> = RefCell::new(Environment::new());

@@ -60,8 +60,9 @@ jobs:
       - name: Build test projects
         run: ./scripts/build_tests.sh
 
-      # Run tests
-      - name: before Run tests
+      - name: output candid
+        run: test_canisters/fs_tests/src/fs_tests_backend/fs_tests_backend.did
+      - name: output test_setup
         run: cat fuzz-tests/src/test_setup.rs
 
       # Run tests
