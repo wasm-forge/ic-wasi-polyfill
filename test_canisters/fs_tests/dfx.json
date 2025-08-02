@@ -5,8 +5,7 @@
       "package": "fs_tests_backend",
       "wasm": "target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm",
       "build": "scripts/build.sh",
-      "type": "custom",
-      "init_arg": "(40, 45)"
+      "type": "custom"
     }
   },
   "defaults": {
