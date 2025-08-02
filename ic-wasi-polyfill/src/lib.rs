@@ -1013,6 +1013,7 @@ pub unsafe extern "C" fn __ic_custom_fd_readdir(
     #[cfg(feature = "report_wasi_calls")]
     {
         let mn = std::cmp::min(
+            #[allow(clippy::unnecessary_cast)]
             std::cmp::min(bytes_len as usize, unsafe { *res } as usize),
             50,
         );
