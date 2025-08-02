@@ -76,13 +76,13 @@ pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wa
 }
 
 thread_local! {
-    static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
+    pub static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
 
     pub static FS: RefCell<FileSystem> = RefCell::new(
         FileSystem::new(Box::new(DummyStorage::new())).unwrap()
     );
 
-    static ENV: RefCell<Environment> = RefCell::new(Environment::new());
+    pub static ENV: RefCell<Environment> = RefCell::new(Environment::new());
 }
 
 #[allow(unused_macros)]
@@ -137,7 +137,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     {
         let lengths: Vec<_> = src_io_vec.iter().map(|x| x.len).collect();
 
-        let l = format!("iovs.lengths={:?}", lengths);
+        let l = format!("iovs.lengths={lengths:?}");
         debug_instructions!("__ic_custom_fd_write", "fd={fd:?} iovs.len={len:?} {l}");
     }
 
@@ -191,7 +191,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     #[cfg(feature = "report_wasi_calls")]
     {
         let lengths: Vec<_> = dst_io_vec.iter().map(|x: &DstBuf| x.len).collect();
-        let l = format!("iovs.lengths={:?}", lengths);
+        let l = format!("iovs.lengths={lengths:?}");
 
         debug_instructions!("__ic_custom_fd_read", "fd={fd:?} iovs.lengths={l}");
     }
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     #[cfg(feature = "report_wasi_calls")]
     {
         let lengths: Vec<_> = src_io_vec.iter().map(|x: &SrcBuf| x.len).collect();
-        let l = format!("iovs.lengths={:?}", lengths);
+        let l = format!("iovs.lengths={lengths:?}");
         debug_instructions!(
             "__ic_custom_fd_pwrite",
             "fd={fd:?} iovs.len={len:?} offset={offset} iovs.lengths={l}"
@@ -305,7 +305,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     #[cfg(feature = "report_wasi_calls")]
     {
         let lengths: Vec<_> = dst_io_vec.iter().map(|x: &DstBuf| x.len).collect();
-        let l = format!("iovs.lengths={:?}", lengths);
+        let l = format!("iovs.lengths={lengths:?}");
 
         debug_instructions!(
             "__ic_custom_fd_pread",
@@ -1012,10 +1012,7 @@ pub unsafe extern "C" fn __ic_custom_fd_readdir(
 
     #[cfg(feature = "report_wasi_calls")]
     {
-        let mn = std::cmp::min(
-            std::cmp::min(bytes_len as usize, unsafe { *res } as usize),
-            50,
-        );
+        let mn = std::cmp::min(std::cmp::min(bytes_len as usize, unsafe { *res }), 50);
         let buf = unsafe { std::slice::from_raw_parts_mut(bytes, mn) };
 
         let t = format!("buf={buf:?}... res={}", unsafe { *res });
