@@ -76,13 +76,13 @@ pub unsafe fn forward_to_debug(iovs: *const wasi::Ciovec, len: i32, res: *mut wa
 }
 
 thread_local! {
-    static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
+    pub static RNG : RefCell<rand::rngs::StdRng> = RefCell::new(rand::rngs::StdRng::from_seed([0;32]));
 
     pub static FS: RefCell<FileSystem> = RefCell::new(
         FileSystem::new(Box::new(DummyStorage::new())).unwrap()
     );
 
-    static ENV: RefCell<Environment> = RefCell::new(Environment::new());
+    pub static ENV: RefCell<Environment> = RefCell::new(Environment::new());
 }
 
 #[allow(unused_macros)]
