@@ -1012,7 +1012,11 @@ pub unsafe extern "C" fn __ic_custom_fd_readdir(
 
     #[cfg(feature = "report_wasi_calls")]
     {
-        let mn = std::cmp::min(std::cmp::min(bytes_len as usize, unsafe { *res }), 50);
+        let mn = std::cmp::min(
+            std::cmp::min(bytes_len as usize, unsafe { *res } as usize),
+            50,
+        );
+
         let buf = unsafe { std::slice::from_raw_parts_mut(bytes, mn) };
 
         let t = format!("buf={buf:?}... res={}", unsafe { *res });
