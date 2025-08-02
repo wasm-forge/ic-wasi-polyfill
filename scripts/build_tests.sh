@@ -5,7 +5,7 @@ set -e
 # build fs_tests for wasi
 cargo build --release --target wasm32-wasip1
 
-#candid-extractor target/wasm32-wasip1/release/fs_tests_backend.wasm > test_canisters/fs_tests/src/fs_tests_backend/fs_tests_backend.did
+candid-extractor target/wasm32-wasip1/release/fs_tests_backend.wasm > test_canisters/fs_tests/src/fs_tests_backend/fs_tests_backend.did
 
 wasi2ic target/wasm32-wasip1/release/fs_tests_backend.wasm target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm
 
