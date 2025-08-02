@@ -61,7 +61,7 @@ jobs:
         run: ./scripts/build_tests.sh
 
       - name: output candid
-        run: test_canisters/fs_tests/src/fs_tests_backend/fs_tests_backend.did
+        run: cat test_canisters/fs_tests/src/fs_tests_backend/fs_tests_backend.did
       - name: output test_setup
         run: cat fuzz-tests/src/test_setup.rs
 
