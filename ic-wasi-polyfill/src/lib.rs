@@ -80,8 +80,8 @@ thread_local! {
 
     pub static FS: RefCell<FileSystem> = RefCell::new(
         FileSystem::new(
-            // transient feature does not require explicit initialization
             if cfg!(feature = "transient") {
+                // transient feature does not require explicit initialization
                 Box::new(TransientStorage::new())
             } else {
                 Box::new(DummyStorage::new())
