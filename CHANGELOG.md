@@ -1,7 +1,8 @@
 # Changelog
 
 ## [v0.9.1]
-- Make static RNG and ENV variables public
+- make static RNG and ENV variables public
+- add cumulative instruction counter
 
 ## [v0.9.0]
 - update stable-structures to v0.7.0
