@@ -47,7 +47,7 @@ jobs:
       - name: Install WASI_SDK
         run: |
           ./scripts/install_wasi_sdk.sh -y
-          export WASI_SDK_PATH=`./prepare.sh --sdk`
+          export WASI_SDK_PATH=`./scripts/install_wasi_sdk.sh --sdk`
           echo "WASI_SDK_PATH=$WASI_SDK_PATH" >> $GITHUB_ENV
           echo "$WASI_SDK_PATH/bin" >> $GITHUB_PATH
 
