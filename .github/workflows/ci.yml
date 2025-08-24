@@ -44,6 +44,24 @@ jobs:
       - name: Check Format
         run: cargo fmt --all -- --check
 
+      - name: Install WASI_SDK
+        run: |
+          ./scripts/install_wasi_sdk.sh -y
+          export WASI_SDK_PATH=`./prepare.sh --sdk`
+          echo "WASI_SDK_PATH=$WASI_SDK_PATH" >> $GITHUB_ENV
+          echo "$WASI_SDK_PATH/bin" >> $GITHUB_PATH
+
+      - name: Check clang install
+        run: |
+          echo `which clang`
+          clang --version
+
+      - name: Check WASI_SDK_PATH
+        run: |
+          echo WASI_SDK_PATH...
+          echo $WASI_SDK_PATH
+          echo ...
+
       #- name: Clippy
       #  run: cargo clippy --tests --benches -- -D clippy::all
 

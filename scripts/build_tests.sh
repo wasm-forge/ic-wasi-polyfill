@@ -45,3 +45,8 @@ popd
 
 # regenerate APIs
 ic-test update --force
+
+# Build C-test canister
+
+$WASI_SDK_PATH/bin/clang++ -mexec-model=reactor -fno-exceptions test_canisters/c_tests/src/main.cpp -L./target/wasm32-wasip1/release -lic_wasi_polyfill -o ./target/wasm32-wasip1/release/c_test_main.wasm
+wasi2ic ./target/wasm32-wasip1/release/c_test_main.wasm ./target/wasm32-wasip1/release/c_test_main_nowasi.wasm
