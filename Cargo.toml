@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "ic-wasi-polyfill", "fuzz-tests", "test_canisters/fs_tests/src/fs_tests_backend",
+    "ic-wasi-polyfill", "integration-tests", "test_canisters/fs_tests/src/fs_tests_backend",
     "test_canisters/canister_initial/src/canister_initial_backend",
     "test_canisters/canister_upgraded/src/canister_upgraded_backend",
 ]

@@ -1,9 +1,17 @@
 {
-  "test_folder": "fuzz-tests",
+  "test_folder": "integration-tests",
   "icp_setup": {
-    "dfx_json": "tests/fs_tests/dfx.json",
     "skip_dfx_json": true,
     "canisters": {
+      "c_tests_backend": {
+        "name": "c_tests_backend",
+        "var_name": "c_tests_backend",
+        "service_name": "CTestsBackendCanister",
+        "candid_path": "test_canisters/c_tests/src/c_tests_backend.did",
+        "generate_bindings": false,
+        "wasm": "target/wasm32-wasip1/release/c_tests_main_nowasi.wasm",
+        "specified_id": "lz3um-vp777-77777-aaaba-cai"
+      },
       "canister_initial_backend": {
         "name": "canister_initial_backend",
         "var_name": "canister_initial_backend",
