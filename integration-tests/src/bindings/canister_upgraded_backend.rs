@@ -41,9 +41,7 @@ impl CanisterUpgradedBackendCanister {
         self.caller.call(
             self.canister_id,
             super::CallMode::Update,
-            "
-        check_new_dir_is_writable
-      ",
+            "check_new_dir_is_writable",
             args,
         )
     }
@@ -52,9 +50,7 @@ impl CanisterUpgradedBackendCanister {
         self.caller.call(
             self.canister_id,
             super::CallMode::Update,
-            "
-        check_new_file_is_writable
-      ",
+            "check_new_file_is_writable",
             args,
         )
     }

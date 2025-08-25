@@ -3,7 +3,12 @@
     "canister_initial_backend": {
       "candid": "src/canister_upgraded_backend/canister_upgraded_backend.did",
       "package": "canister_upgraded_backend",
-      "type": "rust"
+      "type": "rust",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     }
   },
   "defaults": {

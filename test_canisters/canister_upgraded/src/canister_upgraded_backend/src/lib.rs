@@ -5,13 +5,13 @@ use std::{
     io::{BufWriter, Read, Seek, Write},
 };
 
-use ic_cdk::export_candid;
-
 use ic_stable_structures::{
     memory_manager::{MemoryId, MemoryManager},
     storable::Bound,
     DefaultMemoryImpl, StableBTreeMap,
 };
+
+use ic_cdk::export_candid;
 
 use ic_stable_structures::memory_manager::VirtualMemory;
 
@@ -353,7 +353,7 @@ pub fn load_chunk_map(key: u64) -> (u64, usize) {
 }
 
 #[ic_cdk::init]
-fn init() {
+pub fn init() {
     profiling_init();
 
     MEMORY_MANAGER.with(|m| {
@@ -368,7 +368,7 @@ fn init() {
 }
 
 #[ic_cdk::post_upgrade]
-fn post_upgrade() {
+pub fn post_upgrade() {
     profiling_init();
 
     MEMORY_MANAGER.with(|m| {
@@ -383,7 +383,7 @@ fn post_upgrade() {
 }
 
 #[ic_cdk::update]
-fn write_kb_text_buf(filename: String, kb_size: usize) -> u64 {
+pub fn write_kb_text_buf(filename: String, kb_size: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     // 64 byte block
@@ -407,7 +407,7 @@ fn write_kb_text_buf(filename: String, kb_size: usize) -> u64 {
 }
 
 #[ic_cdk::update]
-fn write_kb_text(filename: String, kb_size: usize) -> u64 {
+pub fn write_kb_text(filename: String, kb_size: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     // 64 byte block
@@ -430,7 +430,7 @@ fn write_kb_text(filename: String, kb_size: usize) -> u64 {
 }
 
 #[ic_cdk::update]
-fn write_mib_text(filename: String, mib_size: usize) -> u64 {
+pub fn write_mib_text(filename: String, mib_size: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     // 64 byte block
@@ -454,7 +454,7 @@ fn write_mib_text(filename: String, mib_size: usize) -> u64 {
 }
 
 #[ic_cdk::update]
-fn append_text(filename: String, text: String, times: usize) -> u64 {
+pub fn append_text(filename: String, text: String, times: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     let file = OpenOptions::new()
@@ -476,7 +476,7 @@ fn append_text(filename: String, text: String, times: usize) -> u64 {
 }
 
 #[ic_cdk::query]
-fn read_text(filename: String, offset: i64, size: usize) -> String {
+pub fn read_text(filename: String, offset: i64, size: usize) -> String {
     let mut f = OpenOptions::new()
         .read(true)
         .write(false)
@@ -493,7 +493,7 @@ fn read_text(filename: String, offset: i64, size: usize) -> String {
 }
 
 #[ic_cdk::query]
-fn file_size(filename: String) -> usize {
+pub fn file_size(filename: String) -> usize {
     let f = File::open(filename).unwrap();
 
     let pos = f.metadata().unwrap().len();
@@ -503,7 +503,7 @@ fn file_size(filename: String) -> usize {
 
 /*
 #[ic_cdk::update]
-fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
+pub fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
     use stable_fs::fs::{FdStat, OpenFlags, SrcBuf, Whence};
 
     let stime = ic_cdk::api::instruction_counter();
@@ -547,7 +547,7 @@ fn fs_write_kb_text(filename: String, kb_size: usize) -> u64 {
 */
 
 #[ic_cdk::update]
-fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
+pub fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
     let size = kb_size * 1024;
 
     let mut res = Vec::with_capacity(size);
@@ -565,18 +565,18 @@ fn read_kb(filename: String, kb_size: usize, offset: u64) -> Vec<u8> {
 
 // delete file
 #[ic_cdk::query]
-fn delete_file(filename: String) {
+pub fn delete_file(filename: String) {
     fs::remove_file(filename).unwrap();
 }
 
 // delete folder
 #[ic_cdk::query]
-fn delete_folder(path: String) {
+pub fn delete_folder(path: String) {
     fs::remove_dir_all(path).unwrap();
 }
 
 #[ic_cdk::query]
-fn current_dir() -> String {
+pub fn current_dir() -> String {
     env::current_dir()
         .unwrap()
         .into_os_string()
@@ -585,12 +585,12 @@ fn current_dir() -> String {
 }
 
 #[ic_cdk::query]
-fn set_current_dir(path: String) {
+pub fn set_current_dir(path: String) {
     env::set_current_dir(path).unwrap();
 }
 
 #[ic_cdk::query]
-fn list_files(path: String) -> Vec<String> {
+pub fn list_files(path: String) -> Vec<String> {
     let mut res = vec![];
     let entries = fs::read_dir(path).unwrap();
 
@@ -605,7 +605,7 @@ fn list_files(path: String) -> Vec<String> {
     res
 }
 
-fn list_all_files_recursive(path: &str, files: &mut Vec<String>) {
+pub fn list_all_files_recursive(path: &str, files: &mut Vec<String>) {
     let entries = fs::read_dir(path).unwrap();
 
     for entry in entries {
@@ -623,7 +623,7 @@ fn list_all_files_recursive(path: &str, files: &mut Vec<String>) {
 }
 
 #[ic_cdk::query]
-fn list_all_files(path: String) -> Vec<String> {
+pub fn list_all_files(path: String) -> Vec<String> {
     println!("Reading directory: {path}");
 
     let mut res = vec![];
@@ -633,7 +633,7 @@ fn list_all_files(path: String) -> Vec<String> {
 }
 
 #[ic_cdk::update]
-fn create_depth_folders(path: String, count: usize) -> String {
+pub fn create_depth_folders(path: String, count: usize) -> String {
     let mut dir_name = "d0".to_string();
 
     for num in 1..count {
@@ -648,7 +648,7 @@ fn create_depth_folders(path: String, count: usize) -> String {
 }
 
 #[ic_cdk::update]
-fn delete_depth_folders(path: String, count: usize) -> String {
+pub fn delete_depth_folders(path: String, count: usize) -> String {
     let mut dir_name = "d0".to_string();
 
     for num in 1..count {
@@ -663,7 +663,7 @@ fn delete_depth_folders(path: String, count: usize) -> String {
 }
 
 #[ic_cdk::update]
-fn create_files(path: String, count: usize) -> u64 {
+pub fn create_files(path: String, count: usize) -> u64 {
     let stime = ic_cdk::api::instruction_counter();
 
     for num in 0..count {
@@ -684,7 +684,7 @@ fn create_files(path: String, count: usize) -> u64 {
 }
 
 #[ic_cdk::update]
-fn check_new_dir_is_writable(dirname: String) -> String {
+pub fn check_new_dir_is_writable(dirname: String) -> String {
     std::fs::create_dir(&dirname).unwrap();
 
     let md = fs::metadata(&dirname).unwrap();
@@ -700,7 +700,7 @@ fn check_new_dir_is_writable(dirname: String) -> String {
 }
 
 #[ic_cdk::update]
-fn check_dir_is_writable(dirname: String) -> String {
+pub fn check_dir_is_writable(dirname: String) -> String {
     let md = fs::metadata(&dirname).unwrap();
 
     let permissions = md.permissions();
@@ -714,7 +714,7 @@ fn check_dir_is_writable(dirname: String) -> String {
 }
 
 #[ic_cdk::update]
-fn check_new_file_is_writable(file: String) -> String {
+pub fn check_new_file_is_writable(file: String) -> String {
     std::fs::File::create(&file).unwrap();
 
     let md = fs::metadata(&file).unwrap();

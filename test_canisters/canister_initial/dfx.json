@@ -3,7 +3,13 @@
     "canister_initial_backend": {
       "candid": "src/canister_initial_backend/canister_initial_backend.did",
       "package": "canister_initial_backend",
-      "type": "rust"
+      "type": "custom",
+      "wasm": "../../target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm",
+      "metadata": [
+        {
+          "name": "candid:service"
+        }
+      ]
     }
   },
   "defaults": {

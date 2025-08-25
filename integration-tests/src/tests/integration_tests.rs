@@ -378,7 +378,6 @@ async fn deep_subfolder_structure() {
     assert_eq!(expected_content, content);
 }
 
-/* There was a problem
 #[tokio::test]
 async fn long_chunk() {
     let env = test_setup::setup(IcpTest::new().await).await;
@@ -399,7 +398,6 @@ async fn long_chunk() {
 
     println!("store_chunk_map time={time} size={size}");
 }
-    */
 
 #[tokio::test]
 async fn created_dir_is_writable() {
