@@ -7,6 +7,7 @@
 use ic_test::IcpTest;
 
 use crate::bindings::{
+    c_tests_backend::{self, CTestsBackendCanister},
     canister_initial_backend::{self, CanisterInitialBackendCanister},
     canister_upgraded_backend::{self, CanisterUpgradedBackendCanister},
     fs_tests_backend::{self, FsTestsBackendCanister},
@@ -14,6 +15,7 @@ use crate::bindings::{
 
 pub(crate) struct Env {
     pub icp_test: IcpTest,
+    pub c_tests_backend: CTestsBackendCanister,
     pub canister_initial_backend: CanisterInitialBackendCanister,
     pub canister_upgraded_backend: CanisterUpgradedBackendCanister,
     pub fs_tests_backend: FsTestsBackendCanister,
@@ -24,6 +26,8 @@ pub(crate) async fn setup(icp_test: IcpTest) -> Env {
 
     // initialize canisters
 
+    let c_tests_backend = c_tests_backend::deploy(&icp_user).call().await;
+
     let canister_initial_backend = canister_initial_backend::deploy(&icp_user).call().await;
 
     let canister_upgraded_backend = canister_upgraded_backend::deploy(&icp_user).call().await;
@@ -32,6 +36,7 @@ pub(crate) async fn setup(icp_test: IcpTest) -> Env {
 
     Env {
         icp_test,
+        c_tests_backend,
         canister_initial_backend,
         canister_upgraded_backend,
         fs_tests_backend,

@@ -2,7 +2,10 @@ use std::{fs::OpenOptions, io::Write};
 
 use ic_test::IcpTest;
 
-use crate::{bindings::fs_tests_backend, test_setup};
+use crate::{
+    bindings::fs_tests_backend,
+    test_setup::{self},
+};
 
 #[tokio::test]
 async fn test_basic_fs_check() {
@@ -21,17 +24,19 @@ async fn test_fs_durability() {
 
     let env = test_setup::setup(IcpTest::new().await).await;
 
-    let icp_user = env.icp_test.icp.test_user(0);
-
     let backend = env.fs_tests_backend;
 
     let _c = backend.do_fs_test().call().await;
 
     // re-deploy
-    let backend = fs_tests_backend::deploy(&icp_user)
-        .with_upgrade()
-        .call()
-        .await;
+    let wasm = fs_tests_backend::wasm().expect("Wasm not found for the upgrade_canister");
+    let user = env.icp_test.icp.default_user().principal;
+    env.icp_test
+        .icp
+        .pic
+        .upgrade_canister(backend.canister_id, wasm, vec![], Some(user))
+        .await
+        .expect("Failed to upgrade canister!");
 
     let c = backend.do_fs_test().call().await;
 

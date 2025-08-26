@@ -24,8 +24,6 @@ impl CTestsBackendCanister {
         )
     }
 }
-pub const CANISTER_ID: Principal =
-    Principal::from_slice(&[255, 255, 255, 255, 255, 224, 0, 2, 1, 1]); // lz3um-vp777-77777-aaaba-cai
 
 pub fn new(caller: &super::Caller, canister_id: Principal) -> CTestsBackendCanister {
     CTestsBackendCanister {
@@ -49,12 +47,12 @@ pub fn deploy(deployer: &super::Deployer) -> super::DeployBuilder<CTestsBackendC
     }
 }
 pub fn canister_id() -> Option<Principal> {
-    Some(Principal::from_text("lz3um-vp777-77777-aaaba-cai").unwrap())
+    None
 }
 
 pub fn wasm() -> Option<Vec<u8>> {
     let mut path = std::path::PathBuf::new();
-    path.push("../target/wasm32-wasip1/release/c_tests_main_nowasi.wasm");
+    path.push("../target/wasm32-wasip1/release/c_test_main_nowasi.wasm");
     let wasm =
         std::fs::read(path.as_path()).unwrap_or_else(|_| panic!("wasm binary not found: {path:?}"));
     Some(wasm)

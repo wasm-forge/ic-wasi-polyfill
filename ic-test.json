@@ -8,9 +8,9 @@
         "var_name": "c_tests_backend",
         "service_name": "CTestsBackendCanister",
         "candid_path": "test_canisters/c_tests/src/c_tests_backend.did",
-        "generate_bindings": false,
-        "wasm": "target/wasm32-wasip1/release/c_tests_main_nowasi.wasm",
-        "specified_id": "lz3um-vp777-77777-aaaba-cai"
+        "generate_bindings": true,
+        "wasm": "target/wasm32-wasip1/release/c_test_main_nowasi.wasm",
+        "specified_id": null
       },
       "canister_initial_backend": {
         "name": "canister_initial_backend",
@@ -37,7 +37,7 @@
         "candid_path": "test_canisters/fs_tests/src/fs_tests_backend/fs_tests_backend.did",
         "generate_bindings": true,
         "wasm": "target/wasm32-wasip1/release/fs_tests_backend_nowasi.wasm",
-        "specified_id": "lz3um-vp777-77777-aaaba-cai"
+        "specified_id": null
       }
     }
   }

@@ -936,6 +936,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 }
 
 #[unsafe(no_mangle)]
+#[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
     let start = ic_instruction_counter();
 
@@ -960,6 +961,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
 }
 
 #[unsafe(no_mangle)]
+#[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_set_times(
     fd: Fd,
     atim: i64,
@@ -1181,6 +1183,7 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
 }
 
 #[unsafe(no_mangle)]
+#[inline(never)]
 pub extern "C" fn __ic_custom_proc_exit(code: i32) -> ! {
     panic!("WASI proc_exit called with code: {code}");
 }
@@ -1796,89 +1799,94 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 }
 
 #[unsafe(no_mangle)]
+#[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __dummy_calls() {
+pub unsafe extern "C" fn __wasi2ic_dummy_calls() {
     // dummy calls to trick the linker not to throw away the functions
 
     use std::ptr::{null, null_mut};
 
-    unsafe {
-        // coverage:ignore-start
-        __ic_custom_fd_write(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
-        __ic_custom_fd_read(0, null::<wasi::Iovec>(), 0, null_mut::<wasi::Size>());
-        __ic_custom_fd_close(0);
+    COUNTER.with_borrow(|var| {
+        if *var == 1 {
+            unsafe {
+                // coverage:ignore-start
+                __ic_custom_fd_write(0, null::<wasi::Ciovec>(), 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_read(0, null::<wasi::Iovec>(), 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_close(0);
 
-        __ic_custom_fd_prestat_get(0, null_mut::<wasi::Prestat>());
-        __ic_custom_fd_prestat_dir_name(0, null_mut::<u8>(), 0);
+                __ic_custom_fd_prestat_get(0, null_mut::<wasi::Prestat>());
+                __ic_custom_fd_prestat_dir_name(0, null_mut::<u8>(), 0);
 
-        __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<u32>());
-        __ic_custom_random_get(null_mut::<u8>(), 0);
+                __ic_custom_path_open(0, 0, null::<u8>(), 0, 0, 0, 0, 0, null_mut::<u32>());
+                __ic_custom_random_get(null_mut::<u8>(), 0);
 
-        __ic_custom_environ_get(null_mut::<*mut u8>(), null_mut::<u8>());
-        __ic_custom_environ_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
+                __ic_custom_environ_get(null_mut::<*mut u8>(), null_mut::<u8>());
+                __ic_custom_environ_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
 
-        __ic_custom_args_get(null_mut::<*mut u8>(), null_mut::<u8>());
-        __ic_custom_args_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
-        __ic_custom_clock_res_get(0, null_mut::<u64>());
-        __ic_custom_clock_time_get(0, 0, null_mut::<u64>());
+                __ic_custom_args_get(null_mut::<*mut u8>(), null_mut::<u8>());
+                __ic_custom_args_sizes_get(null_mut::<wasi::Size>(), null_mut::<wasi::Size>());
+                __ic_custom_clock_res_get(0, null_mut::<u64>());
+                __ic_custom_clock_time_get(0, 0, null_mut::<u64>());
 
-        __ic_custom_fd_advise(0, 0, 0, 0);
-        __ic_custom_fd_allocate(0, 0, 0);
-        __ic_custom_fd_datasync(0);
-        __ic_custom_fd_fdstat_get(0, null_mut::<wasi::Fdstat>());
-        __ic_custom_fd_fdstat_set_flags(0, 0);
-        __ic_custom_fd_fdstat_set_rights(0, 0, 0);
-        __ic_custom_fd_filestat_get(0, null_mut::<wasi::Filestat>());
-        __ic_custom_fd_filestat_set_size(0, 0);
-        __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
-        __ic_custom_fd_pread(0, null::<wasi::Iovec>(), 0, 0, null_mut::<wasi::Size>());
-        __ic_custom_fd_pwrite(0, null::<wasi::Ciovec>(), 0, 0, null_mut::<wasi::Size>());
-        __ic_custom_fd_readdir(0, null_mut::<u8>(), 0, 0, null_mut::<wasi::Size>());
-        __ic_custom_fd_renumber(0, 0);
-        __ic_custom_fd_seek(0, 0, 0, null_mut::<wasi::Filesize>());
-        __ic_custom_fd_sync(0);
-        __ic_custom_fd_tell(0, null_mut::<wasi::Filesize>());
-        __ic_custom_path_create_directory(0, null::<u8>(), 0);
-        __ic_custom_path_filestat_get(0, 0, null::<u8>(), 0, null_mut::<wasi::Filestat>());
-        __ic_custom_path_filestat_set_times(0, 0, null::<u8>(), 0, 0, 0, 0);
-        __ic_custom_path_link(0, 0, null::<u8>(), 0, 0, null::<u8>(), 0);
+                __ic_custom_fd_advise(0, 0, 0, 0);
+                __ic_custom_fd_allocate(0, 0, 0);
+                __ic_custom_fd_datasync(0);
+                __ic_custom_fd_fdstat_get(0, null_mut::<wasi::Fdstat>());
+                __ic_custom_fd_fdstat_set_flags(0, 0);
+                __ic_custom_fd_fdstat_set_rights(0, 0, 0);
+                __ic_custom_fd_filestat_get(0, null_mut::<wasi::Filestat>());
+                __ic_custom_fd_filestat_set_size(0, 0);
+                __ic_custom_fd_filestat_set_times(0, 0, 0, 0);
+                __ic_custom_fd_pread(0, null::<wasi::Iovec>(), 0, 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_pwrite(0, null::<wasi::Ciovec>(), 0, 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_readdir(0, null_mut::<u8>(), 0, 0, null_mut::<wasi::Size>());
+                __ic_custom_fd_renumber(0, 0);
+                __ic_custom_fd_seek(0, 0, 0, null_mut::<wasi::Filesize>());
+                __ic_custom_fd_sync(0);
+                __ic_custom_fd_tell(0, null_mut::<wasi::Filesize>());
+                __ic_custom_path_create_directory(0, null::<u8>(), 0);
+                __ic_custom_path_filestat_get(0, 0, null::<u8>(), 0, null_mut::<wasi::Filestat>());
+                __ic_custom_path_filestat_set_times(0, 0, null::<u8>(), 0, 0, 0, 0);
+                __ic_custom_path_link(0, 0, null::<u8>(), 0, 0, null::<u8>(), 0);
 
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, null_mut());
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, null_mut());
 
-        __ic_custom_path_remove_directory(0, null::<u8>(), 0);
-        __ic_custom_path_rename(0, null::<u8>(), 0, 0, null::<u8>(), 0);
+                __ic_custom_path_remove_directory(0, null::<u8>(), 0);
+                __ic_custom_path_rename(0, null::<u8>(), 0, 0, null::<u8>(), 0);
 
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_path_symlink(null::<u8>(), 0, 0, null::<u8>(), 0);
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_path_symlink(null::<u8>(), 0, 0, null::<u8>(), 0);
 
-        __ic_custom_path_unlink_file(0, null::<u8>(), 0);
+                __ic_custom_path_unlink_file(0, null::<u8>(), 0);
 
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_poll_oneoff(
-            null::<wasi::Subscription>(),
-            null_mut::<wasi::Event>(),
-            0,
-            null_mut(),
-        );
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_poll_oneoff(
+                    null::<wasi::Subscription>(),
+                    null_mut::<wasi::Event>(),
+                    0,
+                    null_mut(),
+                );
 
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_proc_raise(0);
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_proc_raise(0);
 
-        __ic_custom_sched_yield();
+                __ic_custom_sched_yield();
 
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_sock_accept(0, 0, null_mut());
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_sock_recv(0, null(), 0, 0, null_mut(), null_mut());
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_sock_send(0, null(), 0, 0, null_mut());
-        #[cfg(not(feature = "skip_unimplemented_functions"))]
-        __ic_custom_sock_shutdown(0, 0);
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_sock_accept(0, 0, null_mut());
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_sock_recv(0, null(), 0, 0, null_mut(), null_mut());
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_sock_send(0, null(), 0, 0, null_mut());
+                #[cfg(not(feature = "skip_unimplemented_functions"))]
+                __ic_custom_sock_shutdown(0, 0);
 
-        __ic_custom_proc_exit(0);
-        // coverage:ignore-end
-    }
+                __ic_custom_proc_exit(0);
+                // coverage:ignore-end
+            }
+        }
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -1898,11 +1906,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 
     unsafe { raw_init_seed(seed, len) };
 
-    COUNTER.with_borrow(|var| {
-        if *var == 1 {
-            __dummy_calls();
-        }
-    })
+    __wasi2ic_dummy_calls();
 }
 
 /// Reset the cumulative instruction counter

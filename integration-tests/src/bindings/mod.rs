@@ -8,6 +8,9 @@ type DeployMode = ic_test::DeployMode;
 type Deployer = ic_test::IcpUser;
 type DeployBuilder<C> = ic_test::DeployBuilder<C, Caller>;
 
+// candid: test_canisters/c_tests/src/c_tests_backend.did
+pub mod c_tests_backend;
+
 // candid: test_canisters/canister_initial/src/canister_initial_backend/canister_initial_backend.did
 pub mod canister_initial_backend;
 
