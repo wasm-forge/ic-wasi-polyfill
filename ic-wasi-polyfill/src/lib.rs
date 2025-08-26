@@ -1801,7 +1801,7 @@ pub unsafe extern "C" fn raw_init_seed(seed: *const u8, len: usize) {
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __wasi2ic_dummy_calls() {
+pub unsafe extern "C" fn __dummy_wasi_calls() {
     // dummy calls to trick the linker not to throw away the functions
 
     use std::ptr::{null, null_mut};
@@ -1906,7 +1906,8 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 
     unsafe { raw_init_seed(seed, len) };
 
-    __wasi2ic_dummy_calls();
+    //
+    __dummy_wasi_calls();
 }
 
 /// Reset the cumulative instruction counter
