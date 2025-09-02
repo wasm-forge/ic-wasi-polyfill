@@ -40,7 +40,7 @@ pub fn profiling_init() {
 struct MyChunk(Vec<u8>);
 
 impl ic_stable_structures::Storable for MyChunk {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&'_ self) -> std::borrow::Cow<'_, [u8]> {
         self.0.to_bytes()
     }
 
@@ -62,7 +62,7 @@ impl ic_stable_structures::Storable for MyChunk {
 struct MyChunk4k(Vec<u8>);
 
 impl ic_stable_structures::Storable for MyChunk4k {
-    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+    fn to_bytes(&'_ self) -> std::borrow::Cow<'_, [u8]> {
         self.0.to_bytes()
     }
 
