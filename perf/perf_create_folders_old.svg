@@ -1,0 +1,491 @@
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg version="1.1" width="1024" height="342" onload="init(evt)" viewBox="0 0 1024 342" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:fg="http://github.com/jonhoo/inferno"><!--Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples.--><!--NOTES: --><defs><linearGradient id="background" y1="0" y2="1" x1="0" x2="0"><stop stop-color="#eeeeee" offset="5%"/><stop stop-color="#eeeeb0" offset="95%"/></linearGradient></defs><style type="text/css">
+text { font-family:monospace; font-size:12px }
+#title { text-anchor:middle; font-size:17px; }
+#matched { text-anchor:end; }
+#search { text-anchor:end; opacity:0.1; cursor:pointer; }
+#search:hover, #search.show { opacity:1; }
+#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style><script type="text/ecmascript"><![CDATA[
+        var nametype = 'Function:';
+        var fontsize = 12;
+        var fontwidth = 0.59;
+        var xpad = 10;
+        var inverted = false;
+        var searchcolor = 'rgb(230,0,230)';
+        var fluiddrawing = false;
+        var truncate_text_right = false;
+    ]]><![CDATA["use strict";
+var details, searchbtn, unzoombtn, matchedtxt, svg, searching, frames, known_font_width;
+function init(evt) {
+    details = document.getElementById("details").firstChild;
+    searchbtn = document.getElementById("search");
+    unzoombtn = document.getElementById("unzoom");
+    matchedtxt = document.getElementById("matched");
+    svg = document.getElementsByTagName("svg")[0];
+    frames = document.getElementById("frames");
+    known_font_width = get_monospace_width(frames);
+    total_samples = parseInt(frames.attributes.total_samples.value);
+    searching = 0;
+
+    // Use GET parameters to restore a flamegraph's state.
+    var restore_state = function() {
+        var params = get_params();
+        if (params.x && params.y)
+            zoom(find_group(document.querySelector('[*|x="' + params.x + '"][y="' + params.y + '"]')));
+        if (params.s)
+            search(params.s);
+    };
+
+    if (fluiddrawing) {
+        // Make width dynamic so the SVG fits its parent's width.
+        svg.removeAttribute("width");
+        // Edge requires us to have a viewBox that gets updated with size changes.
+        var isEdge = /Edge\/\d./i.test(navigator.userAgent);
+        if (!isEdge) {
+            svg.removeAttribute("viewBox");
+        }
+        var update_for_width_change = function() {
+            if (isEdge) {
+                svg.attributes.viewBox.value = "0 0 " + svg.width.baseVal.value + " " + svg.height.baseVal.value;
+            }
+
+            // Keep consistent padding on left and right of frames container.
+            frames.attributes.width.value = svg.width.baseVal.value - xpad * 2;
+
+            // Text truncation needs to be adjusted for the current width.
+            update_text_for_elements(frames.children);
+
+            // Keep search elements at a fixed distance from right edge.
+            var svgWidth = svg.width.baseVal.value;
+            searchbtn.attributes.x.value = svgWidth - xpad;
+            matchedtxt.attributes.x.value = svgWidth - xpad;
+        };
+        window.addEventListener('resize', function() {
+            update_for_width_change();
+        });
+        // This needs to be done asynchronously for Safari to work.
+        setTimeout(function() {
+            unzoom();
+            update_for_width_change();
+            restore_state();
+        }, 0);
+    } else {
+        restore_state();
+    }
+}
+// event listeners
+window.addEventListener("click", function(e) {
+    var target = find_group(e.target);
+    if (target) {
+        if (target.nodeName == "a") {
+            if (e.ctrlKey === false) return;
+            e.preventDefault();
+        }
+        if (target.classList.contains("parent")) unzoom();
+        zoom(target);
+
+        // set parameters for zoom state
+        var el = target.querySelector("rect");
+        if (el && el.attributes && el.attributes.y && el.attributes["fg:x"]) {
+            var params = get_params()
+            params.x = el.attributes["fg:x"].value;
+            params.y = el.attributes.y.value;
+            history.replaceState(null, null, parse_params(params));
+        }
+    }
+    else if (e.target.id == "unzoom") {
+        unzoom();
+
+        // remove zoom state
+        var params = get_params();
+        if (params.x) delete params.x;
+        if (params.y) delete params.y;
+        history.replaceState(null, null, parse_params(params));
+    }
+    else if (e.target.id == "search") search_prompt();
+}, false)
+// mouse-over for info
+// show
+window.addEventListener("mouseover", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = nametype + " " + g_to_text(target);
+}, false)
+// clear
+window.addEventListener("mouseout", function(e) {
+    var target = find_group(e.target);
+    if (target) details.nodeValue = ' ';
+}, false)
+// ctrl-F for search
+window.addEventListener("keydown",function (e) {
+    if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+        e.preventDefault();
+        search_prompt();
+    }
+}, false)
+// functions
+function get_params() {
+    var params = {};
+    var paramsarr = window.location.search.substr(1).split('&');
+    for (var i = 0; i < paramsarr.length; ++i) {
+        var tmp = paramsarr[i].split("=");
+        if (!tmp[0] || !tmp[1]) continue;
+        params[tmp[0]]  = decodeURIComponent(tmp[1]);
+    }
+    return params;
+}
+function parse_params(params) {
+    var uri = "?";
+    for (var key in params) {
+        uri += key + '=' + encodeURIComponent(params[key]) + '&';
+    }
+    if (uri.slice(-1) == "&")
+        uri = uri.substring(0, uri.length - 1);
+    if (uri == '?')
+        uri = window.location.href.split('?')[0];
+    return uri;
+}
+function find_child(node, selector) {
+    var children = node.querySelectorAll(selector);
+    if (children.length) return children[0];
+    return;
+}
+function find_group(node) {
+    var parent = node.parentElement;
+    if (!parent) return;
+    if (parent.id == "frames") return node;
+    return find_group(parent);
+}
+function orig_save(e, attr, val) {
+    if (e.attributes["fg:orig_" + attr] != undefined) return;
+    if (e.attributes[attr] == undefined) return;
+    if (val == undefined) val = e.attributes[attr].value;
+    e.setAttribute("fg:orig_" + attr, val);
+}
+function orig_load(e, attr) {
+    if (e.attributes["fg:orig_"+attr] == undefined) return;
+    e.attributes[attr].value = e.attributes["fg:orig_" + attr].value;
+    e.removeAttribute("fg:orig_" + attr);
+}
+function g_to_text(e) {
+    var text = find_child(e, "title").firstChild.nodeValue;
+    return (text)
+}
+function g_to_func(e) {
+    var func = g_to_text(e);
+    // if there's any manipulation we want to do to the function
+    // name before it's searched, do it here before returning.
+    return (func);
+}
+function get_monospace_width(frames) {
+    // Given the id="frames" element, return the width of text characters if
+    // this is a monospace font, otherwise return 0.
+    text = find_child(frames.children[0], "text");
+    originalContent = text.textContent;
+    text.textContent = "!";
+    bangWidth = text.getComputedTextLength();
+    text.textContent = "W";
+    wWidth = text.getComputedTextLength();
+    text.textContent = originalContent;
+    if (bangWidth === wWidth) {
+        return bangWidth;
+    } else {
+        return 0;
+    }
+}
+function update_text_for_elements(elements) {
+    // In order to render quickly in the browser, you want to do one pass of
+    // reading attributes, and one pass of mutating attributes. See
+    // https://web.dev/avoid-large-complex-layouts-and-layout-thrashing/ for details.
+
+    // Fall back to inefficient calculation, if we're variable-width font.
+    // TODO This should be optimized somehow too.
+    if (known_font_width === 0) {
+        for (var i = 0; i < elements.length; i++) {
+            update_text(elements[i]);
+        }
+        return;
+    }
+
+    var textElemNewAttributes = [];
+    for (var i = 0; i < elements.length; i++) {
+        var e = elements[i];
+        var r = find_child(e, "rect");
+        var t = find_child(e, "text");
+        var w = parseFloat(r.attributes.width.value) * frames.attributes.width.value / 100 - 3;
+        var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+        var newX = format_percent((parseFloat(r.attributes.x.value) + (100 * 3 / frames.attributes.width.value)));
+
+        // Smaller than this size won't fit anything
+        if (w < 2 * known_font_width) {
+            textElemNewAttributes.push([newX, ""]);
+            continue;
+        }
+
+        // Fit in full text width
+        if (txt.length * known_font_width < w) {
+            textElemNewAttributes.push([newX, txt]);
+            continue;
+        }
+
+        var substringLength = Math.floor(w / known_font_width) - 2;
+        if (truncate_text_right) {
+            // Truncate the right side of the text.
+            textElemNewAttributes.push([newX, txt.substring(0, substringLength) + ".."]);
+            continue;
+        } else {
+            // Truncate the left side of the text.
+            textElemNewAttributes.push([newX, ".." + txt.substring(txt.length - substringLength, txt.length)]);
+            continue;
+        }
+    }
+
+    console.assert(textElemNewAttributes.length === elements.length, "Resize failed, please file a bug at https://github.com/jonhoo/inferno/");
+
+    // Now that we know new textContent, set it all in one go so we don't refresh a bazillion times.
+    for (var i = 0; i < elements.length; i++) {
+        var e = elements[i];
+        var values = textElemNewAttributes[i];
+        var t = find_child(e, "text");
+        t.attributes.x.value = values[0];
+        t.textContent = values[1];
+    }
+}
+
+function update_text(e) {
+    var r = find_child(e, "rect");
+    var t = find_child(e, "text");
+    var w = parseFloat(r.attributes.width.value) * frames.attributes.width.value / 100 - 3;
+    var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+    t.attributes.x.value = format_percent((parseFloat(r.attributes.x.value) + (100 * 3 / frames.attributes.width.value)));
+
+    // Smaller than this size won't fit anything
+    if (w < 2 * fontsize * fontwidth) {
+        t.textContent = "";
+        return;
+    }
+    t.textContent = txt;
+    // Fit in full text width
+    if (t.getComputedTextLength() < w)
+        return;
+    if (truncate_text_right) {
+        // Truncate the right side of the text.
+        for (var x = txt.length - 2; x > 0; x--) {
+            if (t.getSubStringLength(0, x + 2) <= w) {
+                t.textContent = txt.substring(0, x) + "..";
+                return;
+            }
+        }
+    } else {
+        // Truncate the left side of the text.
+        for (var x = 2; x < txt.length; x++) {
+            if (t.getSubStringLength(x - 2, txt.length) <= w) {
+                t.textContent = ".." + txt.substring(x, txt.length);
+                return;
+            }
+        }
+    }
+    t.textContent = "";
+}
+// zoom
+function zoom_reset(e) {
+    if (e.tagName == "rect") {
+        e.attributes.x.value = format_percent(100 * parseInt(e.attributes["fg:x"].value) / total_samples);
+        e.attributes.width.value = format_percent(100 * parseInt(e.attributes["fg:w"].value) / total_samples);
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_reset(c[i]);
+    }
+}
+function zoom_child(e, x, zoomed_width_samples) {
+    if (e.tagName == "text") {
+        var parent_x = parseFloat(find_child(e.parentNode, "rect[x]").attributes.x.value);
+        e.attributes.x.value = format_percent(parent_x + (100 * 3 / frames.attributes.width.value));
+    } else if (e.tagName == "rect") {
+        e.attributes.x.value = format_percent(100 * (parseInt(e.attributes["fg:x"].value) - x) / zoomed_width_samples);
+        e.attributes.width.value = format_percent(100 * parseInt(e.attributes["fg:w"].value) / zoomed_width_samples);
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_child(c[i], x, zoomed_width_samples);
+    }
+}
+function zoom_parent(e) {
+    if (e.attributes) {
+        if (e.attributes.x != undefined) {
+            e.attributes.x.value = "0.0%";
+        }
+        if (e.attributes.width != undefined) {
+            e.attributes.width.value = "100.0%";
+        }
+    }
+    if (e.childNodes == undefined) return;
+    for(var i = 0, c = e.childNodes; i < c.length; i++) {
+        zoom_parent(c[i]);
+    }
+}
+function zoom(node) {
+    var attr = find_child(node, "rect").attributes;
+    var width = parseInt(attr["fg:w"].value);
+    var xmin = parseInt(attr["fg:x"].value);
+    var xmax = xmin + width;
+    var ymin = parseFloat(attr.y.value);
+    unzoombtn.classList.remove("hide");
+    var el = frames.children;
+    var to_update_text = [];
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        var a = find_child(e, "rect").attributes;
+        var ex = parseInt(a["fg:x"].value);
+        var ew = parseInt(a["fg:w"].value);
+        // Is it an ancestor
+        if (!inverted) {
+            var upstack = parseFloat(a.y.value) > ymin;
+        } else {
+            var upstack = parseFloat(a.y.value) < ymin;
+        }
+        if (upstack) {
+            // Direct ancestor
+            if (ex <= xmin && (ex+ew) >= xmax) {
+                e.classList.add("parent");
+                zoom_parent(e);
+                to_update_text.push(e);
+            }
+            // not in current path
+            else
+                e.classList.add("hide");
+        }
+        // Children maybe
+        else {
+            // no common path
+            if (ex < xmin || ex >= xmax) {
+                e.classList.add("hide");
+            }
+            else {
+                zoom_child(e, xmin, width);
+                to_update_text.push(e);
+            }
+        }
+    }
+    update_text_for_elements(to_update_text);
+}
+function unzoom() {
+    unzoombtn.classList.add("hide");
+    var el = frames.children;
+    for(var i = 0; i < el.length; i++) {
+        el[i].classList.remove("parent");
+        el[i].classList.remove("hide");
+        zoom_reset(el[i]);
+    }
+    update_text_for_elements(el);
+}
+// search
+function reset_search() {
+    var el = document.querySelectorAll("#frames rect");
+    for (var i = 0; i < el.length; i++) {
+        orig_load(el[i], "fill")
+    }
+    var params = get_params();
+    delete params.s;
+    history.replaceState(null, null, parse_params(params));
+}
+function search_prompt() {
+    if (!searching) {
+        var term = prompt("Enter a search term (regexp " +
+            "allowed, eg: ^ext4_)", "");
+        if (term != null) {
+            search(term)
+        }
+    } else {
+        reset_search();
+        searching = 0;
+        searchbtn.classList.remove("show");
+        searchbtn.firstChild.nodeValue = "Search"
+        matchedtxt.classList.add("hide");
+        matchedtxt.firstChild.nodeValue = ""
+    }
+}
+function search(term) {
+    var re = new RegExp(term);
+    var el = frames.children;
+    var matches = new Object();
+    var maxwidth = 0;
+    for (var i = 0; i < el.length; i++) {
+        var e = el[i];
+        // Skip over frames which are either not visible, or below the zoomed-to frame
+        if (e.classList.contains("hide") || e.classList.contains("parent")) {
+            continue;
+        }
+        var func = g_to_func(e);
+        var rect = find_child(e, "rect");
+        if (func == null || rect == null)
+            continue;
+        // Save max width. Only works as we have a root frame
+        var w = parseInt(rect.attributes["fg:w"].value);
+        if (w > maxwidth)
+            maxwidth = w;
+        if (func.match(re)) {
+            // highlight
+            var x = parseInt(rect.attributes["fg:x"].value);
+            orig_save(rect, "fill");
+            rect.attributes.fill.value = searchcolor;
+            // remember matches
+            if (matches[x] == undefined) {
+                matches[x] = w;
+            } else {
+                if (w > matches[x]) {
+                    // overwrite with parent
+                    matches[x] = w;
+                }
+            }
+            searching = 1;
+        }
+    }
+    if (!searching)
+        return;
+    var params = get_params();
+    params.s = term;
+    history.replaceState(null, null, parse_params(params));
+
+    searchbtn.classList.add("show");
+    searchbtn.firstChild.nodeValue = "Reset Search";
+    // calculate percent matched, excluding vertical overlap
+    var count = 0;
+    var lastx = -1;
+    var lastw = 0;
+    var keys = Array();
+    for (k in matches) {
+        if (matches.hasOwnProperty(k))
+            keys.push(k);
+    }
+    // sort the matched frames by their x location
+    // ascending, then width descending
+    keys.sort(function(a, b){
+        return a - b;
+    });
+    // Step through frames saving only the biggest bottom-up frames
+    // thanks to the sort order. This relies on the tree property
+    // where children are always smaller than their parents.
+    for (var k in keys) {
+        var x = parseInt(keys[k]);
+        var w = matches[keys[k]];
+        if (x >= lastx + lastw) {
+            count += w;
+            lastx = x;
+            lastw = w;
+        }
+    }
+    // display matched percent
+    matchedtxt.classList.remove("hide");
+    var pct = 100 * count / maxwidth;
+    if (pct != 100) pct = pct.toFixed(1);
+    matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+}
+function format_percent(n) {
+    return n.toFixed(4) + "%";
+}
+]]></script><rect x="0" y="0" width="100%" height="342" fill="url(#background)"/><text id="title" fill="rgb(0,0,0)" x="50.0000%" y="24.00">perf_create_folders (incomplete)</text><text id="details" fill="rgb(0,0,0)" x="10" y="325.00"> </text><text id="unzoom" class="hide" fill="rgb(0,0,0)" x="10" y="24.00">Reset Zoom</text><text id="search" fill="rgb(0,0,0)" x="1014" y="24.00">Search</text><text id="matched" fill="rgb(0,0,0)" x="1014" y="325.00"> </text><svg id="frames" x="10" width="1004" total_samples="594232755"><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,494,905 instructions, 4.12%)</title><rect x="0.0043%" y="37" width="4.1221%" height="15" fill="rgb(227,0,7)" fg:x="25574" fg:w="24494905"/><text x="0.2973%" y="47.50">&lt;st..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,495,659 instructions, 4.12%)</title><rect x="0.0043%" y="53" width="4.1222%" height="15" fill="rgb(217,0,24)" fg:x="25574" fg:w="24495659"/><text x="0.2973%" y="63.50">sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,549,997 instructions, 4.13%)</title><rect x="0.0042%" y="69" width="4.1314%" height="15" fill="rgb(221,193,54)" fg:x="24792" fg:w="24549997"/><text x="0.2971%" y="79.50">sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,576,438 instructions, 4.14%)</title><rect x="0.0040%" y="85" width="4.1358%" height="15" fill="rgb(248,212,6)" fg:x="23917" fg:w="24576438"/><text x="0.2970%" y="95.50">sta..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,576,479 instructions, 4.14%)</title><rect x="0.0040%" y="101" width="4.1358%" height="15" fill="rgb(208,68,35)" fg:x="23917" fg:w="24576479"/><text x="0.2970%" y="111.50">sta..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,576,664 instructions, 4.14%)</title><rect x="0.0040%" y="117" width="4.1359%" height="15" fill="rgb(232,128,0)" fg:x="23917" fg:w="24576664"/><text x="0.2970%" y="127.50">sta..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,577,282 instructions, 4.14%)</title><rect x="0.0039%" y="133" width="4.1360%" height="15" fill="rgb(207,160,47)" fg:x="23403" fg:w="24577282"/><text x="0.2969%" y="143.50">std..</text></g><g><title>__ic_custom_path_create_directory (24,577,752 instructions, 4.14%)</title><rect x="0.0039%" y="149" width="4.1360%" height="15" fill="rgb(228,23,34)" fg:x="23403" fg:w="24577752"/><text x="0.2969%" y="159.50">__i..</text></g><g><title>wasi::lib_generated::path_create_directory (24,577,769 instructions, 4.14%)</title><rect x="0.0039%" y="165" width="4.1361%" height="15" fill="rgb(218,30,26)" fg:x="23403" fg:w="24577769"/><text x="0.2969%" y="175.50">was..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,580,326 instructions, 4.14%)</title><rect x="0.0036%" y="181" width="4.1365%" height="15" fill="rgb(220,122,19)" fg:x="21217" fg:w="24580326"/><text x="0.2965%" y="191.50">std..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,622,422 instructions, 4.14%)</title><rect x="0.0034%" y="197" width="4.1436%" height="15" fill="rgb(250,228,42)" fg:x="20451" fg:w="24622422"/><text x="0.2964%" y="207.50">std..</text></g><g><title>std::fs::DirBuilder::_create (24,622,435 instructions, 4.14%)</title><rect x="0.0034%" y="213" width="4.1436%" height="15" fill="rgb(240,193,28)" fg:x="20451" fg:w="24622435"/><text x="0.2964%" y="223.50">std..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,716,496 instructions, 4.16%)</title><rect x="4.1480%" y="37" width="4.1594%" height="15" fill="rgb(216,20,37)" fg:x="24649030" fg:w="24716496"/><text x="4.4410%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,717,816 instructions, 4.16%)</title><rect x="4.1480%" y="53" width="4.1596%" height="15" fill="rgb(206,188,39)" fg:x="24649030" fg:w="24717816"/><text x="4.4410%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,772,678 instructions, 4.17%)</title><rect x="4.1479%" y="69" width="4.1689%" height="15" fill="rgb(217,207,13)" fg:x="24648248" fg:w="24772678"/><text x="4.4409%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,774,505 instructions, 4.17%)</title><rect x="4.1478%" y="85" width="4.1692%" height="15" fill="rgb(231,73,38)" fg:x="24647457" fg:w="24774505"/><text x="4.4407%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,774,546 instructions, 4.17%)</title><rect x="4.1478%" y="101" width="4.1692%" height="15" fill="rgb(225,20,46)" fg:x="24647457" fg:w="24774546"/><text x="4.4407%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,774,731 instructions, 4.17%)</title><rect x="4.1478%" y="117" width="4.1692%" height="15" fill="rgb(210,31,41)" fg:x="24647457" fg:w="24774731"/><text x="4.4407%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,775,349 instructions, 4.17%)</title><rect x="4.1477%" y="133" width="4.1693%" height="15" fill="rgb(221,200,47)" fg:x="24646943" fg:w="24775349"/><text x="4.4407%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,775,819 instructions, 4.17%)</title><rect x="4.1477%" y="149" width="4.1694%" height="15" fill="rgb(226,26,5)" fg:x="24646943" fg:w="24775819"/><text x="4.4407%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,775,836 instructions, 4.17%)</title><rect x="4.1477%" y="165" width="4.1694%" height="15" fill="rgb(249,33,26)" fg:x="24646943" fg:w="24775836"/><text x="4.4407%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,778,307 instructions, 4.17%)</title><rect x="4.1473%" y="181" width="4.1698%" height="15" fill="rgb(235,183,28)" fg:x="24644816" fg:w="24778307"/><text x="4.4403%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,819,776 instructions, 4.18%)</title><rect x="4.1472%" y="197" width="4.1768%" height="15" fill="rgb(221,5,38)" fg:x="24644050" fg:w="24819776"/><text x="4.4402%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,819,789 instructions, 4.18%)</title><rect x="4.1472%" y="213" width="4.1768%" height="15" fill="rgb(247,18,42)" fg:x="24644050" fg:w="24819789"/><text x="4.4402%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,749,034 instructions, 4.16%)</title><rect x="8.3250%" y="37" width="4.1649%" height="15" fill="rgb(241,131,45)" fg:x="49470002" fg:w="24749034"/><text x="8.6180%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,750,873 instructions, 4.17%)</title><rect x="8.3250%" y="53" width="4.1652%" height="15" fill="rgb(249,31,29)" fg:x="49470002" fg:w="24750873"/><text x="8.6180%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,807,010 instructions, 4.17%)</title><rect x="8.3249%" y="69" width="4.1746%" height="15" fill="rgb(225,111,53)" fg:x="49469220" fg:w="24807010"/><text x="8.6179%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,808,838 instructions, 4.17%)</title><rect x="8.3248%" y="85" width="4.1749%" height="15" fill="rgb(238,160,17)" fg:x="49468428" fg:w="24808838"/><text x="8.6177%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,808,879 instructions, 4.17%)</title><rect x="8.3248%" y="101" width="4.1749%" height="15" fill="rgb(214,148,48)" fg:x="49468428" fg:w="24808879"/><text x="8.6177%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,809,064 instructions, 4.17%)</title><rect x="8.3248%" y="117" width="4.1750%" height="15" fill="rgb(232,36,49)" fg:x="49468428" fg:w="24809064"/><text x="8.6177%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,809,682 instructions, 4.18%)</title><rect x="8.3247%" y="133" width="4.1751%" height="15" fill="rgb(209,103,24)" fg:x="49467914" fg:w="24809682"/><text x="8.6176%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,810,152 instructions, 4.18%)</title><rect x="8.3247%" y="149" width="4.1752%" height="15" fill="rgb(229,88,8)" fg:x="49467914" fg:w="24810152"/><text x="8.6176%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,810,169 instructions, 4.18%)</title><rect x="8.3247%" y="165" width="4.1752%" height="15" fill="rgb(213,181,19)" fg:x="49467914" fg:w="24810169"/><text x="8.6176%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,812,889 instructions, 4.18%)</title><rect x="8.3243%" y="181" width="4.1756%" height="15" fill="rgb(254,191,54)" fg:x="49465778" fg:w="24812889"/><text x="8.6173%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,854,551 instructions, 4.18%)</title><rect x="8.3242%" y="197" width="4.1826%" height="15" fill="rgb(241,83,37)" fg:x="49465012" fg:w="24854551"/><text x="8.6172%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,854,564 instructions, 4.18%)</title><rect x="8.3242%" y="213" width="4.1826%" height="15" fill="rgb(233,36,39)" fg:x="49465012" fg:w="24854564"/><text x="8.6172%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,713,820 instructions, 4.16%)</title><rect x="12.5078%" y="37" width="4.1589%" height="15" fill="rgb(226,3,54)" fg:x="74325739" fg:w="24713820"/><text x="12.8008%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,716,178 instructions, 4.16%)</title><rect x="12.5078%" y="53" width="4.1593%" height="15" fill="rgb(245,192,40)" fg:x="74325739" fg:w="24716178"/><text x="12.8008%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,772,031 instructions, 4.17%)</title><rect x="12.5077%" y="69" width="4.1687%" height="15" fill="rgb(238,167,29)" fg:x="74324957" fg:w="24772031"/><text x="12.8007%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,773,859 instructions, 4.17%)</title><rect x="12.5076%" y="85" width="4.1690%" height="15" fill="rgb(232,182,51)" fg:x="74324165" fg:w="24773859"/><text x="12.8006%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,773,900 instructions, 4.17%)</title><rect x="12.5076%" y="101" width="4.1691%" height="15" fill="rgb(231,60,39)" fg:x="74324165" fg:w="24773900"/><text x="12.8006%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,774,085 instructions, 4.17%)</title><rect x="12.5076%" y="117" width="4.1691%" height="15" fill="rgb(208,69,12)" fg:x="74324165" fg:w="24774085"/><text x="12.8006%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,774,703 instructions, 4.17%)</title><rect x="12.5075%" y="133" width="4.1692%" height="15" fill="rgb(235,93,37)" fg:x="74323651" fg:w="24774703"/><text x="12.8005%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,775,173 instructions, 4.17%)</title><rect x="12.5075%" y="149" width="4.1693%" height="15" fill="rgb(213,116,39)" fg:x="74323651" fg:w="24775173"/><text x="12.8005%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,775,190 instructions, 4.17%)</title><rect x="12.5075%" y="165" width="4.1693%" height="15" fill="rgb(222,207,29)" fg:x="74323651" fg:w="24775190"/><text x="12.8005%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,777,910 instructions, 4.17%)</title><rect x="12.5071%" y="181" width="4.1697%" height="15" fill="rgb(206,96,30)" fg:x="74321515" fg:w="24777910"/><text x="12.8001%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,819,365 instructions, 4.18%)</title><rect x="12.5070%" y="197" width="4.1767%" height="15" fill="rgb(218,138,4)" fg:x="74320749" fg:w="24819365"/><text x="12.8000%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,819,378 instructions, 4.18%)</title><rect x="12.5070%" y="213" width="4.1767%" height="15" fill="rgb(250,191,14)" fg:x="74320749" fg:w="24819378"/><text x="12.8000%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,728,553 instructions, 4.16%)</title><rect x="16.6848%" y="37" width="4.1614%" height="15" fill="rgb(239,60,40)" fg:x="99146290" fg:w="24728553"/><text x="16.9777%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,731,430 instructions, 4.16%)</title><rect x="16.6848%" y="53" width="4.1619%" height="15" fill="rgb(206,27,48)" fg:x="99146290" fg:w="24731430"/><text x="16.9777%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,786,736 instructions, 4.17%)</title><rect x="16.6846%" y="69" width="4.1712%" height="15" fill="rgb(225,35,8)" fg:x="99145508" fg:w="24786736"/><text x="16.9776%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,788,564 instructions, 4.17%)</title><rect x="16.6845%" y="85" width="4.1715%" height="15" fill="rgb(250,213,24)" fg:x="99144716" fg:w="24788564"/><text x="16.9775%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,788,605 instructions, 4.17%)</title><rect x="16.6845%" y="101" width="4.1715%" height="15" fill="rgb(247,123,22)" fg:x="99144716" fg:w="24788605"/><text x="16.9775%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,788,790 instructions, 4.17%)</title><rect x="16.6845%" y="117" width="4.1716%" height="15" fill="rgb(231,138,38)" fg:x="99144716" fg:w="24788790"/><text x="16.9775%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,789,408 instructions, 4.17%)</title><rect x="16.6844%" y="133" width="4.1717%" height="15" fill="rgb(231,145,46)" fg:x="99144202" fg:w="24789408"/><text x="16.9774%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,789,878 instructions, 4.17%)</title><rect x="16.6844%" y="149" width="4.1717%" height="15" fill="rgb(251,118,11)" fg:x="99144202" fg:w="24789878"/><text x="16.9774%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,789,895 instructions, 4.17%)</title><rect x="16.6844%" y="165" width="4.1717%" height="15" fill="rgb(217,147,25)" fg:x="99144202" fg:w="24789895"/><text x="16.9774%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,792,375 instructions, 4.17%)</title><rect x="16.6840%" y="181" width="4.1722%" height="15" fill="rgb(247,81,37)" fg:x="99142066" fg:w="24792375"/><text x="16.9770%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,827,426 instructions, 4.18%)</title><rect x="16.6839%" y="197" width="4.1781%" height="15" fill="rgb(209,12,38)" fg:x="99141300" fg:w="24827426"/><text x="16.9769%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,827,439 instructions, 4.18%)</title><rect x="16.6839%" y="213" width="4.1781%" height="15" fill="rgb(227,1,9)" fg:x="99141300" fg:w="24827439"/><text x="16.9769%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,740,539 instructions, 4.16%)</title><rect x="20.8630%" y="37" width="4.1634%" height="15" fill="rgb(248,47,43)" fg:x="123974902" fg:w="24740539"/><text x="21.1560%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,743,935 instructions, 4.16%)</title><rect x="20.8630%" y="53" width="4.1640%" height="15" fill="rgb(221,10,30)" fg:x="123974902" fg:w="24743935"/><text x="21.1560%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,791,468 instructions, 4.17%)</title><rect x="20.8629%" y="69" width="4.1720%" height="15" fill="rgb(210,229,1)" fg:x="123974120" fg:w="24791468"/><text x="21.1559%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,793,296 instructions, 4.17%)</title><rect x="20.8628%" y="85" width="4.1723%" height="15" fill="rgb(222,148,37)" fg:x="123973328" fg:w="24793296"/><text x="21.1557%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,793,337 instructions, 4.17%)</title><rect x="20.8628%" y="101" width="4.1723%" height="15" fill="rgb(234,67,33)" fg:x="123973328" fg:w="24793337"/><text x="21.1557%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,793,522 instructions, 4.17%)</title><rect x="20.8628%" y="117" width="4.1724%" height="15" fill="rgb(247,98,35)" fg:x="123973328" fg:w="24793522"/><text x="21.1557%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,794,140 instructions, 4.17%)</title><rect x="20.8627%" y="133" width="4.1725%" height="15" fill="rgb(247,138,52)" fg:x="123972814" fg:w="24794140"/><text x="21.1556%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,794,610 instructions, 4.17%)</title><rect x="20.8627%" y="149" width="4.1725%" height="15" fill="rgb(213,79,30)" fg:x="123972814" fg:w="24794610"/><text x="21.1556%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,794,627 instructions, 4.17%)</title><rect x="20.8627%" y="165" width="4.1725%" height="15" fill="rgb(246,177,23)" fg:x="123972814" fg:w="24794627"/><text x="21.1556%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,797,313 instructions, 4.17%)</title><rect x="20.8623%" y="181" width="4.1730%" height="15" fill="rgb(230,62,27)" fg:x="123970678" fg:w="24797313"/><text x="21.1553%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,839,177 instructions, 4.18%)</title><rect x="20.8622%" y="197" width="4.1800%" height="15" fill="rgb(216,154,8)" fg:x="123969912" fg:w="24839177"/><text x="21.1551%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,839,190 instructions, 4.18%)</title><rect x="20.8622%" y="213" width="4.1800%" height="15" fill="rgb(244,35,45)" fg:x="123969912" fg:w="24839190"/><text x="21.1551%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,795,807 instructions, 4.17%)</title><rect x="25.0433%" y="37" width="4.1727%" height="15" fill="rgb(251,115,12)" fg:x="148815265" fg:w="24795807"/><text x="25.3362%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,799,722 instructions, 4.17%)</title><rect x="25.0433%" y="53" width="4.1734%" height="15" fill="rgb(240,54,50)" fg:x="148815265" fg:w="24799722"/><text x="25.3362%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,855,648 instructions, 4.18%)</title><rect x="25.0431%" y="69" width="4.1828%" height="15" fill="rgb(233,84,52)" fg:x="148814483" fg:w="24855648"/><text x="25.3361%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,857,476 instructions, 4.18%)</title><rect x="25.0430%" y="85" width="4.1831%" height="15" fill="rgb(207,117,47)" fg:x="148813691" fg:w="24857476"/><text x="25.3360%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,857,517 instructions, 4.18%)</title><rect x="25.0430%" y="101" width="4.1831%" height="15" fill="rgb(249,43,39)" fg:x="148813691" fg:w="24857517"/><text x="25.3360%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,857,702 instructions, 4.18%)</title><rect x="25.0430%" y="117" width="4.1832%" height="15" fill="rgb(209,38,44)" fg:x="148813691" fg:w="24857702"/><text x="25.3360%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,858,320 instructions, 4.18%)</title><rect x="25.0429%" y="133" width="4.1833%" height="15" fill="rgb(236,212,23)" fg:x="148813177" fg:w="24858320"/><text x="25.3359%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,858,790 instructions, 4.18%)</title><rect x="25.0429%" y="149" width="4.1833%" height="15" fill="rgb(242,79,21)" fg:x="148813177" fg:w="24858790"/><text x="25.3359%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,858,807 instructions, 4.18%)</title><rect x="25.0429%" y="165" width="4.1833%" height="15" fill="rgb(211,96,35)" fg:x="148813177" fg:w="24858807"/><text x="25.3359%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,861,527 instructions, 4.18%)</title><rect x="25.0426%" y="181" width="4.1838%" height="15" fill="rgb(253,215,40)" fg:x="148811041" fg:w="24861527"/><text x="25.3355%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,903,083 instructions, 4.19%)</title><rect x="25.0424%" y="197" width="4.1908%" height="15" fill="rgb(211,81,21)" fg:x="148810275" fg:w="24903083"/><text x="25.3354%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,903,096 instructions, 4.19%)</title><rect x="25.0424%" y="213" width="4.1908%" height="15" fill="rgb(208,190,38)" fg:x="148810275" fg:w="24903096"/><text x="25.3354%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,754,506 instructions, 4.17%)</title><rect x="29.2343%" y="37" width="4.1658%" height="15" fill="rgb(235,213,38)" fg:x="173719534" fg:w="24754506"/><text x="29.5272%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,758,940 instructions, 4.17%)</title><rect x="29.2343%" y="53" width="4.1665%" height="15" fill="rgb(237,122,38)" fg:x="173719534" fg:w="24758940"/><text x="29.5272%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,814,681 instructions, 4.18%)</title><rect x="29.2341%" y="69" width="4.1759%" height="15" fill="rgb(244,218,35)" fg:x="173718752" fg:w="24814681"/><text x="29.5271%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,816,509 instructions, 4.18%)</title><rect x="29.2340%" y="85" width="4.1762%" height="15" fill="rgb(240,68,47)" fg:x="173717960" fg:w="24816509"/><text x="29.5270%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,816,550 instructions, 4.18%)</title><rect x="29.2340%" y="101" width="4.1762%" height="15" fill="rgb(210,16,53)" fg:x="173717960" fg:w="24816550"/><text x="29.5270%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,816,735 instructions, 4.18%)</title><rect x="29.2340%" y="117" width="4.1763%" height="15" fill="rgb(235,124,12)" fg:x="173717960" fg:w="24816735"/><text x="29.5270%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,817,353 instructions, 4.18%)</title><rect x="29.2339%" y="133" width="4.1764%" height="15" fill="rgb(224,169,11)" fg:x="173717446" fg:w="24817353"/><text x="29.5269%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,817,823 instructions, 4.18%)</title><rect x="29.2339%" y="149" width="4.1764%" height="15" fill="rgb(250,166,2)" fg:x="173717446" fg:w="24817823"/><text x="29.5269%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,817,840 instructions, 4.18%)</title><rect x="29.2339%" y="165" width="4.1765%" height="15" fill="rgb(242,216,29)" fg:x="173717446" fg:w="24817840"/><text x="29.5269%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,820,560 instructions, 4.18%)</title><rect x="29.2335%" y="181" width="4.1769%" height="15" fill="rgb(230,116,27)" fg:x="173715310" fg:w="24820560"/><text x="29.5265%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,862,006 instructions, 4.18%)</title><rect x="29.2334%" y="197" width="4.1839%" height="15" fill="rgb(228,99,48)" fg:x="173714544" fg:w="24862006"/><text x="29.5264%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,862,019 instructions, 4.18%)</title><rect x="29.2334%" y="213" width="4.1839%" height="15" fill="rgb(253,11,6)" fg:x="173714544" fg:w="24862019"/><text x="29.5264%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,743,211 instructions, 4.16%)</title><rect x="33.4183%" y="37" width="4.1639%" height="15" fill="rgb(247,143,39)" fg:x="198582726" fg:w="24743211"/><text x="33.7113%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,748,164 instructions, 4.16%)</title><rect x="33.4183%" y="53" width="4.1647%" height="15" fill="rgb(236,97,10)" fg:x="198582726" fg:w="24748164"/><text x="33.7113%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,804,013 instructions, 4.17%)</title><rect x="33.4182%" y="69" width="4.1741%" height="15" fill="rgb(233,208,19)" fg:x="198581944" fg:w="24804013"/><text x="33.7112%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,805,841 instructions, 4.17%)</title><rect x="33.4181%" y="85" width="4.1744%" height="15" fill="rgb(216,164,2)" fg:x="198581152" fg:w="24805841"/><text x="33.7110%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,805,882 instructions, 4.17%)</title><rect x="33.4181%" y="101" width="4.1744%" height="15" fill="rgb(220,129,5)" fg:x="198581152" fg:w="24805882"/><text x="33.7110%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,806,067 instructions, 4.17%)</title><rect x="33.4181%" y="117" width="4.1745%" height="15" fill="rgb(242,17,10)" fg:x="198581152" fg:w="24806067"/><text x="33.7110%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,806,685 instructions, 4.17%)</title><rect x="33.4180%" y="133" width="4.1746%" height="15" fill="rgb(242,107,0)" fg:x="198580638" fg:w="24806685"/><text x="33.7110%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,807,155 instructions, 4.17%)</title><rect x="33.4180%" y="149" width="4.1747%" height="15" fill="rgb(251,28,31)" fg:x="198580638" fg:w="24807155"/><text x="33.7110%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,807,172 instructions, 4.17%)</title><rect x="33.4180%" y="165" width="4.1747%" height="15" fill="rgb(233,223,10)" fg:x="198580638" fg:w="24807172"/><text x="33.7110%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,809,652 instructions, 4.18%)</title><rect x="33.4176%" y="181" width="4.1751%" height="15" fill="rgb(215,21,27)" fg:x="198578502" fg:w="24809652"/><text x="33.7106%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,850,999 instructions, 4.18%)</title><rect x="33.4175%" y="197" width="4.1820%" height="15" fill="rgb(232,23,21)" fg:x="198577736" fg:w="24850999"/><text x="33.7105%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,851,012 instructions, 4.18%)</title><rect x="33.4175%" y="213" width="4.1820%" height="15" fill="rgb(244,5,23)" fg:x="198577736" fg:w="24851012"/><text x="33.7105%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,752,172 instructions, 4.17%)</title><rect x="37.6006%" y="37" width="4.1654%" height="15" fill="rgb(226,81,46)" fg:x="223434911" fg:w="24752172"/><text x="37.8935%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,757,644 instructions, 4.17%)</title><rect x="37.6006%" y="53" width="4.1663%" height="15" fill="rgb(247,70,30)" fg:x="223434911" fg:w="24757644"/><text x="37.8935%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,813,118 instructions, 4.18%)</title><rect x="37.6004%" y="69" width="4.1757%" height="15" fill="rgb(212,68,19)" fg:x="223434129" fg:w="24813118"/><text x="37.8934%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,814,946 instructions, 4.18%)</title><rect x="37.6003%" y="85" width="4.1760%" height="15" fill="rgb(240,187,13)" fg:x="223433337" fg:w="24814946"/><text x="37.8933%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,814,987 instructions, 4.18%)</title><rect x="37.6003%" y="101" width="4.1760%" height="15" fill="rgb(223,113,26)" fg:x="223433337" fg:w="24814987"/><text x="37.8933%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,815,172 instructions, 4.18%)</title><rect x="37.6003%" y="117" width="4.1760%" height="15" fill="rgb(206,192,2)" fg:x="223433337" fg:w="24815172"/><text x="37.8933%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,815,790 instructions, 4.18%)</title><rect x="37.6002%" y="133" width="4.1761%" height="15" fill="rgb(241,108,4)" fg:x="223432823" fg:w="24815790"/><text x="37.8932%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,816,260 instructions, 4.18%)</title><rect x="37.6002%" y="149" width="4.1762%" height="15" fill="rgb(247,173,49)" fg:x="223432823" fg:w="24816260"/><text x="37.8932%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,816,277 instructions, 4.18%)</title><rect x="37.6002%" y="165" width="4.1762%" height="15" fill="rgb(224,114,35)" fg:x="223432823" fg:w="24816277"/><text x="37.8932%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,818,997 instructions, 4.18%)</title><rect x="37.5999%" y="181" width="4.1766%" height="15" fill="rgb(245,159,27)" fg:x="223430687" fg:w="24818997"/><text x="37.8928%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,860,836 instructions, 4.18%)</title><rect x="37.5997%" y="197" width="4.1837%" height="15" fill="rgb(245,172,44)" fg:x="223429921" fg:w="24860836"/><text x="37.8927%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,860,849 instructions, 4.18%)</title><rect x="37.5997%" y="213" width="4.1837%" height="15" fill="rgb(236,23,11)" fg:x="223429921" fg:w="24860849"/><text x="37.8927%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,750,041 instructions, 4.17%)</title><rect x="41.7845%" y="37" width="4.1650%" height="15" fill="rgb(205,117,38)" fg:x="248297154" fg:w="24750041"/><text x="42.0775%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,755,045 instructions, 4.17%)</title><rect x="41.7845%" y="53" width="4.1659%" height="15" fill="rgb(237,72,25)" fg:x="248297154" fg:w="24755045"/><text x="42.0775%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,811,029 instructions, 4.18%)</title><rect x="41.7844%" y="69" width="4.1753%" height="15" fill="rgb(244,70,9)" fg:x="248296353" fg:w="24811029"/><text x="42.0773%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,812,920 instructions, 4.18%)</title><rect x="41.7842%" y="85" width="4.1756%" height="15" fill="rgb(217,125,39)" fg:x="248295513" fg:w="24812920"/><text x="42.0772%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,812,961 instructions, 4.18%)</title><rect x="41.7842%" y="101" width="4.1756%" height="15" fill="rgb(235,36,10)" fg:x="248295513" fg:w="24812961"/><text x="42.0772%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,813,146 instructions, 4.18%)</title><rect x="41.7842%" y="117" width="4.1757%" height="15" fill="rgb(251,123,47)" fg:x="248295513" fg:w="24813146"/><text x="42.0772%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,813,764 instructions, 4.18%)</title><rect x="41.7841%" y="133" width="4.1758%" height="15" fill="rgb(221,13,13)" fg:x="248294999" fg:w="24813764"/><text x="42.0771%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,814,234 instructions, 4.18%)</title><rect x="41.7841%" y="149" width="4.1758%" height="15" fill="rgb(238,131,9)" fg:x="248294999" fg:w="24814234"/><text x="42.0771%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,814,251 instructions, 4.18%)</title><rect x="41.7841%" y="165" width="4.1758%" height="15" fill="rgb(211,50,8)" fg:x="248294999" fg:w="24814251"/><text x="42.0771%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,817,075 instructions, 4.18%)</title><rect x="41.7838%" y="181" width="4.1763%" height="15" fill="rgb(245,182,24)" fg:x="248292760" fg:w="24817075"/><text x="42.0767%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,852,309 instructions, 4.18%)</title><rect x="41.7836%" y="197" width="4.1823%" height="15" fill="rgb(242,14,37)" fg:x="248291969" fg:w="24852309"/><text x="42.0766%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,852,322 instructions, 4.18%)</title><rect x="41.7836%" y="213" width="4.1823%" height="15" fill="rgb(246,228,12)" fg:x="248291969" fg:w="24852322"/><text x="42.0766%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,749,530 instructions, 4.16%)</title><rect x="45.9669%" y="37" width="4.1650%" height="15" fill="rgb(213,55,15)" fg:x="273150641" fg:w="24749530"/><text x="46.2599%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,755,076 instructions, 4.17%)</title><rect x="45.9669%" y="53" width="4.1659%" height="15" fill="rgb(209,9,3)" fg:x="273150641" fg:w="24755076"/><text x="46.2599%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,803,025 instructions, 4.17%)</title><rect x="45.9668%" y="69" width="4.1740%" height="15" fill="rgb(230,59,30)" fg:x="273149840" fg:w="24803025"/><text x="46.2598%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,804,882 instructions, 4.17%)</title><rect x="45.9667%" y="85" width="4.1743%" height="15" fill="rgb(209,121,21)" fg:x="273149034" fg:w="24804882"/><text x="46.2596%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,804,923 instructions, 4.17%)</title><rect x="45.9667%" y="101" width="4.1743%" height="15" fill="rgb(220,109,13)" fg:x="273149034" fg:w="24804923"/><text x="46.2596%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,805,108 instructions, 4.17%)</title><rect x="45.9667%" y="117" width="4.1743%" height="15" fill="rgb(232,18,1)" fg:x="273149034" fg:w="24805108"/><text x="46.2596%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,805,726 instructions, 4.17%)</title><rect x="45.9666%" y="133" width="4.1744%" height="15" fill="rgb(215,41,42)" fg:x="273148520" fg:w="24805726"/><text x="46.2596%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,806,196 instructions, 4.17%)</title><rect x="45.9666%" y="149" width="4.1745%" height="15" fill="rgb(224,123,36)" fg:x="273148520" fg:w="24806196"/><text x="46.2596%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,806,213 instructions, 4.17%)</title><rect x="45.9666%" y="165" width="4.1745%" height="15" fill="rgb(240,125,3)" fg:x="273148520" fg:w="24806213"/><text x="46.2596%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,809,037 instructions, 4.17%)</title><rect x="45.9662%" y="181" width="4.1750%" height="15" fill="rgb(205,98,50)" fg:x="273146281" fg:w="24809037"/><text x="46.2592%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,850,813 instructions, 4.18%)</title><rect x="45.9661%" y="197" width="4.1820%" height="15" fill="rgb(205,185,37)" fg:x="273145490" fg:w="24850813"/><text x="46.2590%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,850,826 instructions, 4.18%)</title><rect x="45.9661%" y="213" width="4.1820%" height="15" fill="rgb(238,207,15)" fg:x="273145490" fg:w="24850826"/><text x="46.2590%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,749,721 instructions, 4.16%)</title><rect x="50.1492%" y="37" width="4.1650%" height="15" fill="rgb(213,199,42)" fg:x="298002700" fg:w="24749721"/><text x="50.4421%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,755,809 instructions, 4.17%)</title><rect x="50.1492%" y="53" width="4.1660%" height="15" fill="rgb(235,201,11)" fg:x="298002700" fg:w="24755809"/><text x="50.4421%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,811,129 instructions, 4.18%)</title><rect x="50.1490%" y="69" width="4.1753%" height="15" fill="rgb(207,46,11)" fg:x="298001899" fg:w="24811129"/><text x="50.4420%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,813,020 instructions, 4.18%)</title><rect x="50.1489%" y="85" width="4.1756%" height="15" fill="rgb(241,35,35)" fg:x="298001059" fg:w="24813020"/><text x="50.4418%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,813,061 instructions, 4.18%)</title><rect x="50.1489%" y="101" width="4.1756%" height="15" fill="rgb(243,32,47)" fg:x="298001059" fg:w="24813061"/><text x="50.4418%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,813,246 instructions, 4.18%)</title><rect x="50.1489%" y="117" width="4.1757%" height="15" fill="rgb(247,202,23)" fg:x="298001059" fg:w="24813246"/><text x="50.4418%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,813,864 instructions, 4.18%)</title><rect x="50.1488%" y="133" width="4.1758%" height="15" fill="rgb(219,102,11)" fg:x="298000545" fg:w="24813864"/><text x="50.4418%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,814,334 instructions, 4.18%)</title><rect x="50.1488%" y="149" width="4.1759%" height="15" fill="rgb(243,110,44)" fg:x="298000545" fg:w="24814334"/><text x="50.4418%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,814,351 instructions, 4.18%)</title><rect x="50.1488%" y="165" width="4.1759%" height="15" fill="rgb(222,74,54)" fg:x="298000545" fg:w="24814351"/><text x="50.4418%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,817,175 instructions, 4.18%)</title><rect x="50.1484%" y="181" width="4.1763%" height="15" fill="rgb(216,99,12)" fg:x="297998306" fg:w="24817175"/><text x="50.4414%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,858,527 instructions, 4.18%)</title><rect x="50.1483%" y="197" width="4.1833%" height="15" fill="rgb(226,22,26)" fg:x="297997515" fg:w="24858527"/><text x="50.4413%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,858,540 instructions, 4.18%)</title><rect x="50.1483%" y="213" width="4.1833%" height="15" fill="rgb(217,163,10)" fg:x="297997515" fg:w="24858540"/><text x="50.4413%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,750,439 instructions, 4.17%)</title><rect x="54.3326%" y="37" width="4.1651%" height="15" fill="rgb(213,25,53)" fg:x="322862306" fg:w="24750439"/><text x="54.6256%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,757,069 instructions, 4.17%)</title><rect x="54.3326%" y="53" width="4.1662%" height="15" fill="rgb(252,105,26)" fg:x="322862306" fg:w="24757069"/><text x="54.6256%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,812,207 instructions, 4.18%)</title><rect x="54.3325%" y="69" width="4.1755%" height="15" fill="rgb(220,39,43)" fg:x="322861505" fg:w="24812207"/><text x="54.6255%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,814,098 instructions, 4.18%)</title><rect x="54.3324%" y="85" width="4.1758%" height="15" fill="rgb(229,68,48)" fg:x="322860665" fg:w="24814098"/><text x="54.6253%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,814,139 instructions, 4.18%)</title><rect x="54.3324%" y="101" width="4.1758%" height="15" fill="rgb(252,8,32)" fg:x="322860665" fg:w="24814139"/><text x="54.6253%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,814,324 instructions, 4.18%)</title><rect x="54.3324%" y="117" width="4.1759%" height="15" fill="rgb(223,20,43)" fg:x="322860665" fg:w="24814324"/><text x="54.6253%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,814,942 instructions, 4.18%)</title><rect x="54.3323%" y="133" width="4.1760%" height="15" fill="rgb(229,81,49)" fg:x="322860151" fg:w="24814942"/><text x="54.6252%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,815,412 instructions, 4.18%)</title><rect x="54.3323%" y="149" width="4.1760%" height="15" fill="rgb(236,28,36)" fg:x="322860151" fg:w="24815412"/><text x="54.6252%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,815,429 instructions, 4.18%)</title><rect x="54.3323%" y="165" width="4.1760%" height="15" fill="rgb(249,185,26)" fg:x="322860151" fg:w="24815429"/><text x="54.6252%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,818,120 instructions, 4.18%)</title><rect x="54.3319%" y="181" width="4.1765%" height="15" fill="rgb(249,174,33)" fg:x="322858045" fg:w="24818120"/><text x="54.6249%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,859,303 instructions, 4.18%)</title><rect x="54.3318%" y="197" width="4.1834%" height="15" fill="rgb(233,201,37)" fg:x="322857254" fg:w="24859303"/><text x="54.6248%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,859,316 instructions, 4.18%)</title><rect x="54.3318%" y="213" width="4.1834%" height="15" fill="rgb(221,78,26)" fg:x="322857254" fg:w="24859316"/><text x="54.6248%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,749,181 instructions, 4.16%)</title><rect x="58.5163%" y="37" width="4.1649%" height="15" fill="rgb(250,127,30)" fg:x="347722821" fg:w="24749181"/><text x="58.8092%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,756,353 instructions, 4.17%)</title><rect x="58.5163%" y="53" width="4.1661%" height="15" fill="rgb(230,49,44)" fg:x="347722821" fg:w="24756353"/><text x="58.8092%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,811,947 instructions, 4.18%)</title><rect x="58.5161%" y="69" width="4.1755%" height="15" fill="rgb(229,67,23)" fg:x="347722020" fg:w="24811947"/><text x="58.8091%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,813,838 instructions, 4.18%)</title><rect x="58.5160%" y="85" width="4.1758%" height="15" fill="rgb(249,83,47)" fg:x="347721180" fg:w="24813838"/><text x="58.8090%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,813,879 instructions, 4.18%)</title><rect x="58.5160%" y="101" width="4.1758%" height="15" fill="rgb(215,43,3)" fg:x="347721180" fg:w="24813879"/><text x="58.8090%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,814,064 instructions, 4.18%)</title><rect x="58.5160%" y="117" width="4.1758%" height="15" fill="rgb(238,154,13)" fg:x="347721180" fg:w="24814064"/><text x="58.8090%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,814,682 instructions, 4.18%)</title><rect x="58.5159%" y="133" width="4.1759%" height="15" fill="rgb(219,56,2)" fg:x="347720666" fg:w="24814682"/><text x="58.8089%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,815,152 instructions, 4.18%)</title><rect x="58.5159%" y="149" width="4.1760%" height="15" fill="rgb(233,0,4)" fg:x="347720666" fg:w="24815152"/><text x="58.8089%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,815,169 instructions, 4.18%)</title><rect x="58.5159%" y="165" width="4.1760%" height="15" fill="rgb(235,30,7)" fg:x="347720666" fg:w="24815169"/><text x="58.8089%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,817,860 instructions, 4.18%)</title><rect x="58.5155%" y="181" width="4.1765%" height="15" fill="rgb(250,79,13)" fg:x="347718560" fg:w="24817860"/><text x="58.8085%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,859,126 instructions, 4.18%)</title><rect x="58.5154%" y="197" width="4.1834%" height="15" fill="rgb(211,146,34)" fg:x="347717769" fg:w="24859126"/><text x="58.8084%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,859,139 instructions, 4.18%)</title><rect x="58.5154%" y="213" width="4.1834%" height="15" fill="rgb(228,22,38)" fg:x="347717769" fg:w="24859139"/><text x="58.8084%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,697,559 instructions, 4.16%)</title><rect x="62.6999%" y="37" width="4.1562%" height="15" fill="rgb(235,168,5)" fg:x="372583159" fg:w="24697559"/><text x="62.9928%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,705,273 instructions, 4.16%)</title><rect x="62.6999%" y="53" width="4.1575%" height="15" fill="rgb(221,155,16)" fg:x="372583159" fg:w="24705273"/><text x="62.9928%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,760,785 instructions, 4.17%)</title><rect x="62.6997%" y="69" width="4.1668%" height="15" fill="rgb(215,215,53)" fg:x="372582358" fg:w="24760785"/><text x="62.9927%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,762,676 instructions, 4.17%)</title><rect x="62.6996%" y="85" width="4.1672%" height="15" fill="rgb(223,4,10)" fg:x="372581518" fg:w="24762676"/><text x="62.9926%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,762,717 instructions, 4.17%)</title><rect x="62.6996%" y="101" width="4.1672%" height="15" fill="rgb(234,103,6)" fg:x="372581518" fg:w="24762717"/><text x="62.9926%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,762,902 instructions, 4.17%)</title><rect x="62.6996%" y="117" width="4.1672%" height="15" fill="rgb(227,97,0)" fg:x="372581518" fg:w="24762902"/><text x="62.9926%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,763,520 instructions, 4.17%)</title><rect x="62.6995%" y="133" width="4.1673%" height="15" fill="rgb(234,150,53)" fg:x="372581004" fg:w="24763520"/><text x="62.9925%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,763,990 instructions, 4.17%)</title><rect x="62.6995%" y="149" width="4.1674%" height="15" fill="rgb(228,201,54)" fg:x="372581004" fg:w="24763990"/><text x="62.9925%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,764,007 instructions, 4.17%)</title><rect x="62.6995%" y="165" width="4.1674%" height="15" fill="rgb(222,22,37)" fg:x="372581004" fg:w="24764007"/><text x="62.9925%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,766,698 instructions, 4.17%)</title><rect x="62.6992%" y="181" width="4.1678%" height="15" fill="rgb(237,53,32)" fg:x="372578898" fg:w="24766698"/><text x="62.9921%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,808,500 instructions, 4.17%)</title><rect x="62.6990%" y="197" width="4.1749%" height="15" fill="rgb(233,25,53)" fg:x="372578107" fg:w="24808500"/><text x="62.9920%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,808,513 instructions, 4.17%)</title><rect x="62.6990%" y="213" width="4.1749%" height="15" fill="rgb(210,40,34)" fg:x="372578107" fg:w="24808513"/><text x="62.9920%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,696,607 instructions, 4.16%)</title><rect x="66.8750%" y="37" width="4.1560%" height="15" fill="rgb(241,220,44)" fg:x="397392970" fg:w="24696607"/><text x="67.1679%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,704,863 instructions, 4.16%)</title><rect x="66.8750%" y="53" width="4.1574%" height="15" fill="rgb(235,28,35)" fg:x="397392970" fg:w="24704863"/><text x="67.1679%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,759,116 instructions, 4.17%)</title><rect x="66.8748%" y="69" width="4.1666%" height="15" fill="rgb(210,56,17)" fg:x="397392169" fg:w="24759116"/><text x="67.1678%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,760,973 instructions, 4.17%)</title><rect x="66.8747%" y="85" width="4.1669%" height="15" fill="rgb(224,130,29)" fg:x="397391363" fg:w="24760973"/><text x="67.1677%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,761,014 instructions, 4.17%)</title><rect x="66.8747%" y="101" width="4.1669%" height="15" fill="rgb(235,212,8)" fg:x="397391363" fg:w="24761014"/><text x="67.1677%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,761,199 instructions, 4.17%)</title><rect x="66.8747%" y="117" width="4.1669%" height="15" fill="rgb(223,33,50)" fg:x="397391363" fg:w="24761199"/><text x="67.1677%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,761,817 instructions, 4.17%)</title><rect x="66.8746%" y="133" width="4.1670%" height="15" fill="rgb(219,149,13)" fg:x="397390849" fg:w="24761817"/><text x="67.1676%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,762,287 instructions, 4.17%)</title><rect x="66.8746%" y="149" width="4.1671%" height="15" fill="rgb(250,156,29)" fg:x="397390849" fg:w="24762287"/><text x="67.1676%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,762,304 instructions, 4.17%)</title><rect x="66.8746%" y="165" width="4.1671%" height="15" fill="rgb(216,193,19)" fg:x="397390849" fg:w="24762304"/><text x="67.1676%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,765,094 instructions, 4.17%)</title><rect x="66.8742%" y="181" width="4.1676%" height="15" fill="rgb(216,135,14)" fg:x="397388610" fg:w="24765094"/><text x="67.1672%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,800,331 instructions, 4.17%)</title><rect x="66.8741%" y="197" width="4.1735%" height="15" fill="rgb(241,47,5)" fg:x="397387819" fg:w="24800331"/><text x="67.1671%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,800,344 instructions, 4.17%)</title><rect x="66.8741%" y="213" width="4.1735%" height="15" fill="rgb(233,42,35)" fg:x="397387819" fg:w="24800344"/><text x="67.1671%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,753,685 instructions, 4.17%)</title><rect x="71.0487%" y="37" width="4.1657%" height="15" fill="rgb(231,13,6)" fg:x="422194513" fg:w="24753685"/><text x="71.3416%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,762,483 instructions, 4.17%)</title><rect x="71.0487%" y="53" width="4.1671%" height="15" fill="rgb(207,181,40)" fg:x="422194513" fg:w="24762483"/><text x="71.3416%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,810,770 instructions, 4.18%)</title><rect x="71.0485%" y="69" width="4.1753%" height="15" fill="rgb(254,173,49)" fg:x="422193712" fg:w="24810770"/><text x="71.3415%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,812,627 instructions, 4.18%)</title><rect x="71.0484%" y="85" width="4.1756%" height="15" fill="rgb(221,1,38)" fg:x="422192906" fg:w="24812627"/><text x="71.3414%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,812,668 instructions, 4.18%)</title><rect x="71.0484%" y="101" width="4.1756%" height="15" fill="rgb(206,124,46)" fg:x="422192906" fg:w="24812668"/><text x="71.3414%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,812,853 instructions, 4.18%)</title><rect x="71.0484%" y="117" width="4.1756%" height="15" fill="rgb(249,21,11)" fg:x="422192906" fg:w="24812853"/><text x="71.3414%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,813,471 instructions, 4.18%)</title><rect x="71.0483%" y="133" width="4.1757%" height="15" fill="rgb(222,201,40)" fg:x="422192392" fg:w="24813471"/><text x="71.3413%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,813,941 instructions, 4.18%)</title><rect x="71.0483%" y="149" width="4.1758%" height="15" fill="rgb(235,61,29)" fg:x="422192392" fg:w="24813941"/><text x="71.3413%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,813,958 instructions, 4.18%)</title><rect x="71.0483%" y="165" width="4.1758%" height="15" fill="rgb(219,207,3)" fg:x="422192392" fg:w="24813958"/><text x="71.3413%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,816,542 instructions, 4.18%)</title><rect x="71.0479%" y="181" width="4.1762%" height="15" fill="rgb(222,56,46)" fg:x="422190153" fg:w="24816542"/><text x="71.3409%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,857,806 instructions, 4.18%)</title><rect x="71.0478%" y="197" width="4.1832%" height="15" fill="rgb(239,76,54)" fg:x="422189362" fg:w="24857806"/><text x="71.3408%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,857,819 instructions, 4.18%)</title><rect x="71.0478%" y="213" width="4.1832%" height="15" fill="rgb(231,124,27)" fg:x="422189362" fg:w="24857819"/><text x="71.3408%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,675,491 instructions, 4.15%)</title><rect x="75.2320%" y="37" width="4.1525%" height="15" fill="rgb(249,195,6)" fg:x="447053432" fg:w="24675491"/><text x="75.5250%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,684,831 instructions, 4.15%)</title><rect x="75.2320%" y="53" width="4.1541%" height="15" fill="rgb(237,174,47)" fg:x="447053432" fg:w="24684831"/><text x="75.5250%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,739,889 instructions, 4.16%)</title><rect x="75.2319%" y="69" width="4.1633%" height="15" fill="rgb(206,201,31)" fg:x="447052631" fg:w="24739889"/><text x="75.5249%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,741,780 instructions, 4.16%)</title><rect x="75.2318%" y="85" width="4.1637%" height="15" fill="rgb(231,57,52)" fg:x="447051791" fg:w="24741780"/><text x="75.5247%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,741,821 instructions, 4.16%)</title><rect x="75.2318%" y="101" width="4.1637%" height="15" fill="rgb(248,177,22)" fg:x="447051791" fg:w="24741821"/><text x="75.5247%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,742,006 instructions, 4.16%)</title><rect x="75.2318%" y="117" width="4.1637%" height="15" fill="rgb(215,211,37)" fg:x="447051791" fg:w="24742006"/><text x="75.5247%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,742,624 instructions, 4.16%)</title><rect x="75.2317%" y="133" width="4.1638%" height="15" fill="rgb(241,128,51)" fg:x="447051277" fg:w="24742624"/><text x="75.5246%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,743,094 instructions, 4.16%)</title><rect x="75.2317%" y="149" width="4.1639%" height="15" fill="rgb(227,165,31)" fg:x="447051277" fg:w="24743094"/><text x="75.5246%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,743,111 instructions, 4.16%)</title><rect x="75.2317%" y="165" width="4.1639%" height="15" fill="rgb(228,167,24)" fg:x="447051277" fg:w="24743111"/><text x="75.5246%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,745,802 instructions, 4.16%)</title><rect x="75.2313%" y="181" width="4.1643%" height="15" fill="rgb(228,143,12)" fg:x="447049171" fg:w="24745802"/><text x="75.5243%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,787,604 instructions, 4.17%)</title><rect x="75.2312%" y="197" width="4.1714%" height="15" fill="rgb(249,149,8)" fg:x="447048380" fg:w="24787604"/><text x="75.5242%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,787,617 instructions, 4.17%)</title><rect x="75.2312%" y="213" width="4.1714%" height="15" fill="rgb(243,35,44)" fg:x="447048380" fg:w="24787617"/><text x="75.5242%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,698,398 instructions, 4.16%)</title><rect x="79.4036%" y="37" width="4.1564%" height="15" fill="rgb(246,89,9)" fg:x="471842347" fg:w="24698398"/><text x="79.6966%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,708,280 instructions, 4.16%)</title><rect x="79.4036%" y="53" width="4.1580%" height="15" fill="rgb(233,213,13)" fg:x="471842347" fg:w="24708280"/><text x="79.6966%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,763,629 instructions, 4.17%)</title><rect x="79.4035%" y="69" width="4.1673%" height="15" fill="rgb(233,141,41)" fg:x="471841546" fg:w="24763629"/><text x="79.6965%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,765,486 instructions, 4.17%)</title><rect x="79.4034%" y="85" width="4.1676%" height="15" fill="rgb(239,167,4)" fg:x="471840740" fg:w="24765486"/><text x="79.6963%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,765,527 instructions, 4.17%)</title><rect x="79.4034%" y="101" width="4.1676%" height="15" fill="rgb(209,217,16)" fg:x="471840740" fg:w="24765527"/><text x="79.6963%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,765,712 instructions, 4.17%)</title><rect x="79.4034%" y="117" width="4.1677%" height="15" fill="rgb(219,88,35)" fg:x="471840740" fg:w="24765712"/><text x="79.6963%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,766,330 instructions, 4.17%)</title><rect x="79.4033%" y="133" width="4.1678%" height="15" fill="rgb(220,193,23)" fg:x="471840226" fg:w="24766330"/><text x="79.6962%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,766,800 instructions, 4.17%)</title><rect x="79.4033%" y="149" width="4.1679%" height="15" fill="rgb(230,90,52)" fg:x="471840226" fg:w="24766800"/><text x="79.6962%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,766,817 instructions, 4.17%)</title><rect x="79.4033%" y="165" width="4.1679%" height="15" fill="rgb(252,106,19)" fg:x="471840226" fg:w="24766817"/><text x="79.6962%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,769,641 instructions, 4.17%)</title><rect x="79.4029%" y="181" width="4.1683%" height="15" fill="rgb(206,74,20)" fg:x="471837987" fg:w="24769641"/><text x="79.6959%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,811,443 instructions, 4.18%)</title><rect x="79.4028%" y="197" width="4.1754%" height="15" fill="rgb(230,138,44)" fg:x="471837196" fg:w="24811443"/><text x="79.6957%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,811,456 instructions, 4.18%)</title><rect x="79.4028%" y="213" width="4.1754%" height="15" fill="rgb(235,182,43)" fg:x="471837196" fg:w="24811456"/><text x="79.6957%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,706,475 instructions, 4.16%)</title><rect x="83.5792%" y="37" width="4.1577%" height="15" fill="rgb(242,16,51)" fg:x="496655002" fg:w="24706475"/><text x="83.8722%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,716,669 instructions, 4.16%)</title><rect x="83.5792%" y="53" width="4.1594%" height="15" fill="rgb(248,9,4)" fg:x="496655002" fg:w="24716669"/><text x="83.8722%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,772,896 instructions, 4.17%)</title><rect x="83.5791%" y="69" width="4.1689%" height="15" fill="rgb(210,31,22)" fg:x="496654201" fg:w="24772896"/><text x="83.8720%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,774,753 instructions, 4.17%)</title><rect x="83.5789%" y="85" width="4.1692%" height="15" fill="rgb(239,54,39)" fg:x="496653395" fg:w="24774753"/><text x="83.8719%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,774,794 instructions, 4.17%)</title><rect x="83.5789%" y="101" width="4.1692%" height="15" fill="rgb(230,99,41)" fg:x="496653395" fg:w="24774794"/><text x="83.8719%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,774,979 instructions, 4.17%)</title><rect x="83.5789%" y="117" width="4.1692%" height="15" fill="rgb(253,106,12)" fg:x="496653395" fg:w="24774979"/><text x="83.8719%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,775,597 instructions, 4.17%)</title><rect x="83.5788%" y="133" width="4.1693%" height="15" fill="rgb(213,46,41)" fg:x="496652881" fg:w="24775597"/><text x="83.8718%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,776,067 instructions, 4.17%)</title><rect x="83.5788%" y="149" width="4.1694%" height="15" fill="rgb(215,133,35)" fg:x="496652881" fg:w="24776067"/><text x="83.8718%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,776,084 instructions, 4.17%)</title><rect x="83.5788%" y="165" width="4.1694%" height="15" fill="rgb(213,28,5)" fg:x="496652881" fg:w="24776084"/><text x="83.8718%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,778,837 instructions, 4.17%)</title><rect x="83.5785%" y="181" width="4.1699%" height="15" fill="rgb(215,77,49)" fg:x="496650642" fg:w="24778837"/><text x="83.8714%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,820,625 instructions, 4.18%)</title><rect x="83.5783%" y="197" width="4.1769%" height="15" fill="rgb(248,100,22)" fg:x="496649851" fg:w="24820625"/><text x="83.8713%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,820,638 instructions, 4.18%)</title><rect x="83.5783%" y="213" width="4.1769%" height="15" fill="rgb(208,67,9)" fg:x="496649851" fg:w="24820638"/><text x="83.8713%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,718,892 instructions, 4.16%)</title><rect x="87.7563%" y="37" width="4.1598%" height="15" fill="rgb(219,133,21)" fg:x="521476753" fg:w="24718892"/><text x="88.0493%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,729,628 instructions, 4.16%)</title><rect x="87.7563%" y="53" width="4.1616%" height="15" fill="rgb(246,46,29)" fg:x="521476753" fg:w="24729628"/><text x="88.0493%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,785,075 instructions, 4.17%)</title><rect x="87.7562%" y="69" width="4.1709%" height="15" fill="rgb(246,185,52)" fg:x="521475952" fg:w="24785075"/><text x="88.0491%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,786,932 instructions, 4.17%)</title><rect x="87.7560%" y="85" width="4.1712%" height="15" fill="rgb(252,136,11)" fg:x="521475146" fg:w="24786932"/><text x="88.0490%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,786,973 instructions, 4.17%)</title><rect x="87.7560%" y="101" width="4.1713%" height="15" fill="rgb(219,138,53)" fg:x="521475146" fg:w="24786973"/><text x="88.0490%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,787,158 instructions, 4.17%)</title><rect x="87.7560%" y="117" width="4.1713%" height="15" fill="rgb(211,51,23)" fg:x="521475146" fg:w="24787158"/><text x="88.0490%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,787,776 instructions, 4.17%)</title><rect x="87.7560%" y="133" width="4.1714%" height="15" fill="rgb(247,221,28)" fg:x="521474632" fg:w="24787776"/><text x="88.0489%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,788,246 instructions, 4.17%)</title><rect x="87.7560%" y="149" width="4.1715%" height="15" fill="rgb(251,222,45)" fg:x="521474632" fg:w="24788246"/><text x="88.0489%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,788,263 instructions, 4.17%)</title><rect x="87.7560%" y="165" width="4.1715%" height="15" fill="rgb(217,162,53)" fg:x="521474632" fg:w="24788263"/><text x="88.0489%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,790,930 instructions, 4.17%)</title><rect x="87.7556%" y="181" width="4.1719%" height="15" fill="rgb(229,93,14)" fg:x="521472479" fg:w="24790930"/><text x="88.0486%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,832,718 instructions, 4.18%)</title><rect x="87.7555%" y="197" width="4.1790%" height="15" fill="rgb(209,67,49)" fg:x="521471688" fg:w="24832718"/><text x="88.0484%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,832,731 instructions, 4.18%)</title><rect x="87.7555%" y="213" width="4.1790%" height="15" fill="rgb(213,87,29)" fg:x="521471688" fg:w="24832731"/><text x="88.0484%" y="223.50">std:..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (24,763,545 instructions, 4.17%)</title><rect x="91.9355%" y="37" width="4.1673%" height="15" fill="rgb(205,151,52)" fg:x="546310683" fg:w="24763545"/><text x="92.2284%" y="47.50">&lt;sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (24,774,823 instructions, 4.17%)</title><rect x="91.9355%" y="53" width="4.1692%" height="15" fill="rgb(253,215,39)" fg:x="546310683" fg:w="24774823"/><text x="92.2284%" y="63.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (24,829,247 instructions, 4.18%)</title><rect x="91.9353%" y="69" width="4.1784%" height="15" fill="rgb(221,220,41)" fg:x="546309882" fg:w="24829247"/><text x="92.2283%" y="79.50">stab..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (24,831,104 instructions, 4.18%)</title><rect x="91.9352%" y="85" width="4.1787%" height="15" fill="rgb(218,133,21)" fg:x="546309076" fg:w="24831104"/><text x="92.2282%" y="95.50">stab..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (24,831,145 instructions, 4.18%)</title><rect x="91.9352%" y="101" width="4.1787%" height="15" fill="rgb(221,193,43)" fg:x="546309076" fg:w="24831145"/><text x="92.2282%" y="111.50">stab..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (24,831,330 instructions, 4.18%)</title><rect x="91.9352%" y="117" width="4.1787%" height="15" fill="rgb(240,128,52)" fg:x="546309076" fg:w="24831330"/><text x="92.2282%" y="127.50">stab..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (24,831,948 instructions, 4.18%)</title><rect x="91.9351%" y="133" width="4.1788%" height="15" fill="rgb(253,114,12)" fg:x="546308562" fg:w="24831948"/><text x="92.2281%" y="143.50">std:..</text></g><g><title>__ic_custom_path_create_directory (24,832,418 instructions, 4.18%)</title><rect x="91.9351%" y="149" width="4.1789%" height="15" fill="rgb(215,223,47)" fg:x="546308562" fg:w="24832418"/><text x="92.2281%" y="159.50">__ic..</text></g><g><title>wasi::lib_generated::path_create_directory (24,832,435 instructions, 4.18%)</title><rect x="91.9351%" y="165" width="4.1789%" height="15" fill="rgb(248,225,23)" fg:x="546308562" fg:w="24832435"/><text x="92.2281%" y="175.50">wasi..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (24,835,173 instructions, 4.18%)</title><rect x="91.9348%" y="181" width="4.1794%" height="15" fill="rgb(250,108,0)" fg:x="546306409" fg:w="24835173"/><text x="92.2277%" y="191.50">std:..</text></g><g><title>std::fs::DirBuilder::create_dir_all (24,870,553 instructions, 4.19%)</title><rect x="91.9346%" y="197" width="4.1853%" height="15" fill="rgb(228,208,7)" fg:x="546305618" fg:w="24870553"/><text x="92.2276%" y="207.50">std:..</text></g><g><title>std::fs::DirBuilder::_create (24,870,566 instructions, 4.19%)</title><rect x="91.9346%" y="213" width="4.1853%" height="15" fill="rgb(244,45,10)" fg:x="546305618" fg:w="24870566"/><text x="92.2276%" y="223.50">std:..</text></g><g><title>all (594,232,755 instructions, 100%)</title><rect x="0.0000%" y="293" width="100.0000%" height="15" fill="rgb(207,125,25)" fg:x="0" fg:w="594232755"/><text x="0.2930%" y="303.50"></text></g><g><title>canister_update create_folders.command_export (594,232,755 instructions, 100.00%)</title><rect x="0.0000%" y="277" width="100.0000%" height="15" fill="rgb(210,195,18)" fg:x="0" fg:w="594232755"/><text x="0.2930%" y="287.50">canister_update create_folders.command_export</text></g><g><title>canister_update create_folders (594,232,755 instructions, 100.00%)</title><rect x="0.0000%" y="261" width="100.0000%" height="15" fill="rgb(249,80,12)" fg:x="0" fg:w="594232755"/><text x="0.2930%" y="271.50">canister_update create_folders</text></g><g><title>ic_cdk_executor::in_executor_context (594,232,736 instructions, 100.00%)</title><rect x="0.0000%" y="245" width="100.0000%" height="15" fill="rgb(221,65,9)" fg:x="19" fg:w="594232736"/><text x="0.2930%" y="255.50">ic_cdk_executor::in_executor_context</text></g><g><title>fs_tests_backend::canister::create_folders (594,213,342 instructions, 100.00%)</title><rect x="0.0033%" y="229" width="99.9967%" height="15" fill="rgb(235,49,36)" fg:x="19413" fg:w="594213342"/><text x="0.2962%" y="239.50">fs_tests_backend::canister::create_folders</text></g><g><title>std::fs::DirBuilder::_create (23,055,372 instructions, 3.88%)</title><rect x="96.1201%" y="213" width="3.8799%" height="15" fill="rgb(225,32,20)" fg:x="571177383" fg:w="23055372"/><text x="96.4131%" y="223.50">std..</text></g><g><title>std::fs::DirBuilder::create_dir_all (23,055,372 instructions, 3.88%)</title><rect x="96.1201%" y="197" width="3.8799%" height="15" fill="rgb(215,141,46)" fg:x="571177383" fg:w="23055372"/><text x="96.4131%" y="207.50">std..</text></g><g><title>std::sys::fs::wasi::DirBuilder::mkdir (23,054,581 instructions, 3.88%)</title><rect x="96.1203%" y="181" width="3.8797%" height="15" fill="rgb(250,160,47)" fg:x="571178174" fg:w="23054581"/><text x="96.4132%" y="191.50">std..</text></g><g><title>wasi::lib_generated::path_create_directory (23,052,342 instructions, 3.88%)</title><rect x="96.1207%" y="165" width="3.8793%" height="15" fill="rgb(216,222,40)" fg:x="571180413" fg:w="23052342"/><text x="96.4136%" y="175.50">was..</text></g><g><title>__ic_custom_path_create_directory (23,052,342 instructions, 3.88%)</title><rect x="96.1207%" y="149" width="3.8793%" height="15" fill="rgb(234,217,39)" fg:x="571180413" fg:w="23052342"/><text x="96.4136%" y="159.50">__i..</text></g><g><title>std::thread::local::LocalKey&lt;T&gt;::with (23,052,342 instructions, 3.88%)</title><rect x="96.1207%" y="133" width="3.8793%" height="15" fill="rgb(207,178,40)" fg:x="571180413" fg:w="23052342"/><text x="96.4136%" y="143.50">std..</text></g><g><title>stable_fs::fs::FileSystem::mkdir (23,051,828 instructions, 3.88%)</title><rect x="96.1207%" y="117" width="3.8793%" height="15" fill="rgb(221,136,13)" fg:x="571180927" fg:w="23051828"/><text x="96.4137%" y="127.50">sta..</text></g><g><title>stable_fs::runtime::dir::Dir::create_dir (23,051,828 instructions, 3.88%)</title><rect x="96.1207%" y="101" width="3.8793%" height="15" fill="rgb(249,199,10)" fg:x="571180927" fg:w="23051828"/><text x="96.4137%" y="111.50">sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node (23,051,828 instructions, 3.88%)</title><rect x="96.1207%" y="85" width="3.8793%" height="15" fill="rgb(249,222,13)" fg:x="571180927" fg:w="23051828"/><text x="96.4137%" y="95.50">sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_node_with_index (23,051,022 instructions, 3.88%)</title><rect x="96.1209%" y="69" width="3.8791%" height="15" fill="rgb(244,185,38)" fg:x="571181733" fg:w="23051022"/><text x="96.4138%" y="79.50">sta..</text></g><g><title>stable_fs::runtime::structure_helpers::find_entry_index (23,050,221 instructions, 3.88%)</title><rect x="96.1210%" y="53" width="3.8790%" height="15" fill="rgb(236,202,9)" fg:x="571182534" fg:w="23050221"/><text x="96.4140%" y="63.50">sta..</text></g><g><title>&lt;stable_fs::storage::stable::StableStorage&lt;M&gt; as stable_fs::storage::Storage&gt;::get_direntries (23,050,221 instructions, 3.88%)</title><rect x="96.1210%" y="37" width="3.8790%" height="15" fill="rgb(250,229,37)" fg:x="571182534" fg:w="23050221"/><text x="96.4140%" y="47.50">&lt;st..</text></g></svg></svg>

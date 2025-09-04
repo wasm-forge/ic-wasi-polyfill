@@ -1,4 +1,4 @@
-#!ic-repl
+#!~/bin/ic-repl -r ic
 
 function install(wasm, args, cycle) {
   let id = call ic.provisional_create_canister_with_cycles(record { settings = null; amount = cycle });
@@ -39,7 +39,7 @@ let file = "README.md";
 
 let rs_config = record { start_page = 1; page_limit = 128};
 
-let wasm_name = "canister_initial/target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
+let wasm_name = "../../target/wasm32-wasip1/release/canister_initial_backend_nowasi.wasm";
 
 
 function perf_file_write_10KiB_fs() {

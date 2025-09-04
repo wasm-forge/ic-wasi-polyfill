@@ -1,8 +1,16 @@
 # Changelog
 
-## [v0.9.1]
+## [v0.10.0]
 - make static RNG and ENV variables public
 - add cumulative instruction counter
+- integrate testing of C hello world
+- add flame graphs estimations
+- refactor Metadata and DirEntry structures, 
+- reduce copy of DirEntry -> faster folder iteration
+- test conversion from v0.9.0 to v0.10.0
+- use with_direntries instead of get_direntries
+- remove get_direntries
+- 
 
 ## [v0.9.0]
 - update stable-structures to v0.7.0
@@ -70,7 +78,7 @@
 - Benchmark tests added.
 
 
-[v0.9.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.9.0...v0.9.1
+[v0.10.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.9.0...v0.10.0
 [v0.9.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.2...v0.9.0
 [v0.8.2]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.1...v0.8.2
 [v0.8.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.0...v0.8.1

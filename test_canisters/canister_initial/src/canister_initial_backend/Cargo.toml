@@ -14,4 +14,6 @@ ic-stable-structures.workspace = true
 ic-cdk.workspace = true
 anyhow.workspace = true
 
-ic-wasi-polyfill.workspace = true
+# take an older version of ic-wasi-polyfill
+ic-wasi-polyfill = "0.9.0"
+#ic-wasi-polyfill.workspace = true

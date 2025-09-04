@@ -1,10 +1,13 @@
 service : () -> {
   basic_fs_test : () -> ();
   compute_file_hash : (text) -> (text);
+  create_folders : (text, nat32) -> ();
   do_fs_test : () -> (text);
+  do_fs_test_basic : () -> ();
   generate_random_fs : (nat64, nat64, nat64) -> (nat64);
   get_log : () -> (text) query;
   greet : (text) -> (text) query;
+  list_folders : (text) -> (vec text) query;
   read_file : (text) -> (text);
   scan_directory : (text) -> (text);
   test_create_dir_all : (text) -> ();

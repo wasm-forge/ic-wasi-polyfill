@@ -1,7 +1,9 @@
 use stable_fs::{
     error::Error,
     fs::{Fd, FileSystem},
-    storage::types::{DirEntry, DirEntryIndex, DUMMY_DOT_DOT_ENTRY_INDEX, DUMMY_DOT_ENTRY_INDEX},
+    storage::types::{
+        DirEntry, DirEntryIndex, FileType, DUMMY_DOT_DOT_ENTRY_INDEX, DUMMY_DOT_ENTRY_INDEX,
+    },
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -168,27 +170,27 @@ pub unsafe fn fd_readdir(
         Some(cookie as DirEntryIndex)
     };
 
-    match fs.get_direntries(fd, entry_index) {
-        Ok(vec) => {
-            for (idx, entry) in vec {
-                let put_result = put_single_entry(fs, idx, entry, &mut buf[result..]);
+    let r = fs.with_direntries(fd, entry_index, &mut |idx, entry| {
+        let put_result = put_single_entry(fs, *idx, entry, &mut buf[result..]);
 
-                if let Err(err) = put_result {
-                    return into_errno(err);
-                }
-                let put_result = put_result.unwrap();
+        let put_result = put_result.unwrap();
 
-                result += put_result;
+        result += put_result;
 
-                if result == bytes_len {
-                    break;
-                }
-            }
-
-            unsafe { *res = std::cmp::min(result, bytes_len) };
+        if result == bytes_len {
+            // stop iterations
+            false
+        } else {
+            // continue collecting entries
+            true
         }
-        Err(err) => return into_errno(err),
+    });
+
+    if let Err(err) = r {
+        return into_errno(err);
     }
+
+    unsafe { *res = std::cmp::min(result, bytes_len) };
 
     wasi::ERRNO_SUCCESS.raw() as i32
 }
@@ -196,7 +198,7 @@ pub unsafe fn fd_readdir(
 pub fn put_single_entry(
     fs: &FileSystem,
     index: DirEntryIndex,
-    dir_entry: DirEntry,
+    dir_entry: &DirEntry,
     buf: &mut [u8],
 ) -> Result<usize, Error> {
     // we assume the next index can always be current index + 1, hence no need to rely on .._next index field
@@ -205,12 +207,18 @@ pub fn put_single_entry(
     if index == DUMMY_DOT_DOT_ENTRY_INDEX {
         next_index = 1; // the first non-zero index in the folder
     }
+
     if index == DUMMY_DOT_ENTRY_INDEX {
         next_index = DUMMY_DOT_DOT_ENTRY_INDEX;
     }
 
-    // TODO: store file type directly inside DirEntry
-    let file_type = fs.metadata_from_node(dir_entry.node)?.file_type;
+    let file_type: FileType = if let Some(file_type) = dir_entry.entry_type {
+        file_type
+    } else {
+        fs.metadata_from_node(dir_entry.node)?.file_type
+    };
+
+    //let file_type = fs.metadata_from_node(dir_entry.node)?.file_type;
 
     let wasi_dirent = wasi::Dirent {
         d_next: next_index as u64,
@@ -298,8 +306,7 @@ mod tests {
         let direntry = DirEntry {
             name: FileName::new("test.txt".as_bytes()).unwrap(),
             node: 45 as Node,
-            next_entry: None,
-            prev_entry: None,
+            entry_type: None,
         };
 
         let wasi_dirent = wasi::Dirent {
@@ -362,9 +369,7 @@ mod tests {
             .open(dir_fd, "test4.txt", FdStat::default(), OpenFlags::CREATE, 0)
             .unwrap();
 
-        let meta = fs.metadata(dir_fd);
-
-        let first_entry = meta.unwrap().first_dir_entry.unwrap();
+        let first_entry = 1; // get the first entry
 
         let expected = [
             2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 116, 101, 115,
@@ -375,7 +380,8 @@ mod tests {
 
         let dir_entry = fs.get_direntry(dir_fd, first_entry).unwrap();
 
-        let len = put_single_entry(&fs, first_entry as DirEntryIndex, dir_entry, &mut buf).unwrap();
+        let len =
+            put_single_entry(&fs, first_entry as DirEntryIndex, &dir_entry, &mut buf).unwrap();
 
         assert_eq!(&expected[0..len], &buf[0..len]);
         assert_eq!(len, expected.len());

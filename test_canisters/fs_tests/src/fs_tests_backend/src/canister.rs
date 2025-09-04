@@ -97,7 +97,7 @@ fn log(msg: &str) {
             use std::io::Write;
             writeln!(file, "{msg}").unwrap();
         } else {
-            panic!("Log file not initialized. Call new_log() first.");
+            //panic!("Log file not initialized. Call new_log() first.");
         }
     });
 }
@@ -720,6 +720,37 @@ fn generate_random_file_structure(
 #[ic_cdk::update]
 pub fn do_fs_test() -> String {
     crate::tests::do_fs_test_interal()
+}
+
+#[ic_cdk::update]
+pub fn do_fs_test_basic() {
+    generate_random_fs(42, 100, 20);
+}
+
+#[ic_cdk::update]
+pub fn create_folders(dirname: String, count: u32) {
+    // Loop to create directories
+    for i in 0..count {
+        let dname = format!("{dirname}{i}");
+        std::fs::create_dir_all(&dname).expect("Failed to create directory");
+    }
+}
+
+#[ic_cdk::query]
+pub fn list_folders(path: String) -> Vec<String> {
+    let mut folder_names = Vec::new();
+
+    // get all the files and folders and return their names
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            // Push the folder name to the vector
+            if let Some(name) = entry.file_name().to_str() {
+                folder_names.push(name.to_string());
+            }
+        }
+    }
+
+    folder_names
 }
 
 export_candid!();

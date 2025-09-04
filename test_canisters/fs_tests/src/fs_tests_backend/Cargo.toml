@@ -12,6 +12,9 @@ crate-type = ["cdylib"]
 name = "fs_test"
 path = "src/main.rs"
 
+[profile.release]
+debug=true
+
 [dependencies]
 candid.workspace = true
 ic-stable-structures.workspace = true

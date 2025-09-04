@@ -27,12 +27,30 @@ impl FsTestsBackendCanister {
             args,
         )
     }
+    pub fn create_folders(&self, arg0: String, arg1: u32) -> super::CallBuilder<()> {
+        let args = Encode!(&arg0, &arg1);
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "create_folders",
+            args,
+        )
+    }
     pub fn do_fs_test(&self) -> super::CallBuilder<String> {
         let args = Encode!();
         self.caller.call(
             self.canister_id,
             super::CallMode::Update,
             "do_fs_test",
+            args,
+        )
+    }
+    pub fn do_fs_test_basic(&self) -> super::CallBuilder<()> {
+        let args = Encode!();
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Update,
+            "do_fs_test_basic",
             args,
         )
     }
@@ -54,6 +72,15 @@ impl FsTestsBackendCanister {
         let args = Encode!(&arg0);
         self.caller
             .call(self.canister_id, super::CallMode::Query, "greet", args)
+    }
+    pub fn list_folders(&self, arg0: String) -> super::CallBuilder<Vec<String>> {
+        let args = Encode!(&arg0);
+        self.caller.call(
+            self.canister_id,
+            super::CallMode::Query,
+            "list_folders",
+            args,
+        )
     }
     pub fn read_file(&self, arg0: String) -> super::CallBuilder<String> {
         let args = Encode!(&arg0);

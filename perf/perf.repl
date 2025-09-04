@@ -1,4 +1,4 @@
-#!ic-repl
+#!/bin/ic-repl
 
 function install(wasm, args, cycle) {
   let id = call ic.provisional_create_canister_with_cycles(record { settings = null; amount = cycle });
@@ -47,10 +47,25 @@ function perf_fuzz_test() {
 
   call cid.do_fs_test_basic();
 
-  flamegraph(cid, "perf_write_10mb", "svg/perf_fuzz_test.svg");
+  flamegraph(cid, "perf_write_10mb", "perf_fuzz_test.svg");
+  uninstall(cid)
+};
+
+
+function perf_create_folders() {
+  let cid = install(wasm_profiling(wasm_name, rs_config), encode (), null);
+
+  call cid.__toggle_tracing();
+  call cid.create_folders("dir", (1000: nat32));
+  call cid.__toggle_tracing();
+  call cid.create_folders("dir", (100: nat32));
+
+
+  flamegraph(cid, "perf_create_folders", "perf_create_folders.svg");
   uninstall(cid)
 };
 
 
 /// main calls
-perf_fuzz_test();
+//perf_fuzz_test();
+perf_create_folders();
