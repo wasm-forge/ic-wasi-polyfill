@@ -8,7 +8,9 @@ resolver = "2"
 
 
 [workspace.dependencies]
+# later versions break candid-extract
 candid = "=0.10.14"
+
 ic-cdk = "0.18.5"
 ic-stable-structures = "0.7.0"
 stable-fs = "0.10.0"
