@@ -4,10 +4,10 @@
 - make static RNG and ENV variables public
 - add cumulative instruction counter
 - integrate testing of C hello world
-- add flame graphs estimations
-- refactor Metadata and DirEntry structures, 
-- reduce copy of DirEntry -> faster folder iteration
-- test conversion from v0.9.0 to v0.10.0
+- add flame graph estimations for folders
+- refactor Metadata and DirEntry structures
+- remove generating a vector on listing directory entries -> faster folder iteration
+- add testing of upgrading from v0.9.0 to v0.10.0
 - use with_direntries instead of get_direntries
 - remove get_direntries
 - 
