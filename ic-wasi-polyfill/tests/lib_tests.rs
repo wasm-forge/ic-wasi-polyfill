@@ -1417,7 +1417,11 @@ fn test_mounts() {
     let hello_message = "Hello host".to_string();
     let hello_message2 = "Hello from regular file".to_string();
 
-    mount_memory_file(file_name, Box::new(memory.clone()));
+    mount_memory_file(
+        file_name,
+        Box::new(memory.clone()),
+        MountedFileSizePolicy::PreviousOrZero,
+    );
 
     // write something into a host memory file
     let fd = create_test_file_with_content(dir_fd, file_name, vec![hello_message.clone()]);
@@ -1436,7 +1440,11 @@ fn test_mounts() {
     assert_eq!(str, "".to_string());
 
     // mount again, the old content should recover
-    mount_memory_file(file_name, Box::new(memory.clone()));
+    mount_memory_file(
+        file_name,
+        Box::new(memory.clone()),
+        MountedFileSizePolicy::PreviousOrZero,
+    );
     let str = read_file_to_string(file_name);
     assert_eq!(str, hello_message);
 
@@ -1454,7 +1462,11 @@ fn test_mounts() {
     assert_eq!(str, hello_message2);
 
     // after mounting, we still have the old content
-    mount_memory_file(file_name, Box::new(memory.clone()));
+    mount_memory_file(
+        file_name,
+        Box::new(memory.clone()),
+        MountedFileSizePolicy::PreviousOrZero,
+    );
     let str = read_file_to_string(file_name);
     assert_eq!(str, hello_message);
 

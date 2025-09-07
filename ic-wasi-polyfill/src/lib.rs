@@ -26,9 +26,11 @@ mod environment;
 pub mod wasi_helpers;
 
 pub use stable_fs::fs::FileSystem;
+
 pub use stable_fs::fs::{ChunkSize, ChunkType};
 pub use stable_fs::storage::stable::StableStorage;
 pub use stable_fs::storage::transient::TransientStorage;
+pub use stable_fs::storage::types::MountedFileSizePolicy;
 
 #[cfg(target_arch = "wasm32")]
 use ic_cdk::api::instruction_counter as ic_instruction_counter;
@@ -1992,12 +1994,17 @@ pub fn init_with_memory_manager<M: Memory + 'static>(
 /// # Parameters
 /// - `file_name`    -  Name of the host file to mount on
 /// - `memory`       -  Memory to use as an actual file storage
+/// - `policy`       -  Mounted memory file size policy
 ///
-pub fn mount_memory_file(file_name: &str, memory: Box<dyn Memory>) -> i32 {
+pub fn mount_memory_file(
+    file_name: &str,
+    memory: Box<dyn Memory>,
+    size_policy: MountedFileSizePolicy,
+) -> i32 {
     FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let result = fs.mount_memory_file(file_name, memory);
+        let result = fs.mount_memory_file(file_name, memory, size_policy);
 
         match result {
             Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,

@@ -1,45 +1,50 @@
 # Changelog
 
+
+## [v0.11.0]
+- API change, introduce MountedFileSizePolicy
+- Update dependencies
+
 ## [v0.10.0]
-- make static RNG and ENV variables public
-- add cumulative instruction counter
-- integrate testing of C hello world
-- add flame graph estimations for folders
-- refactor Metadata and DirEntry structures
-- remove generating a vector on listing directory entries -> faster folder iteration
-- add testing of upgrading from v0.9.0 to v0.10.0
-- use with_direntries instead of get_direntries
-- remove get_direntries
-- 
+- Make static RNG and ENV variables public
+- Add cumulative instruction counter
+- Integrate testing of C hello world
+- Add flame graph estimations for folders
+- Refactor Metadata and DirEntry structures
+- Remove generating a vector on listing directory entries -> faster folder iteration
+- Add testing of upgrading from v0.9.0 to v0.10.0
+- Use with_direntries instead of get_direntries
+- Remove get_direntries
+
 
 ## [v0.9.0]
-- update stable-structures to v0.7.0
-- update dependecies
-- introduce ic-test
-- add durability tests
+- Update stable-structures to v0.7.0
+- Update dependecies
+- Introduce ic-test
+- Add durability tests
 
 ## [v0.8.2]
-- update version ic-cdk v0.18.3
-- update pocket-ic to v9.0
-- update dependecies
+- Update version ic-cdk v0.18.3
+- Update pocket-ic to v9.0
+- Update dependecies
 
 ## [v0.8.1]
-- refine unsafe blocks in the 2024 edition
+- Refine unsafe blocks in the 2024 edition
 
 ## [v0.8.0]
 
-- pocket-ic 7.0/8.0
-- update to rust edition 2024
-- update dependencies
-- update documentation 
-- additional tests for wasi compliance
-- refactor test structure, 
-- wasi_mock updated to be used with wasmtime tests
+- Pocket-ic 7.0/8.0
+- Update to rust edition 2024
+- Update dependencies
+- Update documentation 
+- Additional tests for wasi compliance
+- Refactor test structure, 
+- Wasi_mock updated to be used with wasmtime tests
 
 ## [v0.7.0]
 
-- more supported functions
-- update dependencies
+- More supported functions
+- Update dependencies
 
 ## [v0.6.4]
 
@@ -78,6 +83,7 @@
 - Benchmark tests added.
 
 
+[v0.11.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.9.0...v0.10.0
 [v0.9.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.2...v0.9.0
 [v0.8.2]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.1...v0.8.2
