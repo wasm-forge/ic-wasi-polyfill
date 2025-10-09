@@ -5,6 +5,18 @@ use ic_wasi_polyfill::wasi::{self, Fd};
 use ic_wasi_polyfill::wasi_helpers::DIRENT_SIZE;
 use ic_wasi_polyfill::*;
 
+#[cfg(target_arch = "wasm32")]
+use ic_cdk::api::time as ic_time;
+#[cfg(not(all(target_arch = "wasm32")))]
+fn ic_time() -> u64 {
+    use std::time::UNIX_EPOCH;
+
+    std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as u64
+}
+
 #[test]
 fn test_environ_get() {
     let init_env = [
@@ -260,7 +272,7 @@ fn test_create_dirs_and_file_in_it() {
     assert!(res == 0);
 
     // open first dir
-    let mut parent_folder_fd = 0;
+    let mut parent_folder_fd = 0 as Fd;
 
     let res = unsafe {
         __ic_custom_path_open(
@@ -427,7 +439,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
 
-    let mut file_fd = 0;
+    let mut file_fd = 0 as Fd;
 
     let res = unsafe {
         __ic_custom_path_open(
@@ -527,7 +539,7 @@ fn test_writing_and_reading_file_stats() {
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
 
-    let mut file_fd = 0;
+    let mut file_fd = 0 as Fd;
 
     unsafe {
         __ic_custom_path_open(
@@ -700,7 +712,7 @@ fn test_link_seek_tell() {
 
     assert!(res == 0);
 
-    let mut link_file_fd = 0;
+    let mut link_file_fd = 0 as Fd;
 
     // open file for reading
     let res = unsafe {

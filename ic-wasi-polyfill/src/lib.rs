@@ -43,9 +43,9 @@ fn ic_instruction_counter() -> u64 {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub use ic_cdk::api::time as ic_time;
+use ic_cdk::api::time as ic_time;
 #[cfg(not(all(target_arch = "wasm32")))]
-pub fn ic_time() -> u64 {
+fn ic_time() -> u64 {
     use std::time::UNIX_EPOCH;
 
     std::time::SystemTime::now()
