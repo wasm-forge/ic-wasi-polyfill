@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.11.1]
+- WASI call counting it enabled by an explicit feature
+- Update dependencies
 
 ## [v0.11.0]
 - API change, introduce MountedFileSizePolicy
@@ -7,7 +10,7 @@
 
 ## [v0.10.0]
 - Make static RNG and ENV variables public
-- Add cumulative instruction counter
+- Add WASI cumulative instruction counter
 - Integrate testing of C hello world
 - Add flame graph estimations for folders
 - Refactor Metadata and DirEntry structures
@@ -83,6 +86,7 @@
 - Benchmark tests added.
 
 
+[v0.11.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.11.0...v0.11.1
 [v0.11.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.9.0...v0.10.0
 [v0.9.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.8.2...v0.9.0
