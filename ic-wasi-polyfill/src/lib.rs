@@ -32,10 +32,13 @@ pub use stable_fs::storage::stable::StableStorage;
 pub use stable_fs::storage::transient::TransientStorage;
 pub use stable_fs::storage::types::MountedFileSizePolicy;
 
+#[allow(dead_code)]
+#[allow(unused_imports)]
 #[cfg(target_arch = "wasm32")]
 use ic_cdk::api::instruction_counter as ic_instruction_counter;
+#[allow(dead_code)]
 #[cfg(not(all(target_arch = "wasm32")))]
-pub fn ic_instruction_counter() -> u64 {
+fn ic_instruction_counter() -> u64 {
     0
 }
 
@@ -99,6 +102,7 @@ thread_local! {
     pub static ENV: RefCell<Environment> = RefCell::new(Environment::new());
 }
 
+#[cfg(feature = "count_wasi_calls")]
 fn update_counter(start: u64) {
     COUNTER.with_borrow_mut(|counter| {
         *counter += ic_instruction_counter() - start;
@@ -147,6 +151,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -189,6 +194,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
         debug_instructions!("__ic_custom_fd_write", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
 
     result
@@ -203,6 +209,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     len: i32,
     res: *mut wasi::Size,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -222,6 +229,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
 
     // for now we don't support reading from the standard streams
     if fd < 3 {
+        #[cfg(feature = "count_wasi_calls")]
         update_counter(start);
 
         return wasi::ERRNO_INVAL.raw() as i32;
@@ -248,6 +256,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
         debug_instructions!("__ic_custom_fd_read", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -262,6 +271,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -306,6 +316,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
         debug_instructions!("__ic_custom_fd_pwrite", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
 
     result
@@ -321,6 +332,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     offset: i64,
     res: *mut wasi::Size,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     let dst_io_vec = iovs as *const DstBuf;
@@ -339,6 +351,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
 
     // for now we don't support reading from the standard streams
     if fd < 3 {
+        #[cfg(feature = "count_wasi_calls")]
         update_counter(start);
 
         return wasi::ERRNO_INVAL.raw() as i32;
@@ -367,6 +380,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
         debug_instructions!("__ic_custom_fd_pread", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
 
     result
@@ -381,6 +395,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     whence: i32,
     res: *mut wasi::Filesize,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -391,6 +406,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
 
     // standart streams not supported
     if fd < 3 {
+        #[cfg(feature = "count_wasi_calls")]
         update_counter(start);
 
         return wasi::ERRNO_INVAL.raw() as i32;
@@ -422,6 +438,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
         debug_instructions!("__ic_custom_fd_seek", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
 
     result
@@ -443,6 +460,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     fdflags: i32,
     res: *mut Fd,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     let file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
@@ -490,6 +508,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
         debug_instructions!("__ic_custom_path_open", result, start, "{par}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
 
     result
@@ -498,6 +517,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -515,6 +535,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_close", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -523,6 +544,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: Fd, ret_val: *mut wasi::Filestat) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -561,6 +583,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: Fd, ret_val: *mut wasi:
         debug_instructions!("__ic_custom_fd_filestat_get", result, start, "{ret}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -568,6 +591,7 @@ pub unsafe extern "C" fn __ic_custom_fd_filestat_get(fd: Fd, ret_val: *mut wasi:
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -581,6 +605,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_sync", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -589,6 +614,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -621,6 +647,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -
         debug_instructions!("__ic_custom_fd_tell", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -629,6 +656,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi::Prestat) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -665,6 +693,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi:
         debug_instructions!("__ic_custom_fd_prestat_get fd={}", ret, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     ret
 }
@@ -677,6 +706,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     path: *mut u8,
     max_len: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -720,6 +750,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
         );
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -727,6 +758,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i32) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -761,6 +793,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_advise", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -768,6 +801,7 @@ pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -789,6 +823,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_allocate", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -796,6 +831,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -809,6 +845,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_datasync", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -817,6 +854,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi::Fdstat) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -850,6 +888,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi
         debug_instructions!("__ic_custom_fd_fdstat_get", result, start, "{r}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -857,6 +896,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -892,6 +932,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_fdstat_set_flags", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -903,6 +944,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     rights_base: i64,
     rights_inheriting: i64,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -933,6 +975,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_fdstat_set_rights", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -940,6 +983,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -958,6 +1002,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_size(fd: Fd, size: i64) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_filestat_set_size", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -970,6 +1015,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
     mtim: i64,
     fst_flags: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1016,6 +1062,7 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_filestat_set_times", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1030,6 +1077,7 @@ pub unsafe extern "C" fn __ic_custom_fd_readdir(
     cookie: i64,
     res: *mut wasi::Size,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1058,6 +1106,7 @@ pub unsafe extern "C" fn __ic_custom_fd_readdir(
         debug_instructions!("__ic_custom_fd_readdir", result, start, "{t}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1065,6 +1114,7 @@ pub unsafe extern "C" fn __ic_custom_fd_readdir(
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1084,6 +1134,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_renumber", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1092,6 +1143,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Size) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1110,6 +1162,7 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
         debug_instructions!("__ic_custom_random_get", result, start, "buf={buf:?}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1121,6 +1174,7 @@ pub unsafe extern "C" fn __ic_custom_environ_get(
     environment: *mut *mut u8,
     environment_buffer: *mut u8,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1144,6 +1198,7 @@ pub unsafe extern "C" fn __ic_custom_environ_get(
         });
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1155,6 +1210,7 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
     entry_count: *mut wasi::Size,
     buffer_size: *mut wasi::Size,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1180,6 +1236,7 @@ pub unsafe extern "C" fn __ic_custom_environ_sizes_get(
         });
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1239,6 +1296,7 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     precision: i64,
     time: *mut u64,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1252,6 +1310,7 @@ pub unsafe extern "C" fn __ic_custom_clock_time_get(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_clock_time_get", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1264,6 +1323,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     path: *const u8,
     path_len: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1293,6 +1353,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_create_directory", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1307,6 +1368,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
     path_len: i32,
     result: *mut wasi::Filestat,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1379,6 +1441,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
         debug_instructions!("__ic_custom_path_filestat_get", r, start, "{t}");
     }
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     r
 }
@@ -1395,6 +1458,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_set_times(
     mtim: i64,
     fst_flags: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1475,6 +1539,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_set_times(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_filestat_set_times", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1491,6 +1556,7 @@ pub unsafe extern "C" fn __ic_custom_path_link(
     new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1523,6 +1589,7 @@ pub unsafe extern "C" fn __ic_custom_path_link(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_link", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1552,6 +1619,7 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
     path: *const u8,
     path_len: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1578,6 +1646,7 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_remove_directory", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1593,6 +1662,7 @@ pub unsafe extern "C" fn __ic_custom_path_rename(
     new_path: *const u8,
     new_path_len: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1624,6 +1694,7 @@ pub unsafe extern "C" fn __ic_custom_path_rename(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_rename", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1660,6 +1731,7 @@ pub unsafe extern "C" fn __ic_custom_path_unlink_file(
     path: *const u8,
     path_len: i32,
 ) -> i32 {
+    #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
     #[cfg(feature = "report_wasi_calls")]
@@ -1686,6 +1758,7 @@ pub unsafe extern "C" fn __ic_custom_path_unlink_file(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_path_unlink", result, start);
 
+    #[cfg(feature = "count_wasi_calls")]
     update_counter(start);
     result
 }
@@ -1913,6 +1986,7 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
 }
 
 /// Reset the cumulative instruction counter
+#[cfg(feature = "count_wasi_calls")]
 pub fn reset_counter() {
     COUNTER.with_borrow_mut(|counter| {
         *counter = 0;
@@ -1920,6 +1994,7 @@ pub fn reset_counter() {
 }
 
 /// Get the current cumulative instructions
+#[cfg(feature = "count_wasi_calls")]
 pub fn get_counter() -> u64 {
     COUNTER.with_borrow(|counter| *counter)
 }
