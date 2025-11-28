@@ -15,5 +15,5 @@ ic-cdk.workspace = true
 anyhow.workspace = true
 
 # take an older version of ic-wasi-polyfill
-ic-wasi-polyfill = "0.9.0"
-#ic-wasi-polyfill.workspace = true
+#ic-wasi-polyfill = "0.11.1"
+ic-wasi-polyfill.workspace = true

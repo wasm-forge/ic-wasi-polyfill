@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.12.0]
+- Update to ic-cdk v0.19
+- Update depencenties
+
 ## [v0.11.1]
 - WASI call counting it enabled by an explicit feature
 - Update dependencies
