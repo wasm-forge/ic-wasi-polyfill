@@ -5,7 +5,7 @@ set -e
 ##################################
 ############# prepare VARs
 
-SDK_VERSION=27
+SDK_VERSION=29
 
 SDK_DIR="$HOME/.cache/wasi-sdk"
 OS=`uname -s`

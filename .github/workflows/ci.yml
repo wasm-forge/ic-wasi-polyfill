@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [1.88.0]
+        rust: [1.94.0]
 
     steps:
       - name: Checkout repository

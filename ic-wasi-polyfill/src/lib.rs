@@ -4,7 +4,7 @@ use std::ops::Range;
 use ic_stable_structures::memory_manager::MemoryManager;
 use ic_stable_structures::{DefaultMemoryImpl, Memory};
 
-use rand::{RngCore, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 use stable_fs::fs::{DstBuf, Fd, SrcBuf};
 use stable_fs::fs::{FdFlags, FdStat, FileSize, OpenFlags};
@@ -1152,7 +1152,7 @@ pub unsafe extern "C" fn __ic_custom_random_get(buf: *mut u8, buf_len: wasi::Siz
     let buf = unsafe { std::slice::from_raw_parts_mut(buf, buf_len) };
     RNG.with(|rng| {
         let mut rng = rng.borrow_mut();
-        rng.fill_bytes(buf);
+        rng.fill(buf);
     });
 
     let result = wasi::ERRNO_SUCCESS.raw() as i32;
