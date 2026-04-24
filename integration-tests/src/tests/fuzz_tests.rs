@@ -47,6 +47,7 @@ async fn test_fs_durability() {
 
     let expected_log_ =
         std::fs::read_to_string("../target/release/playground/playground/log.txt").unwrap();
+
     let expected_log = expected_log_.trim();
 
     if computed != expected {

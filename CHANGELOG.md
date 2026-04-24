@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.13.0]
+- Update to ic-cdk v0.20
+- Update depencenties
+
 ## [v0.12.0]
 - Update to ic-cdk v0.19
 - Update depencenties
@@ -90,6 +94,8 @@
 - Benchmark tests added.
 
 
+[v0.13.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.12.0...v0.13.0
+[v0.12.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.11.0...v0.12.0
 [v0.11.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.11.0...v0.11.1
 [v0.11.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.9.0...v0.10.0

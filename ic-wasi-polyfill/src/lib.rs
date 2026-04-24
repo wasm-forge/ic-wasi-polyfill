@@ -468,7 +468,7 @@ pub unsafe extern "C" fn __ic_custom_path_open(
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!(
         "__ic_custom_path_open",
-        "parent_fd={parent_fd} dirflags={dirflags} path={file_name} oflags={oflags} fdflags={fdflags}"
+        "parent_fd={parent_fd} dirflags={dirflags} path={file_name} oflags={oflags} fdflags={fdflags} right_base={fs_rights_base} rights_inheriting={fs_rights_inheriting}"
     );
 
     // dirflags contains the information on whether to follow the symlinks,
