@@ -407,7 +407,7 @@ async fn created_dir_is_writable() {
 
     let result = env
         .canister_initial_backend
-        .check_new_dir_is_writable("/usr/tmp".to_string())
+        .check_new_dir_is_writable("tmp".to_string())
         .call()
         .await;
 

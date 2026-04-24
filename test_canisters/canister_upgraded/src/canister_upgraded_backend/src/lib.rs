@@ -687,29 +687,21 @@ pub fn create_files(path: String, count: usize) -> u64 {
 pub fn check_new_dir_is_writable(dirname: String) -> String {
     std::fs::create_dir(&dirname).unwrap();
 
-    let md = fs::metadata(&dirname).unwrap();
+    let test_file = format!("{}/test.txt", dirname);
 
-    let permissions = md.permissions();
-    let readonly = permissions.readonly();
-
-    if readonly {
-        "Is readonly".to_string()
-    } else {
-        "Is writable".to_string()
+    match std::fs::write(&test_file, b"hello") {
+        Ok(_) => "Is writable".to_string(),
+        Err(_e) => "Is readonly".to_string(),
     }
 }
 
 #[ic_cdk::update]
 pub fn check_dir_is_writable(dirname: String) -> String {
-    let md = fs::metadata(&dirname).unwrap();
+    let test_file = format!("{}/test.txt", dirname);
 
-    let permissions = md.permissions();
-    let readonly = permissions.readonly();
-
-    if readonly {
-        "Is readonly".to_string()
-    } else {
-        "Is writable".to_string()
+    match std::fs::write(&test_file, b"hello") {
+        Ok(_) => "Is writable".to_string(),
+        Err(_e) => "Is readonly".to_string(),
     }
 }
 
@@ -717,15 +709,11 @@ pub fn check_dir_is_writable(dirname: String) -> String {
 pub fn check_new_file_is_writable(file: String) -> String {
     std::fs::File::create(&file).unwrap();
 
-    let md = fs::metadata(&file).unwrap();
+    let test_file = format!("{}", file);
 
-    let permissions = md.permissions();
-    let readonly = permissions.readonly();
-
-    if readonly {
-        "Is readonly".to_string()
-    } else {
-        "Is writable".to_string()
+    match std::fs::write(&test_file, b"hello") {
+        Ok(_) => "Is writable".to_string(),
+        Err(_e) => "Is readonly".to_string(),
     }
 }
 

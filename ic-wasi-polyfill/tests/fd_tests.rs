@@ -4,6 +4,165 @@ use common::libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 use ic_wasi_polyfill::wasi::{self, Fd};
 use ic_wasi_polyfill::*;
 
+const ROOT_FD: Fd = 3;
+
+#[test]
+fn test_root_fd_filestat_get() {
+    init(&[], &[]);
+
+    let mut stat = wasi::Filestat {
+        dev: 0,
+        ino: 0,
+        filetype: wasi::FILETYPE_UNKNOWN,
+        nlink: 0,
+        size: 0,
+        atim: 0,
+        mtim: 0,
+        ctim: 0,
+    };
+
+    let ret = unsafe { __ic_custom_fd_filestat_get(ROOT_FD, &mut stat as *mut wasi::Filestat) };
+    assert_eq!(ret, 0, "fd_filestat_get on root fd should succeed");
+    assert_eq!(
+        stat.filetype,
+        wasi::FILETYPE_DIRECTORY,
+        "root fd should be a directory"
+    );
+}
+
+#[test]
+fn test_root_path_filestat_get_dot() {
+    init(&[], &[]);
+
+    let path = ".";
+    let mut stat = wasi::Filestat {
+        dev: 0,
+        ino: 0,
+        filetype: wasi::FILETYPE_UNKNOWN,
+        nlink: 0,
+        size: 0,
+        atim: 0,
+        mtim: 0,
+        ctim: 0,
+    };
+
+    let ret = unsafe {
+        __ic_custom_path_filestat_get(
+            ROOT_FD as i32,
+            0,
+            path.as_ptr(),
+            path.len() as i32,
+            &mut stat as *mut wasi::Filestat,
+        )
+    };
+    assert_eq!(ret, 0, "path_filestat_get('.') on root fd should succeed");
+    assert_eq!(
+        stat.filetype,
+        wasi::FILETYPE_DIRECTORY,
+        "'.' should resolve to a directory"
+    );
+}
+
+#[test]
+fn test_root_path_filestat_get_empty() {
+    // Some WASI runtimes pass an empty path when the target is the dir itself.
+    init(&[], &[]);
+
+    let path = "";
+    let mut stat = wasi::Filestat {
+        dev: 0,
+        ino: 0,
+        filetype: wasi::FILETYPE_UNKNOWN,
+        nlink: 0,
+        size: 0,
+        atim: 0,
+        mtim: 0,
+        ctim: 0,
+    };
+
+    let ret = unsafe {
+        __ic_custom_path_filestat_get(
+            ROOT_FD as i32,
+            0,
+            path.as_ptr(),
+            path.len() as i32,
+            &mut stat as *mut wasi::Filestat,
+        )
+    };
+    assert_eq!(ret, 0, "path_filestat_get('') on root fd should succeed");
+    assert_eq!(
+        stat.filetype,
+        wasi::FILETYPE_DIRECTORY,
+        "empty path should resolve to a directory"
+    );
+}
+
+#[test]
+fn test_root_path_open_dot() {
+    // Verifies that path_open(".") on the root fd succeeds and returns a dir fd.
+    init(&[], &[]);
+
+    let path = ".";
+    let mut dir_fd: Fd = 0;
+
+    let ret = unsafe {
+        __ic_custom_path_open(
+            ROOT_FD,
+            0,
+            path.as_ptr(),
+            path.len() as i32,
+            wasi::OFLAGS_DIRECTORY as i32,
+            common::DEFAULT_RIGHTS,
+            common::DEFAULT_RIGHTS,
+            0,
+            &mut dir_fd as *mut Fd,
+        )
+    };
+    assert_eq!(ret, 0, "path_open('.') should succeed");
+    assert!(dir_fd > 3, "opened fd should be above the pre-opened range");
+
+    // Confirm the opened fd is a directory with write rights.
+    let mut fdstat = wasi::Fdstat {
+        fs_filetype: wasi::FILETYPE_UNKNOWN,
+        fs_flags: 0,
+        fs_rights_base: 0,
+        fs_rights_inheriting: 0,
+    };
+    let ret = unsafe { __ic_custom_fd_fdstat_get(dir_fd, &mut fdstat as *mut wasi::Fdstat) };
+    assert_eq!(ret, 0, "fd_fdstat_get on opened '.' fd should succeed");
+    assert_eq!(
+        fdstat.fs_filetype,
+        wasi::FILETYPE_DIRECTORY,
+        "opened '.' should be a directory"
+    );
+    assert!(
+        fdstat.fs_rights_base & wasi::RIGHTS_FD_WRITE != 0,
+        "root dir opened via '.' should have write rights (not readonly)"
+    );
+
+    __ic_custom_fd_close(dir_fd);
+}
+
+#[test]
+fn test_root_fd_fdstat_has_write_rights() {
+    // The pre-opened root fd=3 itself should carry write rights.
+    init(&[], &[]);
+
+    let mut fdstat = wasi::Fdstat {
+        fs_filetype: wasi::FILETYPE_UNKNOWN,
+        fs_flags: 0,
+        fs_rights_base: 0,
+        fs_rights_inheriting: 0,
+    };
+
+    let ret = unsafe { __ic_custom_fd_fdstat_get(ROOT_FD, &mut fdstat as *mut wasi::Fdstat) };
+    assert_eq!(ret, 0, "fd_fdstat_get on root fd should succeed");
+    assert!(
+        fdstat.fs_rights_base & wasi::RIGHTS_FD_WRITE != 0,
+        "root fd should have write rights (not readonly)"
+    );
+}
+
 #[test]
 fn test_fd_prestat_init_fd_prestat_dir_name() {
     init(&[], &[]);

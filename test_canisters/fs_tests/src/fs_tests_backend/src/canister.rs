@@ -12,7 +12,7 @@ fn greet(name: String) -> String {
 use std::{
     cell::RefCell,
     collections::BTreeMap,
-    fs::{self, FileType, Permissions},
+    fs::{self, FileType},
     io::{Seek, SeekFrom},
     path::PathBuf,
 };
@@ -274,7 +274,18 @@ pub fn generate_random_fs(seed: u64, steps: u64, max_depth: u64) -> u64 {
 
 #[ic_cdk::query]
 pub fn get_log() -> String {
-    std::fs::read_to_string("./log.txt").unwrap()
+    use std::fs::File;
+    use std::io::Read;
+
+    const MAX_SIZE: usize = 2_500_000; // ~2.5 MB
+
+    let mut file = File::open("./log.txt").unwrap();
+    let mut buffer = vec![0; MAX_SIZE];
+
+    let bytes_read = file.read(&mut buffer).unwrap();
+    buffer.truncate(bytes_read);
+
+    String::from_utf8_lossy(&buffer).to_string()
 }
 
 fn get_random_file(
@@ -372,9 +383,6 @@ fn rename_opened_file(opened_files: &mut BTreeMap<String, File>, from: &str, to:
     }
 }
 
-fn permissions_str(per: Permissions) -> String {
-    format!("permissions: readonly = {}", per.readonly())
-}
 
 fn file_type_str(ftype: FileType) -> String {
     format!(
@@ -630,13 +638,6 @@ fn generate_random_file_structure(
 
                 let meta = fs::metadata(&path)?;
 
-                save.write_all(
-                    format!(
-                        "{path:?}.metadata.{:?}\n",
-                        permissions_str(meta.permissions())
-                    )
-                    .as_bytes(),
-                )?;
 
                 save.write_all(
                     format!(
