@@ -383,7 +383,6 @@ fn rename_opened_file(opened_files: &mut BTreeMap<String, File>, from: &str, to:
     }
 }
 
-
 fn file_type_str(ftype: FileType) -> String {
     format!(
         "file_type: is_file = {}, is_dir = {}, is_symlink = {}",
@@ -637,7 +636,6 @@ fn generate_random_file_structure(
                 let path = get_random_file(parent_path, current_op, opened_files)?;
 
                 let meta = fs::metadata(&path)?;
-
 
                 save.write_all(
                     format!(

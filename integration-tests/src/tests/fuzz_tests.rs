@@ -25,7 +25,7 @@ async fn test_fs_durability() {
     let env = test_setup::setup(IcpTest::new().await).await;
 
     let backend = env.fs_tests_backend;
-    
+
     let _c = backend.do_fs_test().call().await;
 
     // re-deploy

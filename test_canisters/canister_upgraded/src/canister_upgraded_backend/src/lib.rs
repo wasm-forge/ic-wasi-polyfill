@@ -709,7 +709,7 @@ pub fn check_dir_is_writable(dirname: String) -> String {
 pub fn check_new_file_is_writable(file: String) -> String {
     std::fs::File::create(&file).unwrap();
 
-    let test_file = format!("{}", file);
+    let test_file = file.to_string();
 
     match std::fs::write(&test_file, b"hello") {
         Ok(_) => "Is writable".to_string(),
