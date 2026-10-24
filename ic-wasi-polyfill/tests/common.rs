@@ -41,7 +41,7 @@ pub fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Ve
             parent_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC) as i32,
             DEFAULT_RIGHTS,
             DEFAULT_RIGHTS,
@@ -66,7 +66,7 @@ pub fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Ve
         __ic_custom_fd_write(
             file_fd,
             src.as_ptr(),
-            src.len() as i32,
+            src.len() as u32,
             &mut bytes_written as *mut wasi::Size,
         )
     };
@@ -100,7 +100,7 @@ pub fn read_directory(root_fd: Fd) -> Vec<String> {
         __ic_custom_fd_readdir(
             root_fd,
             bytes.as_mut_ptr(),
-            len as i32,
+            len as u32,
             0,
             (&mut new_length) as *mut wasi::Size,
         )
@@ -153,7 +153,7 @@ pub fn read_file_to_string(file: &str) -> String {
             3,
             0,
             file.as_ptr(),
-            file.len() as i32,
+            file.len() as u32,
             0,
             DEFAULT_RIGHTS,
             DEFAULT_RIGHTS,

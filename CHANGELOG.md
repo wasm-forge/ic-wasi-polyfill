@@ -1,12 +1,17 @@
 # Changelog
 
+## [v0.13.1]
+- Update depencencies
+- Treat WASI length and count arguments as unsigned, preventing traps for large values
+- Fix `fd_prestat_dir_name` to clamp the path length to the preopen name length
+
 ## [v0.13.0]
 - Update to ic-cdk v0.20
-- Update depencenties
+- Update depencencies
 
 ## [v0.12.0]
 - Update to ic-cdk v0.19
-- Update depencenties
+- Update depencencies
 
 ## [v0.11.1]
 - WASI call counting it enabled by an explicit feature
@@ -94,6 +99,7 @@
 - Benchmark tests added.
 
 
+[v0.13.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.12.0...v0.13.0
 [v0.12.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.11.0...v0.12.0
 [v0.11.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.11.0...v0.11.1

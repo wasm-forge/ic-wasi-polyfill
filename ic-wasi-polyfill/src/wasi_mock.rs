@@ -2303,7 +2303,7 @@ pub mod wasi_snapshot_preview1 {
         arg3: i64,
         arg4: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_fd_pread(arg0 as Fd, arg1, arg2, arg3, arg4) }
+        unsafe { __ic_custom_fd_pread(arg0 as Fd, arg1, arg2 as u32, arg3, arg4) }
     }
     /// Return a description of the given preopened file descriptor.
     pub unsafe fn fd_prestat_get(arg0: i32, arg1: *mut wasi::Prestat) -> i32 {
@@ -2311,7 +2311,7 @@ pub mod wasi_snapshot_preview1 {
     }
     /// Return a description of the given preopened file descriptor.
     pub unsafe fn fd_prestat_dir_name(arg0: i32, arg1: *mut u8, arg2: i32) -> i32 {
-        unsafe { __ic_custom_fd_prestat_dir_name(arg0, arg1, arg2) }
+        unsafe { __ic_custom_fd_prestat_dir_name(arg0, arg1, arg2 as u32) }
     }
     /// Write to a file descriptor, without using and updating the file descriptor's offset.
     /// Note: This is similar to `pwritev` in POSIX.
@@ -2322,7 +2322,7 @@ pub mod wasi_snapshot_preview1 {
         arg3: i64,
         arg4: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_fd_pwrite(arg0 as Fd, arg1, arg2, arg3, arg4) }
+        unsafe { __ic_custom_fd_pwrite(arg0 as Fd, arg1, arg2 as u32, arg3, arg4) }
     }
     /// Read from a file descriptor.
     /// Note: This is similar to `readv` in POSIX.
@@ -2332,7 +2332,7 @@ pub mod wasi_snapshot_preview1 {
         arg2: i32,
         arg3: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_fd_read(arg0 as Fd, arg1, arg2, arg3) }
+        unsafe { __ic_custom_fd_read(arg0 as Fd, arg1, arg2 as u32, arg3) }
     }
     /// Read directory entries from a directory.
     /// When successful, the contents of the output buffer consist of a sequence of
@@ -2350,7 +2350,7 @@ pub mod wasi_snapshot_preview1 {
         arg3: i64,
         arg4: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_fd_readdir(arg0 as Fd, arg1, arg2, arg3, arg4) }
+        unsafe { __ic_custom_fd_readdir(arg0 as Fd, arg1, arg2 as u32, arg3, arg4) }
     }
     /// Atomically replace a file descriptor by renumbering another file descriptor.
     /// Due to the strong focus on thread safety, this environment does not provide
@@ -2386,12 +2386,12 @@ pub mod wasi_snapshot_preview1 {
         arg2: i32,
         arg3: *mut wasi::Size,
     ) -> i32 {
-        unsafe { __ic_custom_fd_write(arg0 as u32, arg1, arg2, arg3) }
+        unsafe { __ic_custom_fd_write(arg0 as u32, arg1, arg2 as u32, arg3) }
     }
     /// Create a directory.
     /// Note: This is similar to `mkdirat` in POSIX.
     pub unsafe fn path_create_directory(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
-        unsafe { __ic_custom_path_create_directory(arg0 as Fd, arg1, arg2) }
+        unsafe { __ic_custom_path_create_directory(arg0 as Fd, arg1, arg2 as u32) }
     }
     /// Return the attributes of a file or directory.
     /// Note: This is similar to `stat` in POSIX.
@@ -2402,7 +2402,7 @@ pub mod wasi_snapshot_preview1 {
         arg3: i32,
         arg4: *mut wasi::Filestat,
     ) -> i32 {
-        unsafe { __ic_custom_path_filestat_get(arg0, arg1, arg2, arg3, arg4) }
+        unsafe { __ic_custom_path_filestat_get(arg0, arg1, arg2, arg3 as u32, arg4) }
     }
     /// Adjust the timestamps of a file or directory.
     /// Note: This is similar to `utimensat` in POSIX.
@@ -2415,7 +2415,9 @@ pub mod wasi_snapshot_preview1 {
         arg5: i64,
         arg6: i32,
     ) -> i32 {
-        unsafe { __ic_custom_path_filestat_set_times(arg0, arg1, arg2, arg3, arg4, arg5, arg6) }
+        unsafe {
+            __ic_custom_path_filestat_set_times(arg0, arg1, arg2, arg3 as u32, arg4, arg5, arg6)
+        }
     }
     /// Create a hard link.
     /// Note: This is similar to `linkat` in POSIX.
@@ -2428,7 +2430,17 @@ pub mod wasi_snapshot_preview1 {
         arg5: *const u8,
         arg6: i32,
     ) -> i32 {
-        unsafe { __ic_custom_path_link(arg0 as Fd, arg1, arg2, arg3, arg4 as Fd, arg5, arg6) }
+        unsafe {
+            __ic_custom_path_link(
+                arg0 as Fd,
+                arg1,
+                arg2,
+                arg3 as u32,
+                arg4 as Fd,
+                arg5,
+                arg6 as u32,
+            )
+        }
     }
     /// Open a file or directory.
     /// The returned file descriptor is not guaranteed to be the lowest-numbered
@@ -2448,7 +2460,19 @@ pub mod wasi_snapshot_preview1 {
         arg7: i32,
         arg8: *mut u32,
     ) -> i32 {
-        unsafe { __ic_custom_path_open(arg0 as Fd, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) }
+        unsafe {
+            __ic_custom_path_open(
+                arg0 as Fd,
+                arg1,
+                arg2,
+                arg3 as u32,
+                arg4,
+                arg5,
+                arg6,
+                arg7,
+                arg8,
+            )
+        }
     }
     /// Read the contents of a symbolic link.
     /// Note: This is similar to `readlinkat` in POSIX.
@@ -2462,7 +2486,7 @@ pub mod wasi_snapshot_preview1 {
     ) -> i32 {
         #[cfg(not(feature = "skip_unimplemented_functions"))]
         unsafe {
-            __ic_custom_path_readlink(arg0, arg1, arg2, arg3, arg4, arg5)
+            __ic_custom_path_readlink(arg0, arg1, arg2 as u32, arg3, arg4 as u32, arg5)
         }
 
         #[cfg(feature = "skip_unimplemented_functions")]
@@ -2472,7 +2496,7 @@ pub mod wasi_snapshot_preview1 {
     /// Return `errno::notempty` if the directory is not empty.
     /// Note: This is similar to `unlinkat(fd, path, AT_REMOVEDIR)` in POSIX.
     pub unsafe fn path_remove_directory(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
-        unsafe { __ic_custom_path_remove_directory(arg0 as Fd, arg1, arg2) }
+        unsafe { __ic_custom_path_remove_directory(arg0 as Fd, arg1, arg2 as u32) }
     }
     /// Rename a file or directory.
     /// Note: This is similar to `renameat` in POSIX.
@@ -2484,7 +2508,7 @@ pub mod wasi_snapshot_preview1 {
         arg4: *const u8,
         arg5: i32,
     ) -> i32 {
-        unsafe { __ic_custom_path_rename(arg0, arg1, arg2, arg3, arg4, arg5) }
+        unsafe { __ic_custom_path_rename(arg0, arg1, arg2 as u32, arg3, arg4, arg5 as u32) }
     }
     /// Create a symbolic link.
     /// Note: This is similar to `symlinkat` in POSIX.
@@ -2497,7 +2521,7 @@ pub mod wasi_snapshot_preview1 {
     ) -> i32 {
         #[cfg(not(feature = "skip_unimplemented_functions"))]
         unsafe {
-            __ic_custom_path_symlink(arg0, arg1, arg2, arg3, arg4)
+            __ic_custom_path_symlink(arg0, arg1 as u32, arg2, arg3, arg4 as u32)
         }
 
         #[cfg(feature = "skip_unimplemented_functions")]
@@ -2507,7 +2531,7 @@ pub mod wasi_snapshot_preview1 {
     /// Return `errno::isdir` if the path refers to a directory.
     /// Note: This is similar to `unlinkat(fd, path, 0)` in POSIX.
     pub unsafe fn path_unlink_file(arg0: i32, arg1: *const u8, arg2: i32) -> i32 {
-        unsafe { __ic_custom_path_unlink_file(arg0, arg1, arg2) }
+        unsafe { __ic_custom_path_unlink_file(arg0, arg1, arg2 as u32) }
     }
     /// Concurrently poll for the occurrence of a set of events.
     pub unsafe fn poll_oneoff(
@@ -2518,7 +2542,7 @@ pub mod wasi_snapshot_preview1 {
     ) -> i32 {
         #[cfg(not(feature = "skip_unimplemented_functions"))]
         unsafe {
-            __ic_custom_poll_oneoff(arg0, arg1, arg2, arg3)
+            __ic_custom_poll_oneoff(arg0, arg1, arg2 as u32, arg3)
         }
 
         #[cfg(feature = "skip_unimplemented_functions")]
@@ -2579,7 +2603,7 @@ pub mod wasi_snapshot_preview1 {
     ) -> i32 {
         #[cfg(not(feature = "skip_unimplemented_functions"))]
         unsafe {
-            __ic_custom_sock_recv(arg0, arg1, arg2, arg3, arg4, arg5)
+            __ic_custom_sock_recv(arg0, arg1, arg2 as u32, arg3, arg4, arg5)
         }
 
         #[cfg(feature = "skip_unimplemented_functions")]
@@ -2597,7 +2621,7 @@ pub mod wasi_snapshot_preview1 {
     ) -> i32 {
         #[cfg(not(feature = "skip_unimplemented_functions"))]
         unsafe {
-            __ic_custom_sock_send(arg0, arg1, arg2, arg3, arg4)
+            __ic_custom_sock_send(arg0, arg1, arg2 as u32, arg3, arg4)
         }
 
         #[cfg(feature = "skip_unimplemented_functions")]

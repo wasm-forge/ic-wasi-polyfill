@@ -51,7 +51,7 @@ fn test_root_path_filestat_get_dot() {
             ROOT_FD as i32,
             0,
             path.as_ptr(),
-            path.len() as i32,
+            path.len() as u32,
             &mut stat as *mut wasi::Filestat,
         )
     };
@@ -85,7 +85,7 @@ fn test_root_path_filestat_get_empty() {
             ROOT_FD as i32,
             0,
             path.as_ptr(),
-            path.len() as i32,
+            path.len() as u32,
             &mut stat as *mut wasi::Filestat,
         )
     };
@@ -110,7 +110,7 @@ fn test_root_path_open_dot() {
             ROOT_FD,
             0,
             path.as_ptr(),
-            path.len() as i32,
+            path.len() as u32,
             wasi::OFLAGS_DIRECTORY as i32,
             common::DEFAULT_RIGHTS,
             common::DEFAULT_RIGHTS,
@@ -205,7 +205,7 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
     let mut path: Vec<u8> = vec![0; root_path_len + 10];
 
     let res = unsafe {
-        __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32 + 10)
+        __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), (root_path_len + 10) as u32)
     };
 
     assert!(res == 0);
@@ -214,6 +214,62 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
 
     // our default path is known
     assert!(&root_path[0..root_path_len] == "/");
+}
+
+#[test]
+fn test_fd_prestat_dir_name_u32_max_length_does_not_trap() {
+    const CHILD_ENV: &str = "IC_WASI_PRESTAT_DIR_NAME_CHILD";
+    const TEST_NAME: &str = "test_fd_prestat_dir_name_u32_max_length_does_not_trap";
+
+    if std::env::var_os(CHILD_ENV).is_some() {
+        init(&[], &[]);
+
+        // Only the preopen name length (1 byte, "/") may be written.
+        // u32::MAX is a valid (huge) buffer capacity.
+        let mut path = [0xA5u8; 64];
+        let res =
+            unsafe { __ic_custom_fd_prestat_dir_name(ROOT_FD as i32, path.as_mut_ptr(), u32::MAX) };
+
+        assert_eq!(res, 0);
+        assert_eq!(path[0], b'/');
+        assert!(
+            path[1..].iter().all(|&byte| byte == 0xA5),
+            "fd_prestat_dir_name wrote past the preopen name length"
+        );
+        return;
+    }
+
+    // Run the call in a child process so that a trap/abort cannot take down
+    // the whole test runner.
+    use std::time::{Duration, Instant};
+
+    let exe = std::env::current_exe().unwrap();
+    let mut child = std::process::Command::new(exe)
+        .arg("--exact")
+        .arg(TEST_NAME)
+        .env(CHILD_ENV, "1")
+        .spawn()
+        .unwrap();
+
+    let deadline = Instant::now() + Duration::from_secs(10);
+
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            assert!(
+                status.success(),
+                "fd_prestat_dir_name with a large max_len crashed or failed: {status}"
+            );
+            break;
+        }
+
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("fd_prestat_dir_name with a large max_len did not terminate");
+        }
+
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
 
 #[test]

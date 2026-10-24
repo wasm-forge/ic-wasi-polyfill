@@ -155,7 +155,7 @@ pub unsafe fn fd_readdir(
     fd: Fd,
     cookie: i64,
     bytes: *mut u8,
-    bytes_len: i32,
+    bytes_len: u32,
     res: *mut wasi::Size,
 ) -> i32 {
     let fd = fd as Fd;
@@ -419,7 +419,7 @@ mod tests {
                     fs.root_fd(),
                     0,
                     p,
-                    buf.len() as i32,
+                    buf.len() as u32,
                     &mut bytes_used as *mut wasi::Size,
                 )
             };
@@ -437,7 +437,7 @@ mod tests {
                     fs.root_fd(),
                     2,
                     p,
-                    buf.len() as i32,
+                    buf.len() as u32,
                     &mut bytes_used as *mut wasi::Size,
                 )
             };

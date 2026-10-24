@@ -193,7 +193,7 @@ fn test_file_truncation() {
             dir_fd,
             0,
             filename.as_ptr(),
-            filename.len() as i32,
+            filename.len() as u32,
             (wasi::OFLAGS_CREAT | wasi::OFLAGS_TRUNC) as i32,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -218,7 +218,7 @@ fn test_file_truncation() {
         __ic_custom_fd_read(
             file_fd,
             read_buf.as_mut_ptr(),
-            read_buf.len() as i32,
+            read_buf.len() as u32,
             (&mut (bytes_read as usize)) as *mut usize,
         )
     };
@@ -246,7 +246,7 @@ fn test_create_dirs_and_file_in_it() {
         __ic_custom_path_create_directory(
             root_fd,
             new_folder_name1.as_ptr(),
-            new_folder_name1.len() as i32,
+            new_folder_name1.len() as u32,
         )
     };
     assert!(res == 0);
@@ -256,7 +256,7 @@ fn test_create_dirs_and_file_in_it() {
         __ic_custom_path_create_directory(
             root_fd,
             new_folder_name2.as_ptr(),
-            new_folder_name2.len() as i32,
+            new_folder_name2.len() as u32,
         )
     };
     assert!(res == 0);
@@ -266,7 +266,7 @@ fn test_create_dirs_and_file_in_it() {
         __ic_custom_path_create_directory(
             root_fd,
             new_folder_name3.as_ptr(),
-            new_folder_name3.len() as i32,
+            new_folder_name3.len() as u32,
         )
     };
     assert!(res == 0);
@@ -279,7 +279,7 @@ fn test_create_dirs_and_file_in_it() {
             root_fd,
             0,
             new_folder_name1.as_ptr(),
-            new_folder_name1.len() as i32,
+            new_folder_name1.len() as u32,
             2,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -299,7 +299,7 @@ fn test_create_dirs_and_file_in_it() {
             parent_folder_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             1 + 4 + 8,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -315,7 +315,7 @@ fn test_create_dirs_and_file_in_it() {
         __ic_custom_path_remove_directory(
             root_fd,
             new_folder_name2.as_ptr(),
-            new_folder_name2.len() as i32,
+            new_folder_name2.len() as u32,
         )
     };
     assert!(ret == 0);
@@ -331,7 +331,7 @@ fn test_create_dirs_and_file_in_it() {
         __ic_custom_fd_readdir(
             root_fd,
             bytes.as_mut_ptr(),
-            len as i32,
+            len as u32,
             0,
             (&mut new_length) as *mut wasi::Size,
         )
@@ -391,7 +391,7 @@ fn test_writing_and_reading() {
             root_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             0,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -422,7 +422,7 @@ fn test_writing_and_reading() {
         __ic_custom_fd_read(
             file_fd,
             read_buf.as_mut_ptr(),
-            read_buf.len() as i32,
+            read_buf.len() as u32,
             (&mut bytes_read) as *mut wasi::Size,
         )
     };
@@ -446,7 +446,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
             root_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             1 + 4 + 8,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -476,7 +476,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
         __ic_custom_fd_pwrite(
             file_fd,
             src.as_ptr(),
-            src.len() as i32,
+            src.len() as u32,
             0,
             (&mut bytes_written) as *mut wasi::Size,
         )
@@ -490,7 +490,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
             root_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             0,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -520,7 +520,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
         __ic_custom_fd_pread(
             file_fd,
             read_buf.as_mut_ptr(),
-            (read_buf.len()) as i32,
+            (read_buf.len()) as u32,
             2,
             (&mut bytes_read) as *mut wasi::Size,
         )
@@ -546,7 +546,7 @@ fn test_writing_and_reading_file_stats() {
             root_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             1 + 4 + 8,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -575,7 +575,7 @@ fn test_writing_and_reading_file_stats() {
         __ic_custom_fd_write(
             file_fd,
             src.as_ptr(),
-            src.len() as i32,
+            src.len() as u32,
             (&mut bytes_written) as *mut wasi::Size,
         )
     };
@@ -616,7 +616,7 @@ fn test_writing_and_reading_file_stats() {
         __ic_custom_fd_write(
             file_fd,
             src.as_ptr(),
-            src.len() as i32,
+            src.len() as u32,
             (&mut bytes_written) as *mut wasi::Size,
         )
     };
@@ -658,7 +658,7 @@ fn test_forward_to_debug_is_called() {
         __ic_custom_fd_write(
             1,
             src.as_ptr(),
-            src.len() as i32,
+            src.len() as u32,
             (&mut bytes_written) as *mut wasi::Size,
         )
     };
@@ -703,10 +703,10 @@ fn test_link_seek_tell() {
             root_fd,
             0,
             new_file_name.as_ptr(),
-            new_file_name.len() as i32,
+            new_file_name.len() as u32,
             root_fd,
             link_file_name.as_ptr(),
-            link_file_name.len() as i32,
+            link_file_name.len() as u32,
         )
     };
 
@@ -720,7 +720,7 @@ fn test_link_seek_tell() {
             root_fd,
             0,
             link_file_name.as_ptr(),
-            link_file_name.len() as i32,
+            link_file_name.len() as u32,
             0,
             wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
             0,
@@ -756,7 +756,7 @@ fn test_link_seek_tell() {
         __ic_custom_fd_read(
             link_file_fd,
             read_buf.as_mut_ptr(),
-            (read_buf.len()) as i32,
+            (read_buf.len()) as u32,
             (&mut bytes_read) as *mut wasi::Size,
         )
     };
@@ -867,16 +867,16 @@ fn test_rename_unlink() {
         __ic_custom_path_rename(
             3,
             filename1.as_ptr(),
-            filename1.len() as i32,
+            filename1.len() as u32,
             3,
             filename1_renamed.as_ptr(),
-            filename1_renamed.len() as i32,
+            filename1_renamed.len() as u32,
         )
     };
     assert!(res == 0);
 
     let res =
-        unsafe { __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32) };
+        unsafe { __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as u32) };
     assert!(res == 0);
 
     // list files, include . and ..
@@ -944,7 +944,7 @@ fn test_path_filestat_get_set_times() {
             3,
             0,
             filename.as_ptr(),
-            filename.len() as i32,
+            filename.len() as u32,
             &mut filestat as *mut wasi::Filestat,
         )
     };
@@ -954,7 +954,7 @@ fn test_path_filestat_get_set_times() {
             3,
             0,
             filename.as_ptr(),
-            filename.len() as i32,
+            filename.len() as u32,
             123,
             456,
             1 + 4,
@@ -977,7 +977,7 @@ fn test_path_filestat_get_set_times() {
             3,
             0,
             filename.as_ptr(),
-            filename.len() as i32,
+            filename.len() as u32,
             &mut filestat2 as *mut wasi::Filestat,
         )
     };

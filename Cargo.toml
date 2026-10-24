@@ -1,6 +1,8 @@
 [workspace]
 members = [
-    "ic-wasi-polyfill", "integration-tests", "test_canisters/fs_tests/src/fs_tests_backend",
+    "ic-wasi-polyfill",
+    "integration-tests",
+    "test_canisters/fs_tests/src/fs_tests_backend",
     "test_canisters/canister_initial/src/canister_initial_backend",
     "test_canisters/canister_upgraded/src/canister_upgraded_backend",
 ]
@@ -9,13 +11,13 @@ resolver = "2"
 
 [workspace.dependencies]
 candid = "0.10.20"
-ic-cdk = "0.20.0"
+ic-cdk = "0.20.3"
 ic-stable-structures = "0.7"
-stable-fs = "0.13.0"
+stable-fs = "0.13.1"
 anyhow = "1.0.102"
-rand = "0.10.1"
-pocket-ic = "13.0.0"
-ic-wasi-polyfill = { path = "ic-wasi-polyfill"}
+rand = "0.10.3"
+pocket-ic = "16.1.0"
+ic-wasi-polyfill = { path = "ic-wasi-polyfill" }
 
 serde_bytes = "0.11.17"
 
@@ -23,4 +25,4 @@ cargo_metadata = "0.23.1"
 ic-test = "0.4.0"
 serde = "1.0.219"
 tokio = { version = "1.52.0", features = ["full"] }
-convert_case = "0.11.0"
+convert_case = "0.12.0"
