@@ -613,7 +613,7 @@ pub fn list_all_files_recursive(path: &str, files: &mut Vec<String>) {
 
         let folder_name = entry.path().into_os_string().into_string().unwrap();
 
-        println!("{}", &folder_name);
+        println!("{}", folder_name);
         files.push(folder_name.clone());
 
         if entry.metadata().unwrap().is_dir() {

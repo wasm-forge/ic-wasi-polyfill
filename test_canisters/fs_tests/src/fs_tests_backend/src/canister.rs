@@ -480,7 +480,7 @@ fn generate_random_file_structure(
                 let res_str = match &mut res {
                     Ok(f) => {
                         f.flush()?;
-                        format!("Ok: {:?}", &path)
+                        format!("Ok: {:?}", path)
                     }
                     Err(_e) => "Err".to_string(),
                 };
