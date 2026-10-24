@@ -48,7 +48,7 @@ fn test_root_path_filestat_get_dot() {
 
     let ret = unsafe {
         __ic_custom_path_filestat_get(
-            ROOT_FD as i32,
+            ROOT_FD,
             0,
             path.as_ptr(),
             path.len() as u32,
@@ -82,7 +82,7 @@ fn test_root_path_filestat_get_empty() {
 
     let ret = unsafe {
         __ic_custom_path_filestat_get(
-            ROOT_FD as i32,
+            ROOT_FD,
             0,
             path.as_ptr(),
             path.len() as u32,
@@ -227,8 +227,7 @@ fn test_fd_prestat_dir_name_u32_max_length_does_not_trap() {
         // Only the preopen name length (1 byte, "/") may be written.
         // u32::MAX is a valid (huge) buffer capacity.
         let mut path = [0xA5u8; 64];
-        let res =
-            unsafe { __ic_custom_fd_prestat_dir_name(ROOT_FD as i32, path.as_mut_ptr(), u32::MAX) };
+        let res = unsafe { __ic_custom_fd_prestat_dir_name(ROOT_FD, path.as_mut_ptr(), u32::MAX) };
 
         assert_eq!(res, 0);
         assert_eq!(path[0], b'/');

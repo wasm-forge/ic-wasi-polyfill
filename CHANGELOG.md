@@ -3,6 +3,7 @@
 ## [v0.13.1]
 - Update depencencies
 - Treat WASI length and count arguments as unsigned, preventing traps for large values
+- Use the `Fd` type consistently for file descriptor arguments in the WASI polyfill functions
 - Fix `fd_prestat_dir_name` to clamp the path length to the preopen name length
 
 ## [v0.13.0]

@@ -175,7 +175,7 @@ pub unsafe extern "C" fn __ic_custom_fd_write(
         FS.with(|fs| {
             let mut fs = fs.borrow_mut();
 
-            match fs.write_vec(fd as Fd, src_io_vec) {
+            match fs.write_vec(fd, src_io_vec) {
                 Ok(r) => {
                     unsafe { *res = r as wasi::Size };
                     wasi::ERRNO_SUCCESS.raw() as i32
@@ -238,7 +238,7 @@ pub unsafe extern "C" fn __ic_custom_fd_read(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        match fs.read_vec(fd as Fd, dst_io_vec) {
+        match fs.read_vec(fd, dst_io_vec) {
             Ok(r) => {
                 unsafe { *res = r as wasi::Size };
                 wasi::ERRNO_SUCCESS.raw() as i32
@@ -296,7 +296,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pwrite(
     } else {
         FS.with(|fs| {
             let mut fs = fs.borrow_mut();
-            match fs.write_vec_with_offset(fd as Fd, src_io_vec, offset as FileSize) {
+            match fs.write_vec_with_offset(fd, src_io_vec, offset as FileSize) {
                 Ok(r) => {
                     unsafe { *res = r as wasi::Size };
 
@@ -360,7 +360,7 @@ pub unsafe extern "C" fn __ic_custom_fd_pread(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let reading_result = fs.read_vec_with_offset(fd as Fd, dst_io_vec, offset as FileSize);
+        let reading_result = fs.read_vec_with_offset(fd, dst_io_vec, offset as FileSize);
 
         match reading_result {
             Ok(r) => {
@@ -415,11 +415,7 @@ pub unsafe extern "C" fn __ic_custom_fd_seek(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        match fs.seek(
-            fd as Fd,
-            delta,
-            wasi_helpers::into_stable_fs_wence(whence as u8),
-        ) {
+        match fs.seek(fd, delta, wasi_helpers::into_stable_fs_wence(whence as u8)) {
             Ok(r) => {
                 unsafe { *res = r as wasi::Filesize };
 
@@ -488,11 +484,11 @@ pub unsafe extern "C" fn __ic_custom_path_open(
 
         let now = ic_time();
 
-        let r = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, now);
+        let r = fs.open(parent_fd, file_name, fd_stat, open_flags, now);
 
         match r {
             Ok(r) => {
-                unsafe { *res = r as Fd };
+                unsafe { *res = r };
                 wasi::ERRNO_SUCCESS.raw() as i32
             }
             Err(er) => {
@@ -524,7 +520,7 @@ pub extern "C" fn __ic_custom_fd_close(fd: Fd) -> i32 {
     debug_instructions!("__ic_custom_fd_close", "fd={fd:?}");
 
     let result = FS.with(|fs| {
-        let res = fs.borrow_mut().close(fd as Fd);
+        let res = fs.borrow_mut().close(fd);
 
         match res {
             Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
@@ -597,7 +593,7 @@ pub extern "C" fn __ic_custom_fd_sync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_sync", "fd={fd}");
 
-    let result = FS.with(|fs| match fs.borrow_mut().flush(fd as Fd) {
+    let result = FS.with(|fs| match fs.borrow_mut().flush(fd) {
         Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
         Err(er) => into_errno(er),
     });
@@ -628,7 +624,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        match fs.tell(fd as Fd) {
+        match fs.tell(fd) {
             Ok(pos) => {
                 unsafe { *res = pos as wasi::Filesize };
 
@@ -655,7 +651,7 @@ pub unsafe extern "C" fn __ic_custom_fd_tell(fd: Fd, res: *mut wasi::Filesize) -
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi::Prestat) -> i32 {
+pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: Fd, prestat: *mut wasi::Prestat) -> i32 {
     #[cfg(feature = "count_wasi_calls")]
     let start = ic_instruction_counter();
 
@@ -665,7 +661,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi:
     let ret = FS.with(|fs| {
         let fs = fs.borrow();
 
-        if fd as Fd == fs.root_fd() {
+        if fd == fs.root_fd() {
             let root_len = fs.root_path().len();
 
             let pstat = wasi::Prestat {
@@ -702,7 +698,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_get(fd: i32, prestat: *mut wasi:
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
-    fd: i32,
+    fd: Fd,
     path: *mut u8,
     max_len: u32,
 ) -> i32 {
@@ -720,7 +716,7 @@ pub unsafe extern "C" fn __ic_custom_fd_prestat_dir_name(
     let result = FS.with(|fs| {
         let fs = fs.borrow();
 
-        if fd as Fd == fs.root_fd() {
+        if fd == fs.root_fd() {
             let copy_len = std::cmp::min(max_len, fs.root_path().len());
 
             for i in 0..copy_len {
@@ -775,12 +771,10 @@ pub extern "C" fn __ic_custom_fd_advise(fd: Fd, offset: i64, len: i64, advice: i
 
             match advice {
                 Ok(advice) => {
-                    match fs.borrow_mut().advice(
-                        fd as Fd,
-                        offset as FileSize,
-                        len as FileSize,
-                        advice,
-                    ) {
+                    match fs
+                        .borrow_mut()
+                        .advice(fd, offset as FileSize, len as FileSize, advice)
+                    {
                         Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
                         Err(er) => into_errno(er),
                     }
@@ -813,7 +807,7 @@ pub extern "C" fn __ic_custom_fd_allocate(fd: Fd, offset: i64, len: i64) -> i32 
     let result = FS.with(|fs| {
         match fs
             .borrow_mut()
-            .allocate(fd as Fd, offset as FileSize, len as FileSize)
+            .allocate(fd, offset as FileSize, len as FileSize)
         {
             Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(er) => into_errno(er),
@@ -837,7 +831,7 @@ pub extern "C" fn __ic_custom_fd_datasync(fd: Fd) -> i32 {
     #[cfg(feature = "report_wasi_calls")]
     debug_instructions!("__ic_custom_fd_datasync", "fd={fd:?}");
 
-    let result = FS.with(|fs| match fs.borrow_mut().flush(fd as Fd) {
+    let result = FS.with(|fs| match fs.borrow_mut().flush(fd) {
         Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
         Err(er) => into_errno(er),
     });
@@ -863,7 +857,7 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi
     let result = FS.with(|fs| {
         let fs = fs.borrow();
 
-        let stat = fs.get_stat(fd as Fd);
+        let stat = fs.get_stat(fd);
 
         match stat {
             Ok((ftype, fdstat)) => {
@@ -908,7 +902,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let stat = fs.get_stat(fd as Fd);
+        let stat = fs.get_stat(fd);
 
         match stat {
             Ok((_ftype, mut fdstat)) => {
@@ -920,7 +914,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32
 
                 fdstat.flags = new_flags.unwrap();
 
-                match fs.set_stat(fd as Fd, fdstat) {
+                match fs.set_stat(fd, fdstat) {
                     Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
                     Err(err) => wasi_helpers::into_errno(err),
                 }
@@ -940,7 +934,7 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_flags(fd: Fd, new_flags: i32) -> i32
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
-    fd: i32,
+    fd: Fd,
     rights_base: i64,
     rights_inheriting: i64,
 ) -> i32 {
@@ -956,14 +950,14 @@ pub extern "C" fn __ic_custom_fd_fdstat_set_rights(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let stat = fs.get_stat(fd as Fd);
+        let stat = fs.get_stat(fd);
 
         match stat {
             Ok((_ftype, mut fdstat)) => {
                 fdstat.rights_base &= rights_base as u64;
                 fdstat.rights_inheriting &= rights_inheriting as u64;
 
-                match fs.set_stat(fd as Fd, fdstat) {
+                match fs.set_stat(fd, fdstat) {
                     Ok(_) => wasi::ERRNO_SUCCESS.raw() as i32,
                     Err(err) => wasi_helpers::into_errno(err),
                 }
@@ -1046,11 +1040,11 @@ pub extern "C" fn __ic_custom_fd_filestat_set_times(
                 }
 
                 if fst_flags & wasi::FSTFLAGS_ATIM > 0 {
-                    let _ = fs.set_accessed_time(fd as Fd, atim);
+                    let _ = fs.set_accessed_time(fd, atim);
                 }
 
                 if fst_flags & wasi::FSTFLAGS_MTIM > 0 {
-                    let _ = fs.set_modified_time(fd as Fd, mtim);
+                    let _ = fs.set_modified_time(fd, mtim);
                 }
 
                 wasi::ERRNO_SUCCESS.raw() as i32
@@ -1123,7 +1117,7 @@ pub extern "C" fn __ic_custom_fd_renumber(fd_from: Fd, fd_to: Fd) -> i32 {
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let result = fs.renumber(fd_from as Fd, fd_to as Fd);
+        let result = fs.renumber(fd_from, fd_to);
 
         match result {
             Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
@@ -1362,7 +1356,7 @@ pub unsafe extern "C" fn __ic_custom_path_create_directory(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_filestat_get(
-    parent_fd: i32,
+    parent_fd: Fd,
     simlink_flags: i32,
     path: *const u8,
     path_len: u32,
@@ -1391,7 +1385,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 
         let open_flags = OpenFlags::empty();
 
-        let fd = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
+        let fd = fs.open(parent_fd, file_name, fd_stat, open_flags, 0);
 
         // don't leave result undefined
         unsafe {
@@ -1450,7 +1444,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_get(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_filestat_set_times(
-    parent_fd: i32,
+    parent_fd: Fd,
     flags: i32,
     path: *const u8,
     path_len: u32,
@@ -1491,7 +1485,7 @@ pub unsafe extern "C" fn __ic_custom_path_filestat_set_times(
 
         let open_flags = OpenFlags::empty();
 
-        let fd = fs.open(parent_fd as Fd, file_name, fd_stat, open_flags, 0);
+        let fd = fs.open(parent_fd, file_name, fd_stat, open_flags, 0);
 
         match fd {
             Ok(fd) => {
@@ -1575,7 +1569,7 @@ pub unsafe extern "C" fn __ic_custom_path_link(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let fd = fs.create_hard_link(old_fd as Fd, old_path, new_fd as Fd, new_path);
+        let fd = fs.create_hard_link(old_fd, old_path, new_fd, new_path);
 
         match fd {
             Ok(fd) => {
@@ -1599,7 +1593,7 @@ pub unsafe extern "C" fn __ic_custom_path_link(
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_readlink(
-    fd: i32,
+    fd: Fd,
     path: *const u8,
     path_len: u32,
     buf: i32,
@@ -1608,7 +1602,7 @@ pub unsafe extern "C" fn __ic_custom_path_readlink(
 ) -> i32 {
     let _file_name = unsafe { get_file_name(path, path_len as wasi::Size) };
     prevent_elimination(&[
-        fd,
+        fd as i32,
         path as i32,
         path_len as i32,
         buf,
@@ -1643,7 +1637,7 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let res = fs.remove_dir(parent_fd as Fd, file_name);
+        let res = fs.remove_dir(parent_fd, file_name);
         match res {
             Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(er) => into_errno(er),
@@ -1662,10 +1656,10 @@ pub unsafe extern "C" fn __ic_custom_path_remove_directory(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_rename(
-    old_fd: i32,
+    old_fd: Fd,
     old_path: *const u8,
     old_path_len: u32,
-    new_fd: i32,
+    new_fd: Fd,
     new_path: *const u8,
     new_path_len: u32,
 ) -> i32 {
@@ -1687,7 +1681,7 @@ pub unsafe extern "C" fn __ic_custom_path_rename(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let fd = fs.rename(old_fd as Fd, old_path, new_fd as Fd, new_path);
+        let fd = fs.rename(old_fd, old_path, new_fd, new_path);
 
         match fd {
             Ok(fd) => {
@@ -1713,7 +1707,7 @@ pub unsafe extern "C" fn __ic_custom_path_rename(
 pub unsafe extern "C" fn __ic_custom_path_symlink(
     old_path: *const u8,
     old_path_len: u32,
-    fd: i32,
+    fd: Fd,
     new_path: *const u8,
     new_path_len: u32,
 ) -> i32 {
@@ -1723,7 +1717,7 @@ pub unsafe extern "C" fn __ic_custom_path_symlink(
     prevent_elimination(&[
         old_path as i32,
         old_path_len as i32,
-        fd,
+        fd as i32,
         new_path as i32,
         new_path_len as i32,
     ]);
@@ -1734,7 +1728,7 @@ pub unsafe extern "C" fn __ic_custom_path_symlink(
 #[inline(never)]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_path_unlink_file(
-    parent_fd: i32,
+    parent_fd: Fd,
     path: *const u8,
     path_len: u32,
 ) -> i32 {
@@ -1755,7 +1749,7 @@ pub unsafe extern "C" fn __ic_custom_path_unlink_file(
     let result = FS.with(|fs| {
         let mut fs = fs.borrow_mut();
 
-        let res = fs.remove_file(parent_fd as Fd, file_name);
+        let res = fs.remove_file(parent_fd, file_name);
         match res {
             Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
             Err(er) => into_errno(er),
@@ -1812,8 +1806,8 @@ pub extern "C" fn __ic_custom_sched_yield() -> i32 {
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) -> i32 {
-    prevent_elimination(&[arg0, arg1, arg2 as i32]);
+pub extern "C" fn __ic_custom_sock_accept(arg0: Fd, arg1: i32, arg2: *mut u32) -> i32 {
+    prevent_elimination(&[arg0 as i32, arg1, arg2 as i32]);
     unimplemented!("WASI sock_accept is not supported");
 }
 
@@ -1822,7 +1816,7 @@ pub extern "C" fn __ic_custom_sock_accept(arg0: i32, arg1: i32, arg2: *mut u32) 
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn __ic_custom_sock_recv(
-    arg0: i32,
+    arg0: Fd,
     arg1: *const wasi::Iovec,
     arg2: u32,
     arg3: i32,
@@ -1830,7 +1824,7 @@ pub unsafe extern "C" fn __ic_custom_sock_recv(
     arg5: *mut u16,
 ) -> i32 {
     prevent_elimination(&[
-        arg0,
+        arg0 as i32,
         arg1 as i32,
         arg2 as i32,
         arg3,
@@ -1845,21 +1839,21 @@ pub unsafe extern "C" fn __ic_custom_sock_recv(
 #[cfg(not(feature = "skip_unimplemented_functions"))]
 #[allow(clippy::missing_safety_doc)]
 pub extern "C" fn __ic_custom_sock_send(
-    arg0: i32,
+    arg0: Fd,
     arg1: *const wasi::Ciovec,
     arg2: u32,
     arg3: i32,
     arg4: *mut wasi::Size,
 ) -> i32 {
-    prevent_elimination(&[arg0, arg1 as i32, arg2 as i32, arg3, arg4 as i32]);
+    prevent_elimination(&[arg0 as i32, arg1 as i32, arg2 as i32, arg3, arg4 as i32]);
     unimplemented!("WASI sock_send is not supported");
 }
 
 #[unsafe(no_mangle)]
 #[inline(never)]
 #[cfg(not(feature = "skip_unimplemented_functions"))]
-pub extern "C" fn __ic_custom_sock_shutdown(arg0: i32, arg1: i32) -> i32 {
-    prevent_elimination(&[arg0, arg1]);
+pub extern "C" fn __ic_custom_sock_shutdown(arg0: Fd, arg1: i32) -> i32 {
+    prevent_elimination(&[arg0 as i32, arg1]);
     unimplemented!("WASI sock_shutdown is not supported");
 }
 
