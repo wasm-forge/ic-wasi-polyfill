@@ -878,8 +878,12 @@ pub unsafe extern "C" fn __ic_custom_fd_fdstat_get(fd: Fd, ret_fdstat: *mut wasi
 
     #[cfg(feature = "report_wasi_calls")]
     {
-        let r = format!("ret_fdstat={:?}", unsafe { *ret_fdstat });
-        debug_instructions!("__ic_custom_fd_fdstat_get", result, start, "{r}");
+        if result == wasi::ERRNO_SUCCESS.raw() as i32 {
+            let r = format!("ret_fdstat={:?}", unsafe { *ret_fdstat });
+            debug_instructions!("__ic_custom_fd_fdstat_get", result, start, "{r}");
+        } else {
+            debug_instructions!("__ic_custom_fd_fdstat_get", result, start);
+        }
     }
 
     #[cfg(feature = "count_wasi_calls")]
