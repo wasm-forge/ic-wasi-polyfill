@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased]
+- Add `raw_set_chunk_size`, to choose the file system's chunk size before the first file is created
+
 ## [v0.13.1]
 - Update depencencies
 - Treat WASI length and count arguments as unsigned, preventing traps for large values
