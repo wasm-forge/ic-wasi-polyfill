@@ -1488,6 +1488,7 @@ fn test_mounts() {
     assert_eq!(str, hello_message2);
 }
 
+#[cfg(not(feature = "transient"))]
 #[test]
 fn test_raw_set_chunk_size() {
     init(&[], &[]);

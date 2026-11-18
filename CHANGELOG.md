@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [v0.13.2]
 - Add `raw_set_chunk_size`, to choose the file system's chunk size before the first file is created
 
 ## [v0.13.1]
@@ -103,6 +103,7 @@
 - Benchmark tests added.
 
 
+[v0.13.2]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.13.1...v0.13.2
 [v0.13.1]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.12.0...v0.13.0
 [v0.12.0]: https://github.com/wasm-forge/ic-wasi-polyfill/compare/v0.11.0...v0.12.0
