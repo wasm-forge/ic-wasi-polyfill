@@ -1487,3 +1487,43 @@ fn test_mounts() {
     let str = read_file_to_string(file_name);
     assert_eq!(str, hello_message2);
 }
+
+#[test]
+fn test_raw_set_chunk_size() {
+    init(&[], &[]);
+    let size =
+        |fs: &std::cell::RefCell<stable_fs::fs::FileSystem>| fs.borrow().storage.chunk_size();
+
+    // Before any file: any of the five sizes
+    assert_eq!(raw_set_chunk_size(4096), 0);
+    assert_eq!(FS.with(size), 4096);
+    assert_eq!(raw_set_chunk_size(65536), 0);
+    assert_eq!(FS.with(size), 65536);
+
+    // Any other size, never
+    assert_eq!(raw_set_chunk_size(1000), wasi::ERRNO_INVAL.raw() as i32);
+    assert_eq!(FS.with(size), 65536);
+
+    let root_fd = 3;
+    let new_file = "chunked.txt";
+    let mut fd: Fd = 0;
+    let res = unsafe {
+        __ic_custom_path_open(
+            root_fd,
+            0,
+            new_file.as_ptr(),
+            new_file.len() as u32,
+            wasi::OFLAGS_CREAT as i32,
+            wasi::RIGHTS_FD_WRITE | wasi::RIGHTS_FD_READ,
+            0,
+            0,
+            (&mut fd) as *mut Fd,
+        )
+    };
+    assert_eq!(res, 0);
+
+    // With a file: the same size again, but no other
+    assert_eq!(raw_set_chunk_size(65536), 0);
+    assert_eq!(raw_set_chunk_size(16384), wasi::ERRNO_INVAL.raw() as i32);
+    assert_eq!(FS.with(size), 65536);
+}

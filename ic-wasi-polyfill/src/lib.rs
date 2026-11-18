@@ -1998,6 +1998,29 @@ pub unsafe extern "C" fn raw_init(seed: *const u8, len: usize) {
     __dummy_wasi_calls();
 }
 
+/// Sets the size of the file system's chunks, in bytes: 4096, 8192, 16384 (the
+/// default), 32768 or 65536. Call it after `raw_init` and before any file or
+/// folder is created. Calling it later with the size the file system already
+/// has, for example in `post_upgrade`, succeeds and changes nothing.
+///
+/// Returns 0, or `ERRNO_INVAL` for any other size, or for a different size once
+/// the file system holds a chunk.
+#[unsafe(no_mangle)]
+pub extern "C" fn raw_set_chunk_size(size: u32) -> i32 {
+    let Some(chunk_size) = ChunkSize::VALUES
+        .into_iter()
+        .find(|chunk_size| *chunk_size as u32 == size)
+    else {
+        return wasi::ERRNO_INVAL.raw() as i32;
+    };
+    FS.with(
+        |fs| match fs.borrow_mut().storage.set_chunk_size(chunk_size) {
+            Ok(()) => wasi::ERRNO_SUCCESS.raw() as i32,
+            Err(error) => into_errno(error),
+        },
+    )
+}
+
 /// Reset the cumulative instruction counter
 #[cfg(feature = "count_wasi_calls")]
 pub fn reset_counter() {
